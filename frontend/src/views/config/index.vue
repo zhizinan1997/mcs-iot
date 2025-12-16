@@ -172,11 +172,24 @@
             <h4>使用说明:</h4>
             <ul>
               <li><strong>管理员账号</strong> - 用于 MQTT 调试工具连接</li>
-              <li><strong>Worker 账号</strong> - 后台服务连接使用，修改后需重启 Worker</li>
+              <li><strong>Worker 账号</strong> - 后台服务连接使用</li>
               <li><strong>设备账号</strong> - 所有硬件设备使用此统一账号连接</li>
             </ul>
+            
+            <el-alert
+              title="重要提示"
+              type="warning"
+              :closable="false"
+              style="margin-top: 10px;"
+            >
+              <template #default>
+                <p>修改 <strong>Worker 账号密码</strong> 后，需要管理员执行以下命令重启 Worker 容器：</p>
+                <code style="background: #f5f5f5; padding: 4px 8px; border-radius: 4px;">docker-compose restart worker</code>
+              </template>
+            </el-alert>
+            
             <p style="color: #E6A23C; margin-top: 10px;">
-              ⚠️ 修改密码后，所有设备和服务需要更新配置
+              ⚠️ 修改设备密码后，所有硬件设备也需要更新固件配置
             </p>
           </div>
         </el-card>

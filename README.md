@@ -163,11 +163,21 @@ sudo ufw allow 8000/tcp  # API 直连
 | **Broker 地址** | `localhost` 或 `服务器IP` | `mqtt.yourdomain.com` |
 | **TCP 端口** | 1883 | - |
 | **TLS 端口** | 8883 | 8883 (必须使用) |
-| **用户名** | `device_{设备SN}` | `device_{设备SN}` |
-| **密码** | 联系管理员获取 | 联系管理员获取 |
+| **用户名** | 在 Admin 界面配置 | 在 Admin 界面配置 |
+| **密码** | 在 Admin 界面配置 | 在 Admin 界面配置 |
 | **Client ID** | 设备 SN (唯一) | 设备 SN (唯一) |
 | **Keep Alive** | 60 秒 | 60 秒 |
 | **Clean Session** | true | true |
+
+> **账号管理说明**
+>
+> 所有设备使用**统一账号密码**，在 Admin 界面 → 系统配置 → MQTT账号 中设置。
+>
+> | 账号类型 | 用途 |
+> |----------|------|
+> | 管理员账号 | MQTT 调试工具连接 |
+> | Worker 账号 | 后台服务连接（修改后需重启 Worker 容器） |
+> | 设备账号 | 所有硬件设备统一使用 |
 
 ### Topic 命名规范
 
