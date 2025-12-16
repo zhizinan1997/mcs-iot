@@ -13,7 +13,7 @@ class MQTTClient:
         # Internal worker uses specific credentials if needed, or admin for simplicity in dev
         # In prod, use "worker" user
         self.username = "worker"
-        self.password = "worker123" # Should match gen_passwd.py
+        self.password = "qiuqiu"  # 与 admin 界面 MQTT 配置一致
         
         self.client_id = f"worker_{int(time.time())}"
         self.client = mqtt.Client(client_id=self.client_id)

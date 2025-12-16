@@ -65,8 +65,8 @@ class DeviceSimulator:
     
     def start(self, interval=10):
         self.client = mqtt.Client(client_id=self.device_id)
-        # 使用通用设备账号 (已在 Mosquitto 中配置)
-        self.client.username_pw_set("device_A001", "device123")
+        # 使用统一设备账号 (与 admin 界面 MQTT 配置一致)
+        self.client.username_pw_set("zhizinan", "qiuqiu")
         self.client.on_connect = self.on_connect
         
         try:

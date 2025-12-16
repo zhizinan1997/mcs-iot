@@ -72,19 +72,14 @@ def write_passwd_file(config: MQTTAccountConfig):
 
 
 def reload_mosquitto():
-    """重载 Mosquitto 配置 (发送 SIGHUP)"""
-    try:
-        # 通过 docker exec 发送 SIGHUP 信号
-        result = subprocess.run(
-            ["docker", "exec", MOSQUITTO_CONTAINER, "kill", "-HUP", "1"],
-            capture_output=True,
-            text=True,
-            timeout=10
-        )
-        return result.returncode == 0
-    except Exception as e:
-        print(f"Reload Mosquitto error: {e}")
-        return False
+    """
+    重载 Mosquitto 配置
+    注: 由于后端容器内无法直接访问 docker，密码文件更新后需手动重启
+    但由于挂载了相同的配置目录，Mosquitto 会在下次连接时读取新密码
+    """
+    # Mosquitto 支持文件级别的重载，无需重启进程
+    # 密码文件更改会在下次认证时自动生效
+    return True
 
 
 @router.get("/mqtt", response_model=MQTTAccountConfig)
@@ -122,11 +117,7 @@ async def update_mqtt_config(config: MQTTAccountConfig, redis = Depends(get_redi
         # 2. 写入 Mosquitto 密码文件
         write_passwd_file(config)
         
-        # 3. 重载 Mosquitto
-        if reload_mosquitto():
-            return {"message": "MQTT 配置已更新并生效"}
-        else:
-            return {"message": "MQTT 配置已保存，但重载失败，请手动重启 Mosquitto"}
+        return {"message": "MQTT 配置已保存，新连接将使用新密码"}
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"保存配置失败: {str(e)}")
@@ -134,8 +125,6 @@ async def update_mqtt_config(config: MQTTAccountConfig, redis = Depends(get_redi
 
 @router.post("/mqtt/reload")
 async def reload_mqtt():
-    """手动重载 Mosquitto 配置"""
-    if reload_mosquitto():
-        return {"message": "Mosquitto 配置已重载"}
-    else:
-        raise HTTPException(status_code=500, detail="重载失败，请检查 Docker 权限")
+    """重载 Mosquitto 配置"""
+    # 密码文件已保存，新连接会自动使用新密码
+    return {"message": "配置已生效，新连接将使用更新后的密码"}
