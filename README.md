@@ -152,7 +152,259 @@ sudo ufw allow 8000/tcp  # API 直连
 
 ---
 
-## 🛠️ 技术栈
+## � 硬件开发参考手册
+
+本章节面向**硬件/固件开发工程师**，说明设备如何与 MCS-IoT 平台通信。
+
+### MQTT 连接参数
+
+| 参数 | 开发环境 | 生产环境 |
+|------|----------|----------|
+| **Broker 地址** | `localhost` 或 `服务器IP` | `mqtt.yourdomain.com` |
+| **TCP 端口** | 1883 | - |
+| **TLS 端口** | 8883 | 8883 (必须使用) |
+| **用户名** | `device_{设备SN}` | `device_{设备SN}` |
+| **密码** | 联系管理员获取 | 联系管理员获取 |
+| **Client ID** | 设备 SN (唯一) | 设备 SN (唯一) |
+| **Keep Alive** | 60 秒 | 60 秒 |
+| **Clean Session** | true | true |
+
+### Topic 命名规范
+
+```
+mcs/{设备SN}/up       # 设备上行数据 (设备 → 服务器)
+mcs/{设备SN}/down     # 服务器下行命令 (服务器 → 设备)
+mcs/{设备SN}/status   # 设备状态 (可选)
+```
+
+**示例：**
+
+- 设备 SN 为 `GAS001` 的上行 Topic: `mcs/GAS001/up`
+- 设备 SN 为 `GAS001` 的下行 Topic: `mcs/GAS001/down`
+
+### 上行数据格式 (设备 → 服务器)
+
+设备每隔固定间隔（默认 10 秒）向 `mcs/{SN}/up` 发送 JSON 数据：
+
+```json
+{
+  "ts": 1702723200,
+  "seq": 123,
+  "v_raw": 2045.5,
+  "temp": 25.3,
+  "humi": 45.2,
+  "bat": 85,
+  "rssi": -72,
+  "net": "4G",
+  "err": 0
+}
+```
+
+**字段说明：**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `ts` | int | ✅ | Unix 时间戳（秒） |
+| `seq` | int | ✅ | 消息序号 (0-65535 循环) |
+| `v_raw` | float | ✅ | 传感器原始电压值 (mV) |
+| `temp` | float | ✅ | 环境温度 (°C) |
+| `humi` | float | ✅ | 环境湿度 (%) |
+| `bat` | int | ✅ | 电池电量 (0-100%) |
+| `rssi` | int | ✅ | 信号强度 (dBm, 负数) |
+| `net` | string | ❌ | 网络类型: "4G", "WiFi", "NB" |
+| `err` | int | ❌ | 错误码 (0=正常) |
+
+**错误码定义：**
+
+| 错误码 | 说明 |
+|--------|------|
+| 0 | 正常 |
+| 1 | 传感器故障 |
+| 2 | 温度异常 |
+| 3 | 通信超时 |
+| 4 | 校准失效 |
+
+### 下行命令格式 (服务器 → 设备)
+
+设备需订阅 `mcs/{SN}/down`，接收服务器下发的命令：
+
+#### 1. 调试模式
+
+```json
+{
+  "cmd": "debug",
+  "duration": 600,
+  "interval": 1
+}
+```
+
+| 字段 | 说明 |
+|------|------|
+| `duration` | 调试模式持续时间（秒） |
+| `interval` | 采集间隔（秒），调试模式下通常为 1 秒 |
+
+#### 2. 校准参数更新
+
+```json
+{
+  "cmd": "calibrate",
+  "k": 1.05,
+  "b": 0.5,
+  "t_ref": 25.0,
+  "t_comp": 0.1
+}
+```
+
+| 字段 | 说明 |
+|------|------|
+| `k` | 校准斜率 |
+| `b` | 校准截距 |
+| `t_ref` | 参考温度 (°C) |
+| `t_comp` | 温度补偿系数 |
+
+#### 3. 设备重启
+
+```json
+{
+  "cmd": "reboot",
+  "delay": 5
+}
+```
+
+| 字段 | 说明 |
+|------|------|
+| `delay` | 延迟重启时间（秒） |
+
+#### 4. OTA 固件升级
+
+```json
+{
+  "cmd": "ota",
+  "url": "https://ota.example.com/firmware/v1.2.0.bin",
+  "version": "1.2.0",
+  "md5": "a1b2c3d4e5f6..."
+}
+```
+
+| 字段 | 说明 |
+|------|------|
+| `url` | 固件下载地址 |
+| `version` | 目标版本号 |
+| `md5` | 固件 MD5 校验值 |
+
+### 浓度计算公式
+
+服务器端会根据校准参数计算 PPM 浓度：
+
+```
+ppm = k × v_raw + b + t_comp × (temp - t_ref)
+```
+
+- `k`, `b`, `t_ref`, `t_comp` 由后台配置，设备无需计算
+- 设备只需上报原始 `v_raw` 值
+
+### Arduino/ESP32 示例代码
+
+```cpp
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include <ArduinoJson.h>
+
+// MQTT 配置
+const char* MQTT_HOST = "mqtt.yourdomain.com";
+const int   MQTT_PORT = 8883;
+const char* DEVICE_SN = "GAS001";
+const char* MQTT_USER = "device_GAS001";
+const char* MQTT_PASS = "your_password";
+
+WiFiClientSecure espClient;
+PubSubClient mqtt(espClient);
+
+uint16_t msgSeq = 0;
+
+void sendData() {
+    StaticJsonDocument<256> doc;
+    doc["ts"] = time(nullptr);
+    doc["seq"] = msgSeq++;
+    doc["v_raw"] = analogRead(A0) * 3.3 / 4095 * 1000; // mV
+    doc["temp"] = readTemperature();
+    doc["humi"] = readHumidity();
+    doc["bat"] = getBatteryPercent();
+    doc["rssi"] = WiFi.RSSI();
+    doc["net"] = "WiFi";
+    doc["err"] = 0;
+    
+    char payload[256];
+    serializeJson(doc, payload);
+    
+    char topic[64];
+    sprintf(topic, "mcs/%s/up", DEVICE_SN);
+    mqtt.publish(topic, payload);
+}
+
+void onMessage(char* topic, byte* payload, unsigned int length) {
+    StaticJsonDocument<256> doc;
+    deserializeJson(doc, payload, length);
+    
+    const char* cmd = doc["cmd"];
+    if (strcmp(cmd, "reboot") == 0) {
+        delay(doc["delay"].as<int>() * 1000);
+        ESP.restart();
+    } else if (strcmp(cmd, "debug") == 0) {
+        // 进入调试模式
+        int interval = doc["interval"].as<int>();
+        // 设置采集间隔为 interval 秒
+    }
+}
+
+void setup() {
+    // 连接 WiFi...
+    
+    // 配置 TLS (生产环境)
+    // espClient.setCACert(ca_cert);
+    
+    mqtt.setServer(MQTT_HOST, MQTT_PORT);
+    mqtt.setCallback(onMessage);
+    
+    // 连接 MQTT
+    String clientId = String("device_") + DEVICE_SN;
+    if (mqtt.connect(clientId.c_str(), MQTT_USER, MQTT_PASS)) {
+        // 订阅下行命令
+        char downTopic[64];
+        sprintf(downTopic, "mcs/%s/down", DEVICE_SN);
+        mqtt.subscribe(downTopic);
+    }
+}
+
+void loop() {
+    mqtt.loop();
+    
+    static unsigned long lastSend = 0;
+    if (millis() - lastSend >= 10000) { // 10秒间隔
+        sendData();
+        lastSend = millis();
+    }
+}
+```
+
+### 设备 SN 命名规范
+
+| 类型 | 前缀 | 示例 |
+|------|------|------|
+| 甲烷传感器 | `GAS` | GAS001, GAS002 |
+| 二氧化碳传感器 | `CO2` | CO2001, CO2002 |
+| 氨气传感器 | `NH3` | NH3001, NH3002 |
+| 通用传感器 | `DEV` | DEV001, DEV002 |
+
+### 心跳与离线检测
+
+- 设备应每 **10 秒** 上报一次数据
+- 服务器在 **90 秒** 内未收到数据会将设备标记为离线
+- 离线后会触发 `OFFLINE` 类型告警
+
+---
+
+## �🛠️ 技术栈
 
 ### 后端技术
 
