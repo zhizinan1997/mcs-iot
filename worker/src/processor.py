@@ -36,12 +36,13 @@ class Processor:
 
     async def handle_uplink(self, sn, data):
         # 1. Update Last Seen in Redis
-        # Key: "online:{sn}" -> TTL 60s
-        await self.redis.setex(f"online:{sn}", 60, "1")
+        # Key: "online:{sn}" -> TTL 90s (设备每10秒上报一次，90秒无数据判定离线)
+        await self.redis.setex(f"online:{sn}", 90, "1")
         
         # 2. Calculate Concentration
         v_raw = float(data.get('v_raw', 0))
         temp = float(data.get('temp', 25))
+        bat = int(data.get('bat', 100))
         
         ppm = await self.calib.calculate(sn, v_raw, temp)
         
@@ -51,20 +52,20 @@ class Processor:
         # 4. Cache Realtime Data for Dashboard
         # Key: "realtime:{sn}" -> Hash
         rt_data = {
-            "ppm": ppm,
-            "temp": temp,
-            "humi": data.get('humi'),
-            "bat": data.get('bat'),
-            "rssi": data.get('rssi'),
-            "ts": int(data.get('ts'))
+            "ppm": str(ppm),
+            "temp": str(temp),
+            "humi": str(data.get('humi', 0)),
+            "bat": str(bat),
+            "rssi": str(data.get('rssi', 0)),
+            "ts": str(int(data.get('ts', 0)))
         }
         await self.redis.hset(f"realtime:{sn}", mapping=rt_data)
         
-        # 5. Check Alarm
+        # 5. Check Alarm (包含浓度和低电量)
         if self.alarm:
-            await self.alarm.check_and_alert(sn, ppm, temp)
+            await self.alarm.check_and_alert(sn, ppm, temp, bat)
         
-        logger.info(f"[{sn}] v={v_raw}, ppm={ppm} (Saved)")
+        logger.info(f"[{sn}] v={v_raw:.1f}, ppm={ppm:.2f}, bat={bat}% (Saved)")
 
     async def handle_status(self, sn, data):
         # Handle LWT or Status messages if any

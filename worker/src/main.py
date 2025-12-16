@@ -14,6 +14,7 @@ from calibrator import Calibrator
 from processor import Processor
 from alarm import AlarmCenter
 from license import LicenseGuard
+from scheduler import Scheduler
 
 # Setup Logging
 logging.basicConfig(
@@ -53,10 +54,16 @@ async def main():
         # In production, you might want to exit here
         # For dev, we continue with DEV_MODE=true
 
-    # 6. Initialize Processor
+    # 6. Initialize Scheduler (定时任务)
+    scheduler = Scheduler(redis, storage.pool)
+    scheduler.set_alarm_center(alarm)
+    await scheduler.start()
+    logger.info("Scheduler started")
+
+    # 7. Initialize Processor
     processor = Processor(calib, storage, redis, alarm)
 
-    # 5. Initialize MQTT
+    # 8. Initialize MQTT
     # Since MQTT Client (Sync/Threaded) needs to call Async Processor, 
     # we need to bridge them.
     loop = asyncio.get_running_loop()
@@ -66,6 +73,11 @@ async def main():
         payload = msg.payload.decode('utf-8')
         # Schedule the async processing in the main loop
         asyncio.run_coroutine_threadsafe(processor.process_message(topic, payload), loop)
+        # Update last message time for health check
+        asyncio.run_coroutine_threadsafe(
+            redis.set("mqtt:last_message_time", str(asyncio.get_event_loop().time())), 
+            loop
+        )
 
     mqtt_client = MQTTClient(on_mqtt_message)
     mqtt_client.start()
@@ -85,6 +97,7 @@ async def main():
 
     # Cleanup
     logger.info("Shutting down...")
+    await scheduler.stop()
     mqtt_client.stop()
     await storage.close()
     await redis.close()
