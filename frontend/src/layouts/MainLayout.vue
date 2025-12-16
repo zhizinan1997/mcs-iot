@@ -29,6 +29,11 @@
           <el-icon><Setting /></el-icon>
           <span>系统配置</span>
         </el-menu-item>
+        <el-divider />
+        <el-menu-item index="/screen">
+          <el-icon><FullScreen /></el-icon>
+          <span>可视化大屏</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     

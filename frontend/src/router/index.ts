@@ -34,6 +34,12 @@ const routes: RouteRecordRaw[] = [
                 component: () => import('../views/config/index.vue')
             }
         ]
+    },
+    {
+        path: '/screen',
+        name: 'Screen',
+        component: () => import('../views/screen/index.vue'),
+        meta: { requiresAuth: true }
     }
 ]
 
