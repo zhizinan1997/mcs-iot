@@ -106,6 +106,81 @@
           </el-form>
         </el-card>
       </el-tab-pane>
+
+      <!-- MQTT Account Config -->
+      <el-tab-pane label="MQTT账号" name="mqtt">
+        <el-card>
+          <template #header>
+            <div class="card-header">
+              <span>MQTT 账号管理</span>
+              <el-tag type="info">所有设备使用统一账号</el-tag>
+            </div>
+          </template>
+          
+          <el-form :model="mqttConfig" label-width="120px">
+            <el-divider content-position="left">管理员账号</el-divider>
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="用户名">
+                  <el-input v-model="mqttConfig.admin_user" placeholder="admin" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="密码">
+                  <el-input v-model="mqttConfig.admin_pass" type="password" show-password placeholder="管理员密码" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-divider content-position="left">Worker 服务账号</el-divider>
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="用户名">
+                  <el-input v-model="mqttConfig.worker_user" placeholder="worker" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="密码">
+                  <el-input v-model="mqttConfig.worker_pass" type="password" show-password placeholder="Worker 密码" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-divider content-position="left">设备统一账号</el-divider>
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="用户名">
+                  <el-input v-model="mqttConfig.device_user" placeholder="device" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="密码">
+                  <el-input v-model="mqttConfig.device_pass" type="password" show-password placeholder="设备统一密码" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-form-item>
+              <el-button type="primary" @click="saveMqttConfig" :loading="saving">保存并重载</el-button>
+              <el-button @click="reloadMqtt">仅重载配置</el-button>
+            </el-form-item>
+          </el-form>
+          
+          <el-divider />
+          
+          <div class="tips">
+            <h4>使用说明:</h4>
+            <ul>
+              <li><strong>管理员账号</strong> - 用于 MQTT 调试工具连接</li>
+              <li><strong>Worker 账号</strong> - 后台服务连接使用，修改后需重启 Worker</li>
+              <li><strong>设备账号</strong> - 所有硬件设备使用此统一账号连接</li>
+            </ul>
+            <p style="color: #E6A23C; margin-top: 10px;">
+              ⚠️ 修改密码后，所有设备和服务需要更新配置
+            </p>
+          </div>
+        </el-card>
+      </el-tab-pane>
     </el-tabs>
   </div>
 </template>
@@ -138,6 +213,15 @@ const dashboardConfig = reactive({
   title: 'MCS-IoT Dashboard',
   refresh_rate: 5,
   background_image: ''
+})
+
+const mqttConfig = reactive({
+  admin_user: 'admin',
+  admin_pass: '',
+  worker_user: 'worker',
+  worker_pass: '',
+  device_user: 'device',
+  device_pass: ''
 })
 
 async function loadConfigs() {
@@ -202,7 +286,42 @@ async function testNotification(channel: string) {
   }
 }
 
-onMounted(loadConfigs)
+async function saveMqttConfig() {
+  saving.value = true
+  try {
+    await configApi.updateMqtt(mqttConfig)
+    ElMessage.success('MQTT 配置已保存并生效')
+  } catch (error: any) {
+    const detail = error.response?.data?.detail || '保存失败'
+    ElMessage.error(detail)
+  } finally {
+    saving.value = false
+  }
+}
+
+async function reloadMqtt() {
+  try {
+    await configApi.reloadMqtt()
+    ElMessage.success('Mosquitto 配置已重载')
+  } catch (error: any) {
+    const detail = error.response?.data?.detail || '重载失败'
+    ElMessage.error(detail)
+  }
+}
+
+async function loadMqttConfig() {
+  try {
+    const res = await configApi.getMqtt()
+    Object.assign(mqttConfig, res.data)
+  } catch (error) {
+    console.error('Failed to load MQTT config:', error)
+  }
+}
+
+onMounted(() => {
+  loadConfigs()
+  loadMqttConfig()
+})
 </script>
 
 <style scoped>

@@ -64,7 +64,11 @@ export const configApi = {
     updateWebhook: (data: any) => api.put('/config/alarm/webhook', data),
     getDashboard: () => api.get('/config/dashboard'),
     updateDashboard: (data: any) => api.put('/config/dashboard', data),
-    testNotification: (channel: string) => api.post('/config/alarm/test', null, { params: { channel } })
+    testNotification: (channel: string) => api.post('/config/alarm/test', null, { params: { channel } }),
+    // MQTT 账号管理
+    getMqtt: () => api.get('/config/mqtt'),
+    updateMqtt: (data: any) => api.put('/config/mqtt', data),
+    reloadMqtt: () => api.post('/config/mqtt/reload')
 }
 
 // Dashboard API

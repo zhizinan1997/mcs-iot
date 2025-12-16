@@ -104,6 +104,8 @@ services:
       - JWT_SECRET=dev-secret-key-change-in-production
     volumes:
       - ./backend/src:/app/src
+      - ./mosquitto/config:/app/mosquitto  # MQTT 配置管理
+      - /var/run/docker.sock:/var/run/docker.sock  # Docker API 用于重载 Mosquitto
     depends_on:
       timescaledb:
         condition: service_healthy
