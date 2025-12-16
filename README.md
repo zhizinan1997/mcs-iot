@@ -387,6 +387,141 @@ void loop() {
 }
 ```
 
+### Python/MicroPython 示例代码
+
+适用于树莓派、工控机或 MicroPython 设备：
+
+```python
+#!/usr/bin/env python3
+"""
+MCS-IoT 设备端 Python 示例代码
+适用于: 树莓派、Linux 工控机、MicroPython (ESP32)
+"""
+import json
+import time
+import random
+import paho.mqtt.client as mqtt
+
+# ============ 配置区 ============
+MQTT_HOST = "mqtt.yourdomain.com"  # 生产环境: mqtt.yourdomain.com
+MQTT_PORT = 8883                    # 生产环境: 8883 (TLS)
+DEVICE_SN = "GAS001"
+MQTT_USER = f"device_{DEVICE_SN}"
+MQTT_PASS = "your_password"
+UPLOAD_INTERVAL = 10  # 上报间隔(秒)
+# ================================
+
+class SensorDevice:
+    def __init__(self):
+        self.seq = 0
+        self.client = mqtt.Client(client_id=DEVICE_SN)
+        self.client.username_pw_set(MQTT_USER, MQTT_PASS)
+        self.client.on_connect = self.on_connect
+        self.client.on_message = self.on_message
+        
+        # 生产环境启用 TLS
+        # self.client.tls_set(ca_certs="ca.crt")
+    
+    def on_connect(self, client, userdata, flags, rc):
+        if rc == 0:
+            print(f"[{DEVICE_SN}] 连接成功")
+            # 订阅下行命令
+            client.subscribe(f"mcs/{DEVICE_SN}/down")
+        else:
+            print(f"[{DEVICE_SN}] 连接失败: {rc}")
+    
+    def on_message(self, client, userdata, msg):
+        """处理服务器下发的命令"""
+        try:
+            cmd = json.loads(msg.payload.decode())
+            print(f"[{DEVICE_SN}] 收到命令: {cmd}")
+            
+            if cmd.get("cmd") == "reboot":
+                delay = cmd.get("delay", 5)
+                print(f"[{DEVICE_SN}] 将在 {delay} 秒后重启...")
+                time.sleep(delay)
+                # os.system("reboot")  # Linux 重启
+                
+            elif cmd.get("cmd") == "debug":
+                duration = cmd.get("duration", 600)
+                interval = cmd.get("interval", 1)
+                print(f"[{DEVICE_SN}] 进入调试模式: {duration}秒, 间隔{interval}秒")
+                
+            elif cmd.get("cmd") == "calibrate":
+                k = cmd.get("k", 1.0)
+                b = cmd.get("b", 0.0)
+                print(f"[{DEVICE_SN}] 更新校准参数: k={k}, b={b}")
+                # 保存到本地配置文件
+                
+        except Exception as e:
+            print(f"[{DEVICE_SN}] 命令解析错误: {e}")
+    
+    def read_sensor(self):
+        """读取传感器数据 (请替换为实际传感器读取逻辑)"""
+        # 示例: 模拟数据
+        return {
+            "v_raw": 500 + random.uniform(-50, 50),  # 传感器电压 (mV)
+            "temp": 25.0 + random.uniform(-2, 2),    # 温度 (°C)
+            "humi": 50.0 + random.uniform(-5, 5),    # 湿度 (%)
+            "bat": random.randint(80, 100),          # 电量 (%)
+            "rssi": random.randint(-80, -60),        # 信号 (dBm)
+        }
+    
+    def send_data(self):
+        """上报传感器数据"""
+        sensor = self.read_sensor()
+        
+        payload = {
+            "ts": int(time.time()),
+            "seq": self.seq,
+            "v_raw": round(sensor["v_raw"], 2),
+            "temp": round(sensor["temp"], 1),
+            "humi": round(sensor["humi"], 1),
+            "bat": sensor["bat"],
+            "rssi": sensor["rssi"],
+            "net": "WiFi",
+            "err": 0
+        }
+        
+        topic = f"mcs/{DEVICE_SN}/up"
+        self.client.publish(topic, json.dumps(payload))
+        print(f"[{DEVICE_SN}] 上报: ppm≈{payload['v_raw']:.1f}, temp={payload['temp']}°C")
+        
+        self.seq = (self.seq + 1) % 65536
+    
+    def run(self):
+        """主循环"""
+        print(f"[{DEVICE_SN}] 连接 {MQTT_HOST}:{MQTT_PORT}...")
+        self.client.connect(MQTT_HOST, MQTT_PORT, 60)
+        self.client.loop_start()
+        
+        try:
+            while True:
+                self.send_data()
+                time.sleep(UPLOAD_INTERVAL)
+        except KeyboardInterrupt:
+            print(f"\n[{DEVICE_SN}] 停止运行")
+            self.client.loop_stop()
+            self.client.disconnect()
+
+
+if __name__ == "__main__":
+    device = SensorDevice()
+    device.run()
+```
+
+**安装依赖：**
+
+```bash
+pip install paho-mqtt
+```
+
+**运行：**
+
+```bash
+python device.py
+```
+
 ### 设备 SN 命名规范
 
 | 类型 | 前缀 | 示例 |
