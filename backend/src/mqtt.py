@@ -111,13 +111,21 @@ async def update_mqtt_config(config: MQTTAccountConfig, redis = Depends(get_redi
         raise HTTPException(status_code=400, detail="Worker 账号和密码不能为空")
     
     try:
-        # 1. 保存配置到 Redis (用于界面显示)
+        # 1. 保存配置到 Redis (用于 Worker 服务读取)
         await redis.set("config:mqtt", config.json())
         
         # 2. 写入 Mosquitto 密码文件
         write_passwd_file(config)
         
-        return {"message": "MQTT 配置已保存，新连接将使用新密码"}
+        # 3. 同步写入配置文件 (用于 Worker 和模拟器)
+        try:
+            # Worker 读取的路径: /app/mosquitto/mqtt_config.json
+            with open("/app/mosquitto/mqtt_config.json", 'w') as f:
+                json.dump(config.dict(), f, indent=2)
+        except Exception as e:
+            logger.warning(f"Failed to write config file: {e}")
+        
+        return {"message": "MQTT 配置已保存，所有服务将自动同步"}
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"保存配置失败: {str(e)}")

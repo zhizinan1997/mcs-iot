@@ -80,7 +80,7 @@ async def main():
             loop
         )
 
-    mqtt_client = MQTTClient(on_mqtt_message)
+    mqtt_client = MQTTClient(on_mqtt_message, redis_client=redis)
     mqtt_client.start()
 
     # Graceful Shutdown

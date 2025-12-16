@@ -73,6 +73,7 @@ services:
       - DEV_MODE=true # Bypass license check for dev
     volumes:
       - ./worker/src:/app/src # Hot reload
+      - ./mosquitto/config:/app/mosquitto # MQTT 配置文件共享
       # - /etc/machine-id:/app/host_id:ro # Mac doesn't have machine-id, handling in code
       - ./license.key:/app/license.key:ro
     depends_on:
@@ -104,8 +105,8 @@ services:
       - JWT_SECRET=dev-secret-key-change-in-production
     volumes:
       - ./backend/src:/app/src
-      - ./mosquitto/config:/app/mosquitto  # MQTT 配置管理
-      - /var/run/docker.sock:/var/run/docker.sock  # Docker API 用于重载 Mosquitto
+      - ./mosquitto/config:/app/mosquitto # MQTT 配置管理
+      - /var/run/docker.sock:/var/run/docker.sock # Docker API 用于重载 Mosquitto
     depends_on:
       timescaledb:
         condition: service_healthy

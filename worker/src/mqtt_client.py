@@ -2,18 +2,42 @@ import paho.mqtt.client as mqtt
 import os
 import time
 import logging
+import json
 
 # Configure Logging
 logger = logging.getLogger(__name__)
 
+# 默认配置 (首次启动或配置文件不存在时使用)
+DEFAULT_MQTT_USER = "worker"
+DEFAULT_MQTT_PASS = "worker123"
+
+# 配置文件路径 (与 backend 共享的挂载目录)
+CONFIG_FILE = "/app/mosquitto/mqtt_config.json"
+
+def load_mqtt_config_from_file():
+    """从配置文件加载 MQTT 账号密码"""
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                config = json.load(f)
+                user = config.get("worker_user", DEFAULT_MQTT_USER)
+                passwd = config.get("worker_pass", DEFAULT_MQTT_PASS)
+                logger.info(f"Loaded MQTT config from file: user={user}")
+                return user, passwd
+        except Exception as e:
+            logger.warning(f"Failed to load MQTT config from file: {e}")
+    
+    logger.info(f"Using default MQTT credentials: user={DEFAULT_MQTT_USER}")
+    return DEFAULT_MQTT_USER, DEFAULT_MQTT_PASS
+
+
 class MQTTClient:
-    def __init__(self, on_message_callback):
+    def __init__(self, on_message_callback, redis_client=None):
         self.broker = os.getenv("MQTT_HOST", "mosquitto")
         self.port = int(os.getenv("MQTT_PORT", 1883))
-        # Internal worker uses specific credentials if needed, or admin for simplicity in dev
-        # In prod, use "worker" user
-        self.username = "worker"
-        self.password = "qiuqiu"  # 与 admin 界面 MQTT 配置一致
+        
+        # 从配置文件读取凭据
+        self.username, self.password = load_mqtt_config_from_file()
         
         self.client_id = f"worker_{int(time.time())}"
         self.client = mqtt.Client(client_id=self.client_id)

@@ -2,6 +2,8 @@
 """
 MCS-IoT 多设备模拟器
 模拟多个传感器设备同时发送数据
+
+配置从 mqtt_config.json 读取，与 admin 界面同步
 """
 import paho.mqtt.client as mqtt
 import json
@@ -9,11 +11,40 @@ import time
 import random
 import threading
 import argparse
+import os
 
 # Configuration
 BROKER = "localhost"
 PORT = 1883
 TOPIC_PREFIX = "mcs"
+DEFAULT_DEVICE_COUNT = 20  # 默认启动 20 个设备
+
+# 配置文件路径 (相对于脚本目录)
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_FILE = os.path.join(SCRIPT_DIR, "mqtt_config.json")
+
+# 默认 MQTT 账号密码 (如果配置文件不存在)
+DEFAULT_MQTT_USER = "device"
+DEFAULT_MQTT_PASS = "device123"
+
+def load_mqtt_config():
+    """从配置文件加载 MQTT 账号密码"""
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                config = json.load(f)
+                user = config.get("device_user", DEFAULT_MQTT_USER)
+                passwd = config.get("device_pass", DEFAULT_MQTT_PASS)
+                print(f"[配置] 从 {CONFIG_FILE} 加载账号: {user}")
+                return user, passwd
+        except Exception as e:
+            print(f"[警告] 读取配置文件失败: {e}")
+    
+    print(f"[配置] 使用默认账号: {DEFAULT_MQTT_USER}")
+    return DEFAULT_MQTT_USER, DEFAULT_MQTT_PASS
+
+# 加载配置
+MQTT_USER, MQTT_PASS = load_mqtt_config()
 
 # 设备配置模板
 DEVICE_CONFIGS = [
@@ -65,8 +96,8 @@ class DeviceSimulator:
     
     def start(self, interval=10):
         self.client = mqtt.Client(client_id=self.device_id)
-        # 使用统一设备账号 (与 admin 界面 MQTT 配置一致)
-        self.client.username_pw_set("zhizinan", "qiuqiu")
+        # 使用统一设备账号 (从配置文件加载)
+        self.client.username_pw_set(MQTT_USER, MQTT_PASS)
         self.client.on_connect = self.on_connect
         
         try:
