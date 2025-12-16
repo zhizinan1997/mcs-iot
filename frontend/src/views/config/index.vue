@@ -46,11 +46,27 @@
             <el-form-item label="启用Webhook">
               <el-switch v-model="webhookConfig.enabled" />
             </el-form-item>
+            <el-form-item label="平台类型">
+              <el-select v-model="webhookConfig.platform" style="width: 100%">
+                <el-option label="自动检测" value="custom" />
+                <el-option label="钉钉机器人" value="dingtalk" />
+                <el-option label="飞书机器人" value="feishu" />
+                <el-option label="企业微信机器人" value="wecom" />
+              </el-select>
+            </el-form-item>
             <el-form-item label="Webhook URL">
               <el-input 
                 v-model="webhookConfig.url" 
-                placeholder="钉钉/飞书/企业微信机器人地址"
+                placeholder="粘贴机器人 Webhook 地址"
               />
+            </el-form-item>
+            <el-form-item label="加签密钥" v-if="webhookConfig.platform === 'dingtalk'">
+              <el-input 
+                v-model="webhookConfig.secret" 
+                placeholder="可选，钉钉机器人加签密钥"
+                show-password
+              />
+              <div class="form-tip">如果机器人设置了加签安全，请填写 SEC 开头的密钥</div>
             </el-form-item>
             <el-form-item>
               <el-button type="primary" @click="saveWebhookConfig" :loading="saving">保存配置</el-button>
@@ -63,10 +79,13 @@
           <div class="tips">
             <h4>支持的平台:</h4>
             <ul>
-              <li>钉钉机器人 (群设置 → 智能群助手 → 添加机器人)</li>
-              <li>飞书机器人 (群设置 → 群机器人 → 添加机器人)</li>
-              <li>企业微信机器人</li>
+              <li><strong>钉钉机器人</strong> - 群设置 → 智能群助手 → 添加机器人</li>
+              <li><strong>飞书机器人</strong> - 群设置 → 群机器人 → 添加机器人</li>
+              <li><strong>企业微信机器人</strong> - 群设置 → 添加群机器人</li>
             </ul>
+            <p style="color: #E6A23C; margin-top: 10px;">
+              💡 提示：选择"自动检测"会根据 URL 自动识别平台类型
+            </p>
           </div>
         </el-card>
       </el-tab-pane>
@@ -110,7 +129,9 @@ const emailConfig = reactive({
 
 const webhookConfig = reactive({
   enabled: false,
-  url: ''
+  url: '',
+  platform: 'custom',
+  secret: ''
 })
 
 const dashboardConfig = reactive({
@@ -171,8 +192,14 @@ async function saveDashboardConfig() {
 }
 
 async function testNotification(channel: string) {
-  ElMessage.info(`测试 ${channel} 通知...`)
-  // TODO: Call test API
+  ElMessage.info(`正在发送 ${channel} 测试通知...`)
+  try {
+    const response = await configApi.testNotification(channel)
+    ElMessage.success(response.data.message || '测试通知发送成功')
+  } catch (error: any) {
+    const detail = error.response?.data?.detail || '发送失败，请检查配置'
+    ElMessage.error(detail)
+  }
 }
 
 onMounted(loadConfigs)

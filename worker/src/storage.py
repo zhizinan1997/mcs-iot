@@ -37,6 +37,10 @@ class Storage:
 
         ts = datetime.fromtimestamp(data['ts'])
         
+        # 1. 自动注册/更新设备 (upsert)
+        await self.upsert_device(sn, ts)
+        
+        # 2. 保存传感器数据
         sql = """
             INSERT INTO sensor_data 
             (time, sn, v_raw, ppm, temp, humi, bat, rssi, err_code, msg_seq)
@@ -50,7 +54,38 @@ class Storage:
                     float(data['v_raw']), ppm, 
                     float(data['temp']), float(data['humi']),
                     int(data['bat']), int(data['rssi']), 
-                    int(data['err']), int(data['seq'])
+                    int(data.get('err', 0)), int(data['seq'])
                 )
         except Exception as e:
             logger.error(f"Insert Error: {e}")
+
+    async def upsert_device(self, sn: str, last_seen: datetime):
+        """自动注册设备并更新状态为 online"""
+        if not self.pool:
+            return
+        
+        sql = """
+            INSERT INTO devices (sn, name, status, last_seen)
+            VALUES ($1, $2, 'online', $3)
+            ON CONFLICT (sn) 
+            DO UPDATE SET status = 'online', last_seen = $3
+        """
+        
+        try:
+            async with self.pool.acquire() as conn:
+                await conn.execute(sql, sn, sn, last_seen)
+        except Exception as e:
+            logger.error(f"Upsert device error: {e}")
+
+    async def set_device_offline(self, sn: str):
+        """将设备标记为离线"""
+        if not self.pool:
+            return
+        
+        sql = "UPDATE devices SET status = 'offline' WHERE sn = $1"
+        
+        try:
+            async with self.pool.acquire() as conn:
+                await conn.execute(sql, sn)
+        except Exception as e:
+            logger.error(f"Set device offline error: {e}")

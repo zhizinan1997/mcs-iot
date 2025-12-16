@@ -56,20 +56,21 @@ class DeviceRealtime(BaseModel):
 async def get_dashboard_stats(db = Depends(get_db), redis = Depends(get_redis)):
     async with db.acquire() as conn:
         total = await conn.fetchval("SELECT COUNT(*) FROM devices")
+        online_count = await conn.fetchval("SELECT COUNT(*) FROM devices WHERE status = 'online'")
         alarms_today = await conn.fetchval(
             "SELECT COUNT(*) FROM alarm_logs WHERE time >= CURRENT_DATE"
         )
-    
-    # Count online devices from Redis
-    # This is a simplified approach; in production, you'd use SCAN
-    online_count = 0
-    # For demo, we'll use a pattern match
+        # 报警中的设备数 (今日有未确认报警)
+        devices_alarm = await conn.fetchval("""
+            SELECT COUNT(DISTINCT sn) FROM alarm_logs 
+            WHERE time >= CURRENT_DATE
+        """)
     
     return DashboardStats(
         devices_total=total or 0,
-        devices_online=online_count,
-        devices_offline=total - online_count if total else 0,
-        devices_alarm=0,  # Would need to track active alarms
+        devices_online=online_count or 0,
+        devices_offline=(total or 0) - (online_count or 0),
+        devices_alarm=devices_alarm or 0,
         alarms_today=alarms_today or 0
     )
 

@@ -63,7 +63,8 @@ export const configApi = {
     getWebhook: () => api.get('/config/alarm/webhook'),
     updateWebhook: (data: any) => api.put('/config/alarm/webhook', data),
     getDashboard: () => api.get('/config/dashboard'),
-    updateDashboard: (data: any) => api.put('/config/dashboard', data)
+    updateDashboard: (data: any) => api.put('/config/dashboard', data),
+    testNotification: (channel: string) => api.post('/config/alarm/test', null, { params: { channel } })
 }
 
 // Dashboard API

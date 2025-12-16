@@ -74,8 +74,9 @@ async def main():
         # Schedule the async processing in the main loop
         asyncio.run_coroutine_threadsafe(processor.process_message(topic, payload), loop)
         # Update last message time for health check
+        import time
         asyncio.run_coroutine_threadsafe(
-            redis.set("mqtt:last_message_time", str(asyncio.get_event_loop().time())), 
+            redis.set("mqtt:last_message_time", str(time.time())), 
             loop
         )
 
