@@ -11,11 +11,13 @@
 
 | 特性 | 说明 |
 |------|------|
-| � **极低成本** | 年运营成本 ¥189 (100台设备规模) |
+| 💰 **极低成本** | 年运营成本 ¥189 (100台设备规模) |
 | 🚀 **高并发** | 单服务器支持 500+ 设备同时在线 |
 | 🔐 **商业保护** | 硬件绑定 + 在线授权 + 72h宽限期 |
 | 📊 **实时可视化** | WebSocket + ECharts 大屏展示 |
 | 📦 **冷热分离** | TimescaleDB 热存储 + R2 冷归档 |
+| ⏰ **定时任务** | 自动归档、健康检查、授权校验 |
+| 🔔 **智能报警** | 多通道通知、时段限制、防抖去重 |
 
 ---
 
@@ -36,6 +38,7 @@
 │  │                    Backend (FastAPI)                      │   │
 │  │  • 认证授权 (JWT)    • 设备管理    • 报警记录              │   │
 │  │  • 配置管理          • 大屏数据    • WebSocket             │   │
+│  │  • 数据导出          • 设备命令    • 健康检查              │   │
 │  └──────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────┘
                               │
@@ -45,6 +48,7 @@
 │  │                    Worker (Python)                        │   │
 │  │  • MQTT 订阅       • 浓度解算      • 报警检测              │   │
 │  │  • 数据存储        • 授权守卫      • 数据归档              │   │
+│  │  • 定时任务        • 离线检测      • 健康检查              │   │
 │  └──────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────┘
                               │
@@ -87,7 +91,7 @@
 
 ---
 
-## �️ 技术栈
+## 🛠️ 技术栈
 
 ### 后端技术
 
@@ -100,6 +104,7 @@
 | **paho-mqtt** | Latest | MQTT 客户端 |
 | **redis.asyncio** | Latest | Redis 异步客户端 |
 | **boto3** | Latest | AWS S3/R2 SDK |
+| **aiohttp** | Latest | 异步 HTTP 客户端 |
 
 ### 前端技术
 
@@ -154,7 +159,8 @@ mcs-iot/
 │       ├── storage.py          # TimescaleDB 数据存储
 │       ├── alarm.py            # 报警中心 (阈值/防抖/通知)
 │       ├── license.py          # 授权守卫 (硬件绑定/校验)
-│       └── archiver.py         # R2 冷数据归档
+│       ├── archiver.py         # R2 冷数据归档
+│       └── scheduler.py        # 定时任务调度器
 │
 ├── backend/                    # REST API 服务 (FastAPI)
 │   ├── Dockerfile              # Backend 容器构建
@@ -166,7 +172,9 @@ mcs-iot/
 │       ├── devices.py          # 设备管理 API
 │       ├── alarms.py           # 报警记录 API
 │       ├── config.py           # 配置管理 API
-│       └── dashboard.py        # 大屏数据 API + WebSocket
+│       ├── dashboard.py        # 大屏数据 API + WebSocket
+│       ├── export.py           # 数据导出 API (CSV)
+│       └── commands.py         # 设备命令 API (MQTT 下行)
 │
 ├── frontend/                   # Vue 3 前端
 │   ├── Dockerfile              # 多阶段构建 (Node + Nginx)
@@ -201,36 +209,40 @@ mcs-iot/
     ├── simulator.py            # 设备模拟器
     ├── loadtest.py             # 并发压测工具
     ├── install.sh              # 一键安装脚本
+    ├── backup.sh               # 数据库备份脚本
     └── gen_passwd.py           # Mosquitto 密码生成
 ```
 
 ---
 
-## � 核心模块详解
+## 📚 核心模块详解
 
 ### Worker 模块
 
 | 文件 | 功能 | 说明 |
 |------|------|------|
-| `main.py` | 入口 | 初始化 Redis/DB/MQTT，启动事件循环 |
+| `main.py` | 入口 | 初始化 Redis/DB/MQTT/Scheduler，启动事件循环 |
 | `mqtt_client.py` | MQTT 连接 | 订阅 `mcs/+/up` 和 `mcs/+/status` |
 | `processor.py` | 消息处理 | 解析 Topic/Payload，调用解算和存储 |
 | `calibrator.py` | 浓度解算 | 公式: `ppm = k * v_raw + b + t_coef * (temp - 25)` |
 | `storage.py` | 数据存储 | 异步写入 TimescaleDB `sensor_data` 表 |
-| `alarm.py` | 报警中心 | 阈值检测 → 10分钟防抖 → 邮件/Webhook/SMS |
+| `alarm.py` | 报警中心 | 阈值检测 → 时段限制 → 10分钟防抖 → 多通道通知 |
 | `license.py` | 授权守卫 | 硬件指纹 → 在线校验 → 72小时宽限期 |
-| `archiver.py` | 数据归档 | 导出 3 天前数据 → 压缩 → 上传 R2 → 清理 |
+| `archiver.py` | 数据归档 | 导出冷数据 → CSV.GZ 压缩 → 上传 R2 → 清理 |
+| `scheduler.py` | 定时任务 | 离线检测/健康检查/归档/授权校验/DB优化 |
 
 ### Backend 模块
 
 | 文件 | 功能 | API 路径 |
 |------|------|----------|
-| `main.py` | 入口 | 数据库连接池，路由注册 |
+| `main.py` | 入口 | 数据库连接池，路由注册，健康检查 |
 | `auth.py` | 认证 | `POST /api/auth/login`, `GET /api/auth/me` |
 | `devices.py` | 设备 | `GET/POST/PUT/DELETE /api/devices` |
 | `alarms.py` | 报警 | `GET /api/alarms`, `POST /api/alarms/{id}/ack` |
 | `config.py` | 配置 | `GET/PUT /api/config/alarm/*` |
 | `dashboard.py` | 大屏 | `GET /api/dashboard/*`, `WS /api/dashboard/ws` |
+| `export.py` | 导出 | `GET /api/export/sensor-data`, `GET /api/export/alarms` |
+| `commands.py` | 命令 | `POST /api/commands/{sn}/*` |
 
 ### Frontend 页面
 
@@ -242,6 +254,183 @@ mcs-iot/
 | 报警记录 | `/alarms` | 筛选，确认操作 |
 | 系统配置 | `/config` | 邮件/Webhook/大屏配置 |
 | 可视化大屏 | `/screen` | 全屏展示，ECharts 趋势图 |
+
+---
+
+## 🔌 API 端点详解
+
+### 认证 API (`/api/auth`)
+
+| 方法 | 端点 | 说明 |
+|------|------|------|
+| POST | `/api/auth/login` | 用户登录，返回 JWT Token |
+| GET | `/api/auth/me` | 获取当前用户信息 |
+
+### 设备 API (`/api/devices`)
+
+| 方法 | 端点 | 说明 |
+|------|------|------|
+| GET | `/api/devices` | 获取设备列表 |
+| GET | `/api/devices/{sn}` | 获取单个设备详情 |
+| POST | `/api/devices` | 添加新设备 |
+| PUT | `/api/devices/{sn}` | 更新设备信息 |
+| DELETE | `/api/devices/{sn}` | 删除设备 |
+| GET | `/api/devices/{sn}/history` | 获取历史数据 |
+
+### 报警 API (`/api/alarms`)
+
+| 方法 | 端点 | 说明 |
+|------|------|------|
+| GET | `/api/alarms` | 获取报警列表 (支持筛选) |
+| GET | `/api/alarms/{id}` | 获取报警详情 |
+| POST | `/api/alarms/{id}/ack` | 确认报警 |
+
+### 配置 API (`/api/config`)
+
+| 方法 | 端点 | 说明 |
+|------|------|------|
+| GET | `/api/config/{key}` | 获取配置项 |
+| PUT | `/api/config/{key}` | 更新配置项 |
+
+### 大屏 API (`/api/dashboard`)
+
+| 方法 | 端点 | 说明 |
+|------|------|------|
+| GET | `/api/dashboard/stats` | 获取统计数据 |
+| GET | `/api/dashboard/devices` | 获取设备状态列表 |
+| WS | `/api/dashboard/ws` | WebSocket 实时数据推送 |
+
+### 导出 API (`/api/export`) 📥
+
+| 方法 | 端点 | 参数 | 说明 |
+|------|------|------|------|
+| GET | `/api/export/sensor-data` | `sn`, `start`, `end` | 导出传感器数据 CSV |
+| GET | `/api/export/alarms` | `sn`, `type`, `start`, `end` | 导出报警记录 CSV |
+
+**示例：**
+
+```bash
+# 导出最近7天传感器数据
+curl "http://localhost/api/export/sensor-data?start=2025-12-10&end=2025-12-16" \
+  -H "Authorization: Bearer <token>" \
+  -o sensor_data.csv
+
+# 导出指定设备的报警记录
+curl "http://localhost/api/export/alarms?sn=DEV001&type=HIGH" \
+  -H "Authorization: Bearer <token>" \
+  -o alarms.csv
+```
+
+### 设备命令 API (`/api/commands`) 📡
+
+| 方法 | 端点 | 说明 |
+|------|------|------|
+| POST | `/api/commands/{sn}/debug` | 切换调试模式 (1秒采集) |
+| POST | `/api/commands/{sn}/calibrate` | 更新校准参数 |
+| POST | `/api/commands/{sn}/reboot` | 远程重启设备 |
+| POST | `/api/commands/{sn}/ota` | OTA 固件升级 |
+| POST | `/api/commands/broadcast/debug` | 广播调试模式到所有在线设备 |
+
+**示例：**
+
+```bash
+# 切换设备到调试模式 (10分钟)
+curl -X POST "http://localhost/api/commands/DEV001/debug" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"duration": 600}'
+
+# 更新校准参数
+curl -X POST "http://localhost/api/commands/DEV001/calibrate" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"k": 1.05, "b": 0.5, "t_ref": 25.0, "t_comp": 0.1}'
+
+# 远程重启设备
+curl -X POST "http://localhost/api/commands/DEV001/reboot" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"delay": 5}'
+```
+
+### 健康检查 API (`/api/health`) 🏥
+
+```bash
+curl http://localhost/api/health
+```
+
+**响应：**
+
+```json
+{
+  "status": "healthy",
+  "timestamp": 1765873958.92,
+  "components": {
+    "database": {"status": "up", "latency_ms": 11},
+    "redis": {"status": "up", "latency_ms": 1},
+    "worker": {"status": "healthy"},
+    "mqtt": {"status": "up", "last_message_age_sec": 45},
+    "license": {"status": "valid"}
+  },
+  "metrics": {
+    "devices_online": 95,
+    "devices_offline": 5,
+    "devices_total": 100,
+    "alarms_today": 3
+  }
+}
+```
+
+---
+
+## ⏰ 定时任务
+
+Worker 内置定时任务调度器，自动执行以下任务：
+
+| 执行时间 | 任务名称 | 功能 |
+|----------|----------|------|
+| 每分钟 | 设备离线检测 | 扫描 Redis 在线标记，标记离线设备，触发离线报警 |
+| 每5分钟 | 健康检查 | 检查 DB/Redis/MQTT 状态，存储到 Redis 供 API 查询 |
+| 每日 02:00 | 数据归档 | 导出冷数据到 CSV.GZ，上传 R2，清理本地 |
+| 每日 03:00 | 授权校验 | 向授权服务器验证 License 有效性 |
+| 每日 04:00 | 数据库优化 | 执行 VACUUM ANALYZE 更新统计信息 |
+
+---
+
+## 🔔 报警系统
+
+### 报警类型
+
+| 类型 | 触发条件 | 说明 |
+|------|----------|------|
+| `HIGH` | ppm > high_limit | 浓度超标报警 |
+| `LOW` | ppm < low_limit | 浓度过低报警 (可选) |
+| `LOW_BAT` | bat < bat_limit | 低电量报警 (默认 20%) |
+| `OFFLINE` | 设备离线 | 超过 90 秒无数据上报 |
+
+### 通知渠道
+
+| 渠道 | 配置项 | 说明 |
+|------|--------|------|
+| **邮件** | SMTP 配置 | 支持 QQ/163/企业邮箱 |
+| **Webhook** | URL + 平台类型 | 钉钉/飞书/企业微信 (支持加签) |
+| **短信** | 阿里云 SMS | 需配置 AccessKey 和模板 |
+
+### 时段限制
+
+可配置工作时段，非工作时间只记录报警，不发送通知：
+
+```json
+{
+  "enabled": true,
+  "days": [1, 2, 3, 4, 5],
+  "start": "08:00",
+  "end": "18:00"
+}
+```
+
+### 防抖机制
+
+同一设备同一类型报警在 10 分钟内只触发一次，避免频繁通知。
 
 ---
 
@@ -274,6 +463,7 @@ docker-compose ps
 | 前端 | <http://localhost> | Vue Admin 界面 |
 | 大屏 | <http://localhost/screen> | 可视化大屏 |
 | API | <http://localhost:8000/docs> | Swagger 文档 |
+| 健康检查 | <http://localhost/api/health> | 系统状态 |
 
 ### 默认账号
 
@@ -314,43 +504,88 @@ python scripts/loadtest.py -n 100 -d 60 -i 1
 ```sql
 -- 设备表
 CREATE TABLE devices (
-    sn          VARCHAR(32) PRIMARY KEY,
-    name        VARCHAR(64),
-    model       VARCHAR(32),
-    high_limit  DECIMAL(10,2) DEFAULT 1000,
-    low_limit   DECIMAL(10,2),
-    k_val       DECIMAL(10,4) DEFAULT 1.0,
-    b_val       DECIMAL(10,4) DEFAULT 0.0,
-    t_coef      DECIMAL(10,4) DEFAULT 0.0,
-    status      VARCHAR(16) DEFAULT 'offline',
-    last_seen   TIMESTAMPTZ,
-    created_at  TIMESTAMPTZ DEFAULT NOW()
+    sn            VARCHAR(64) PRIMARY KEY,
+    name          VARCHAR(128),
+    model         VARCHAR(32),
+    location      VARCHAR(256),
+    pos_x         FLOAT DEFAULT 50.0,         -- 大屏 X 坐标 (%)
+    pos_y         FLOAT DEFAULT 50.0,         -- 大屏 Y 坐标 (%)
+    calib_k       FLOAT DEFAULT 1.0,          -- 校准斜率
+    calib_b       FLOAT DEFAULT 0.0,          -- 校准截距
+    calib_t_ref   FLOAT DEFAULT 25.0,         -- 参考温度
+    calib_t_comp  FLOAT DEFAULT 0.1,          -- 温度补偿系数
+    high_limit    FLOAT DEFAULT 1000.0,       -- 高报警阈值
+    low_limit     FLOAT,                      -- 低报警阈值
+    bat_limit     FLOAT DEFAULT 20.0,         -- 低电量阈值
+    status        VARCHAR(20) DEFAULT 'offline',
+    last_seen     TIMESTAMP,
+    firmware_ver  VARCHAR(32),
+    created_at    TIMESTAMP DEFAULT NOW()
 );
 
 -- 传感器数据表 (TimescaleDB 超表)
 CREATE TABLE sensor_data (
-    time        TIMESTAMPTZ NOT NULL,
-    sn          VARCHAR(32) NOT NULL,
-    v_raw       DECIMAL(10,2),
-    ppm         DECIMAL(10,2),
-    temp        DECIMAL(5,1),
-    humi        DECIMAL(5,1),
-    bat         INTEGER,
-    rssi        INTEGER,
-    err_code    INTEGER,
-    msg_seq     INTEGER
+    time      TIMESTAMP NOT NULL,
+    sn        VARCHAR(64) NOT NULL,
+    v_raw     FLOAT,
+    ppm       FLOAT,
+    temp      FLOAT,
+    humi      FLOAT,
+    bat       INT,
+    rssi      INT,
+    err_code  INT DEFAULT 0,
+    seq       INT
 );
 
 -- 报警日志表
 CREATE TABLE alarm_logs (
+    id           SERIAL PRIMARY KEY,
+    triggered_at TIMESTAMP DEFAULT NOW(),
+    sn           VARCHAR(64),
+    type         VARCHAR(32),          -- HIGH/LOW/OFFLINE/LOW_BAT
+    value        FLOAT,
+    threshold    FLOAT,
+    notified     BOOLEAN DEFAULT FALSE,
+    channels     VARCHAR(128),          -- email,sms,webhook
+    ack_at       TIMESTAMP,
+    ack_by       VARCHAR(64)
+);
+
+-- 归档日志表
+CREATE TABLE archive_logs (
+    id           SERIAL PRIMARY KEY,
+    archive_date DATE NOT NULL,
+    file_name    VARCHAR(256),
+    file_size    BIGINT,
+    row_count    INT,
+    r2_path      VARCHAR(512),
+    status       VARCHAR(32) DEFAULT 'pending',
+    created_at   TIMESTAMP DEFAULT NOW()
+);
+
+-- 操作日志表
+CREATE TABLE operation_logs (
     id          SERIAL PRIMARY KEY,
-    time        TIMESTAMPTZ DEFAULT NOW(),
-    sn          VARCHAR(32),
-    type        VARCHAR(16),
-    value       DECIMAL(10,2),
-    threshold   DECIMAL(10,2),
-    status      VARCHAR(16) DEFAULT 'new',
-    notified    BOOLEAN DEFAULT FALSE
+    timestamp   TIMESTAMP DEFAULT NOW(),
+    user_name   VARCHAR(64),
+    action      VARCHAR(64),
+    target_type VARCHAR(32),
+    target_id   VARCHAR(64),
+    details     TEXT,
+    ip_address  VARCHAR(64)
+);
+
+-- 用户表
+CREATE TABLE users (
+    id            SERIAL PRIMARY KEY,
+    username      VARCHAR(64) UNIQUE NOT NULL,
+    password_hash VARCHAR(256) NOT NULL,
+    role          VARCHAR(32) DEFAULT 'user',
+    email         VARCHAR(128),
+    phone         VARCHAR(32),
+    is_active     BOOLEAN DEFAULT TRUE,
+    last_login    TIMESTAMP,
+    created_at    TIMESTAMP DEFAULT NOW()
 );
 ```
 
@@ -364,6 +599,7 @@ CREATE TABLE alarm_logs (
 | MQTT 加密 | TLS 1.2+ (端口 8883) |
 | API 认证 | JWT Token (24小时过期) |
 | 授权保护 | 硬件指纹 + 在线校验 + 宽限期 |
+| Webhook 签名 | 钉钉机器人加签验证 |
 
 ---
 
@@ -384,8 +620,8 @@ docker-compose logs -f backend
 docker-compose restart worker
 
 # 重新构建镜像
-docker-compose build --no-cache frontend
-docker-compose up -d frontend
+docker-compose build --no-cache backend
+docker-compose up -d backend
 
 # 进入容器
 docker exec -it mcs_worker bash
@@ -394,7 +630,35 @@ docker exec -it mcs_db psql -U postgres -d mcs_iot
 # 查看数据库数据
 docker-compose exec timescaledb psql -U postgres -d mcs_iot \
     -c "SELECT * FROM sensor_data ORDER BY time DESC LIMIT 10;"
+
+# 健康检查
+curl http://localhost/api/health
+
+# 数据库备份
+./scripts/backup.sh
 ```
+
+---
+
+## 🔧 运维脚本
+
+### 数据库备份 (`scripts/backup.sh`)
+
+```bash
+# 手动执行备份
+./scripts/backup.sh
+
+# 设置定时备份 (每周日凌晨3点)
+crontab -e
+# 添加: 0 3 * * 0 /opt/mcs-iot/scripts/backup.sh
+```
+
+### 功能
+
+- pg_dump 全量备份
+- gzip 压缩
+- 可选上传到 R2
+- 自动清理 7 天前备份
 
 ---
 
