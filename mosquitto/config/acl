@@ -1,0 +1,17 @@
+# ACL for MCS-IoT
+
+# Quick rule for admin
+user admin
+topic readwrite #
+
+# Worker Service (The Brain)
+user worker
+topic read mcs/+/up
+topic write mcs/+/cmd
+topic read mcs/+/status
+
+# Device ACL Pattern
+# %c matches the client id
+pattern write mcs/%c/up
+pattern read mcs/%c/cmd
+pattern write mcs/%c/status

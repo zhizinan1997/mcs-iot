@@ -1,0 +1,123 @@
+version: '3.8'
+
+services:
+  # 🟢 MQTT Broker
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mcs_mosquitto
+    ports:
+      - "1883:1883" # TCP (Local only in prod, open for dev)
+      - "8883:8883" # MQTTS
+      - "9001:9001" # WS (Optional)
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./nginx/ssl:/mosquitto/certs:ro
+      - ./mosquitto/log:/mosquitto/log
+      - ./mosquitto/data:/mosquitto/data
+    networks:
+      - mcs-net
+
+  # 🟡 Time-Series Database
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: mcs_db
+    environment:
+      POSTGRES_DB: mcs_iot
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432" # Exposed for local dev tools (DBeaver etc.)
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - mcs-net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ⚪ Cache
+  redis:
+    image: redis:7-alpine
+    container_name: mcs_redis
+    ports:
+      - "6379:6379" # Exposed for local dev
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - mcs-net
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # 🔵 Core Worker (Python)
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: mcs_worker
+    environment:
+      - DB_HOST=timescaledb
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASS=password
+      - DB_NAME=mcs_iot
+      - REDIS_HOST=redis
+      - MQTT_HOST=mosquitto
+      - MQTT_PORT=1883 # Internal via TCP
+      - DEV_MODE=true # Bypass license check for dev
+    volumes:
+      - ./worker/src:/app/src # Hot reload
+      # - /etc/machine-id:/app/host_id:ro # Mac doesn't have machine-id, handling in code
+      - ./license.key:/app/license.key:ro
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+    networks:
+      - mcs-net
+    restart: unless-stopped
+
+  # 🟣 Backend API (FastAPI)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mcs_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_HOST=timescaledb
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASS=password
+      - DB_NAME=mcs_iot
+      - REDIS_HOST=redis
+      - JWT_SECRET=dev-secret-key-change-in-production
+    volumes:
+      - ./backend/src:/app/src
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - mcs-net
+    restart: unless-stopped
+
+volumes:
+  pg_data:
+  redis_data:
+
+
+networks:
+  mcs-net:
+    name: mcs-net

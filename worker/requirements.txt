@@ -1,0 +1,30 @@
+# Core
+fastapi
+uvicorn
+gunicorn
+pydantic
+pydantic-settings
+
+# Database & Cache
+asyncpg
+redis
+
+# MQTT
+paho-mqtt==1.6.1
+
+# Utilities
+python-dotenv
+requests
+aiohttp
+loguru
+pytz
+
+# Object Storage
+boto3
+
+# Cryptography (for License)
+cryptography
+python-jose[cryptography]
+
+# Scientific (for Calc)
+numpy
