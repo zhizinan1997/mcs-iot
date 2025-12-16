@@ -51,6 +51,9 @@ class DeviceRealtime(BaseModel):
     status: str
     position_x: Optional[float]
     position_y: Optional[float]
+    battery: Optional[int] = None
+    rssi: Optional[int] = None
+    network: Optional[str] = None
 
 @router.get("/stats", response_model=DashboardStats)
 async def get_dashboard_stats(db = Depends(get_db), redis = Depends(get_redis)):
@@ -58,12 +61,12 @@ async def get_dashboard_stats(db = Depends(get_db), redis = Depends(get_redis)):
         total = await conn.fetchval("SELECT COUNT(*) FROM devices")
         online_count = await conn.fetchval("SELECT COUNT(*) FROM devices WHERE status = 'online'")
         alarms_today = await conn.fetchval(
-            "SELECT COUNT(*) FROM alarm_logs WHERE time >= CURRENT_DATE"
+            "SELECT COUNT(*) FROM alarm_logs WHERE triggered_at >= CURRENT_DATE"
         )
         # 报警中的设备数 (今日有未确认报警)
         devices_alarm = await conn.fetchval("""
             SELECT COUNT(DISTINCT sn) FROM alarm_logs 
-            WHERE time >= CURRENT_DATE
+            WHERE triggered_at >= CURRENT_DATE
         """)
     
     return DashboardStats(
@@ -94,7 +97,10 @@ async def get_realtime_data(db = Depends(get_db), redis = Depends(get_redis)):
             temp=float(rt_data.get('temp')) if rt_data.get('temp') else None,
             status="online" if is_online else "offline",
             position_x=float(pos_data.get('x')) if pos_data.get('x') else None,
-            position_y=float(pos_data.get('y')) if pos_data.get('y') else None
+            position_y=float(pos_data.get('y')) if pos_data.get('y') else None,
+            battery=int(rt_data.get('bat')) if rt_data.get('bat') else None,
+            rssi=int(rt_data.get('rssi')) if rt_data.get('rssi') else None,
+            network=rt_data.get('net') if rt_data.get('net') else None
         ))
     
     return devices

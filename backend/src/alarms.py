@@ -59,9 +59,9 @@ async def list_alarms(
         
         params.extend([size, offset])
         rows = await conn.fetch(
-            f"""SELECT id, time, sn, type, value, threshold, status, notified 
+            f"""SELECT id, triggered_at as time, sn, type, value, threshold, status, notified 
                 FROM alarm_logs WHERE {where_sql} 
-                ORDER BY time DESC LIMIT ${param_idx} OFFSET ${param_idx+1}""",
+                ORDER BY triggered_at DESC LIMIT ${param_idx} OFFSET ${param_idx+1}""",
             *params
         )
     
@@ -93,13 +93,13 @@ async def acknowledge_alarm(alarm_id: int, db = Depends(get_db)):
 async def get_alarm_stats(db = Depends(get_db)):
     async with db.acquire() as conn:
         today_count = await conn.fetchval(
-            "SELECT COUNT(*) FROM alarm_logs WHERE time >= CURRENT_DATE"
+            "SELECT COUNT(*) FROM alarm_logs WHERE triggered_at >= CURRENT_DATE"
         )
         week_count = await conn.fetchval(
-            "SELECT COUNT(*) FROM alarm_logs WHERE time >= CURRENT_DATE - INTERVAL '7 days'"
+            "SELECT COUNT(*) FROM alarm_logs WHERE triggered_at >= CURRENT_DATE - INTERVAL '7 days'"
         )
         by_type = await conn.fetch(
-            "SELECT type, COUNT(*) as count FROM alarm_logs WHERE time >= CURRENT_DATE GROUP BY type"
+            "SELECT type, COUNT(*) as count FROM alarm_logs WHERE triggered_at >= CURRENT_DATE GROUP BY type"
         )
     
     return {

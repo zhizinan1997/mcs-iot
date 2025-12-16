@@ -21,3 +21,4 @@ paho-mqtt
 python-dotenv
 aiohttp
 loguru
+boto3

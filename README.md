@@ -9,15 +9,15 @@
 
 **MCS-IoT** (Metachip Cloud Sense) 是一套专为工业气体监测场景设计的物联网平台，具备以下核心优势：
 
-| 特性 | 说明 |
-|------|------|
-| 💰 **极低成本** | 年运营成本 ¥189 (100台设备规模) |
-| 🚀 **高并发** | 单服务器支持 500+ 设备同时在线 |
-| 🔐 **商业保护** | 硬件绑定 + 在线授权 + 72h宽限期 |
-| 📊 **实时可视化** | WebSocket + ECharts 大屏展示 |
-| 📦 **冷热分离** | TimescaleDB 热存储 + R2 冷归档 |
-| ⏰ **定时任务** | 自动归档、健康检查、授权校验 |
-| 🔔 **智能报警** | 多通道通知、时段限制、防抖去重 |
+| 特性              | 说明                             |
+| ----------------- | -------------------------------- |
+| 💰 **极低成本**   | 年运营成本 ¥189 (100 台设备规模) |
+| 🚀 **高并发**     | 单服务器支持 500+ 设备同时在线   |
+| 🔐 **商业保护**   | 硬件绑定 + 在线授权 + 72h 宽限期 |
+| 📊 **实时可视化** | WebSocket + ECharts 大屏展示     |
+| 📦 **冷热分离**   | TimescaleDB 热存储 + R2 冷归档   |
+| ⏰ **定时任务**   | 自动归档、健康检查、授权校验     |
+| 🔔 **智能报警**   | 多通道通知、时段限制、防抖去重   |
 
 ---
 
@@ -80,14 +80,14 @@
 
 ## 🐳 Docker 容器
 
-| 容器 | 镜像 | 端口 | 说明 |
-|------|------|------|------|
-| `mcs_mosquitto` | eclipse-mosquitto:2 | 1883, 8883, 9001 | MQTT Broker |
-| `mcs_db` | timescale/timescaledb:pg15 | 5432 | 时序数据库 |
-| `mcs_redis` | redis:7-alpine | 6379 | 缓存服务 |
-| `mcs_worker` | mcs-iot-worker | - | 核心处理服务 |
-| `mcs_backend` | mcs-iot-backend | 8000 | REST API 服务 |
-| `mcs_frontend` | mcs-iot-frontend | 80 | Vue 前端 (Nginx) |
+| 容器            | 镜像                       | 端口             | 说明             |
+| --------------- | -------------------------- | ---------------- | ---------------- |
+| `mcs_mosquitto` | eclipse-mosquitto:2        | 1883, 8883, 9001 | MQTT Broker      |
+| `mcs_db`        | timescale/timescaledb:pg15 | 5432             | 时序数据库       |
+| `mcs_redis`     | redis:7-alpine             | 6379             | 缓存服务         |
+| `mcs_worker`    | mcs-iot-worker             | -                | 核心处理服务     |
+| `mcs_backend`   | mcs-iot-backend            | 8000             | REST API 服务    |
+| `mcs_frontend`  | mcs-iot-frontend           | 80               | Vue 前端 (Nginx) |
 
 ---
 
@@ -95,25 +95,25 @@
 
 ### 端口说明
 
-| 端口 | 协议 | 用途 | 对外暴露 |
-|------|------|------|----------|
-| **80** | HTTP | Web 前端界面 | ✅ 必须 |
-| **443** | HTTPS | Web 前端界面 (SSL) | ✅ 生产环境必须 |
-| **8000** | HTTP | REST API | ⚠️ 开发环境（生产环境通过 Nginx 代理） |
-| **1883** | MQTT/TCP | 设备连接 (无加密) | ⚠️ 仅开发环境 |
-| **8883** | MQTTS/TLS | 设备连接 (加密) | ✅ 生产环境必须 |
-| **9001** | WebSocket | MQTT over WS | ❌ 可选 |
-| **5432** | TCP | PostgreSQL | ❌ 内部使用 |
-| **6379** | TCP | Redis | ❌ 内部使用 |
+| 端口     | 协议      | 用途               | 对外暴露                               |
+| -------- | --------- | ------------------ | -------------------------------------- |
+| **80**   | HTTP      | Web 前端界面       | ✅ 必须                                |
+| **443**  | HTTPS     | Web 前端界面 (SSL) | ✅ 生产环境必须                        |
+| **8000** | HTTP      | REST API           | ⚠️ 开发环境（生产环境通过 Nginx 代理） |
+| **1883** | MQTT/TCP  | 设备连接 (无加密)  | ⚠️ 仅开发环境                          |
+| **8883** | MQTTS/TLS | 设备连接 (加密)    | ✅ 生产环境必须                        |
+| **9001** | WebSocket | MQTT over WS       | ❌ 可选                                |
+| **5432** | TCP       | PostgreSQL         | ❌ 内部使用                            |
+| **6379** | TCP       | Redis              | ❌ 内部使用                            |
 
 ### 域名配置
 
 生产环境部署需要配置以下域名：
 
-| 域名 | 用途 | 指向 |
-|------|------|------|
-| `iot.yourdomain.com` | Web 界面 + API | 服务器 IP (端口 80/443) |
-| `mqtt.yourdomain.com` | 设备 MQTT 连接 | 服务器 IP (端口 8883) |
+| 域名                  | 用途           | 指向                    |
+| --------------------- | -------------- | ----------------------- |
+| `iot.yourdomain.com`  | Web 界面 + API | 服务器 IP (端口 80/443) |
+| `mqtt.yourdomain.com` | 设备 MQTT 连接 | 服务器 IP (端口 8883)   |
 
 ### 需要修改的配置文件
 
@@ -158,26 +158,26 @@ sudo ufw allow 8000/tcp  # API 直连
 
 ### MQTT 连接参数
 
-| 参数 | 开发环境 | 生产环境 |
-|------|----------|----------|
-| **Broker 地址** | `localhost` 或 `服务器IP` | `mqtt.yourdomain.com` |
-| **TCP 端口** | 1883 | - |
-| **TLS 端口** | 8883 | 8883 (必须使用) |
-| **用户名** | 在 Admin 界面配置 | 在 Admin 界面配置 |
-| **密码** | 在 Admin 界面配置 | 在 Admin 界面配置 |
-| **Client ID** | 设备 SN (唯一) | 设备 SN (唯一) |
-| **Keep Alive** | 60 秒 | 60 秒 |
-| **Clean Session** | true | true |
+| 参数              | 开发环境                  | 生产环境              |
+| ----------------- | ------------------------- | --------------------- |
+| **Broker 地址**   | `localhost` 或 `服务器IP` | `mqtt.yourdomain.com` |
+| **TCP 端口**      | 1883                      | -                     |
+| **TLS 端口**      | 8883                      | 8883 (必须使用)       |
+| **用户名**        | 在 Admin 界面配置         | 在 Admin 界面配置     |
+| **密码**          | 在 Admin 界面配置         | 在 Admin 界面配置     |
+| **Client ID**     | 设备 SN (唯一)            | 设备 SN (唯一)        |
+| **Keep Alive**    | 60 秒                     | 60 秒                 |
+| **Clean Session** | true                      | true                  |
 
 > **账号管理说明**
 >
-> 所有设备使用**统一账号密码**，在 Admin 界面 → 系统配置 → MQTT账号 中设置。
+> 所有设备使用**统一账号密码**，在 Admin 界面 → 系统配置 → MQTT 账号 中设置。
 >
-> | 账号类型 | 用途 |
-> |----------|------|
-> | 管理员账号 | MQTT 调试工具连接 |
+> | 账号类型    | 用途                                     |
+> | ----------- | ---------------------------------------- |
+> | 管理员账号  | MQTT 调试工具连接                        |
 > | Worker 账号 | 后台服务连接（修改后需重启 Worker 容器） |
-> | 设备账号 | 所有硬件设备统一使用 |
+> | 设备账号    | 所有硬件设备统一使用                     |
 
 ### Topic 命名规范
 
@@ -212,27 +212,27 @@ mcs/{设备SN}/status   # 设备状态 (可选)
 
 **字段说明：**
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `ts` | int | ✅ | Unix 时间戳（秒） |
-| `seq` | int | ✅ | 消息序号 (0-65535 循环) |
-| `v_raw` | float | ✅ | 传感器原始电压值 (mV) |
-| `temp` | float | ✅ | 环境温度 (°C) |
-| `humi` | float | ✅ | 环境湿度 (%) |
-| `bat` | int | ✅ | 电池电量 (0-100%) |
-| `rssi` | int | ✅ | 信号强度 (dBm, 负数) |
-| `net` | string | ❌ | 网络类型: "4G", "WiFi", "NB" |
-| `err` | int | ❌ | 错误码 (0=正常) |
+| 字段    | 类型   | 必填 | 说明                         |
+| ------- | ------ | ---- | ---------------------------- |
+| `ts`    | int    | ✅   | Unix 时间戳（秒）            |
+| `seq`   | int    | ✅   | 消息序号 (0-65535 循环)      |
+| `v_raw` | float  | ✅   | 传感器原始电压值 (mV)        |
+| `temp`  | float  | ✅   | 环境温度 (°C)                |
+| `humi`  | float  | ✅   | 环境湿度 (%)                 |
+| `bat`   | int    | ✅   | 电池电量 (0-100%)            |
+| `rssi`  | int    | ✅   | 信号强度 (dBm, 负数)         |
+| `net`   | string | ❌   | 网络类型: "4G", "WiFi", "NB" |
+| `err`   | int    | ❌   | 错误码 (0=正常)              |
 
 **错误码定义：**
 
-| 错误码 | 说明 |
-|--------|------|
-| 0 | 正常 |
-| 1 | 传感器故障 |
-| 2 | 温度异常 |
-| 3 | 通信超时 |
-| 4 | 校准失效 |
+| 错误码 | 说明       |
+| ------ | ---------- |
+| 0      | 正常       |
+| 1      | 传感器故障 |
+| 2      | 温度异常   |
+| 3      | 通信超时   |
+| 4      | 校准失效   |
 
 ### 下行命令格式 (服务器 → 设备)
 
@@ -248,9 +248,9 @@ mcs/{设备SN}/status   # 设备状态 (可选)
 }
 ```
 
-| 字段 | 说明 |
-|------|------|
-| `duration` | 调试模式持续时间（秒） |
+| 字段       | 说明                                  |
+| ---------- | ------------------------------------- |
+| `duration` | 调试模式持续时间（秒）                |
 | `interval` | 采集间隔（秒），调试模式下通常为 1 秒 |
 
 #### 2. 校准参数更新
@@ -265,12 +265,12 @@ mcs/{设备SN}/status   # 设备状态 (可选)
 }
 ```
 
-| 字段 | 说明 |
-|------|------|
-| `k` | 校准斜率 |
-| `b` | 校准截距 |
-| `t_ref` | 参考温度 (°C) |
-| `t_comp` | 温度补偿系数 |
+| 字段     | 说明          |
+| -------- | ------------- |
+| `k`      | 校准斜率      |
+| `b`      | 校准截距      |
+| `t_ref`  | 参考温度 (°C) |
+| `t_comp` | 温度补偿系数  |
 
 #### 3. 设备重启
 
@@ -281,8 +281,8 @@ mcs/{设备SN}/status   # 设备状态 (可选)
 }
 ```
 
-| 字段 | 说明 |
-|------|------|
+| 字段    | 说明               |
+| ------- | ------------------ |
 | `delay` | 延迟重启时间（秒） |
 
 #### 4. OTA 固件升级
@@ -296,11 +296,11 @@ mcs/{设备SN}/status   # 设备状态 (可选)
 }
 ```
 
-| 字段 | 说明 |
-|------|------|
-| `url` | 固件下载地址 |
-| `version` | 目标版本号 |
-| `md5` | 固件 MD5 校验值 |
+| 字段      | 说明            |
+| --------- | --------------- |
+| `url`     | 固件下载地址    |
+| `version` | 目标版本号      |
+| `md5`     | 固件 MD5 校验值 |
 
 ### 浓度计算公式
 
@@ -343,10 +343,10 @@ void sendData() {
     doc["rssi"] = WiFi.RSSI();
     doc["net"] = "WiFi";
     doc["err"] = 0;
-    
+
     char payload[256];
     serializeJson(doc, payload);
-    
+
     char topic[64];
     sprintf(topic, "mcs/%s/up", DEVICE_SN);
     mqtt.publish(topic, payload);
@@ -355,7 +355,7 @@ void sendData() {
 void onMessage(char* topic, byte* payload, unsigned int length) {
     StaticJsonDocument<256> doc;
     deserializeJson(doc, payload, length);
-    
+
     const char* cmd = doc["cmd"];
     if (strcmp(cmd, "reboot") == 0) {
         delay(doc["delay"].as<int>() * 1000);
@@ -369,13 +369,13 @@ void onMessage(char* topic, byte* payload, unsigned int length) {
 
 void setup() {
     // 连接 WiFi...
-    
+
     // 配置 TLS (生产环境)
     // espClient.setCACert(ca_cert);
-    
+
     mqtt.setServer(MQTT_HOST, MQTT_PORT);
     mqtt.setCallback(onMessage);
-    
+
     // 连接 MQTT
     String clientId = String("device_") + DEVICE_SN;
     if (mqtt.connect(clientId.c_str(), MQTT_USER, MQTT_PASS)) {
@@ -388,7 +388,7 @@ void setup() {
 
 void loop() {
     mqtt.loop();
-    
+
     static unsigned long lastSend = 0;
     if (millis() - lastSend >= 10000) { // 10秒间隔
         sendData();
@@ -428,10 +428,10 @@ class SensorDevice:
         self.client.username_pw_set(MQTT_USER, MQTT_PASS)
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
-        
+
         # 生产环境启用 TLS
         # self.client.tls_set(ca_certs="ca.crt")
-    
+
     def on_connect(self, client, userdata, flags, rc):
         if rc == 0:
             print(f"[{DEVICE_SN}] 连接成功")
@@ -439,33 +439,33 @@ class SensorDevice:
             client.subscribe(f"mcs/{DEVICE_SN}/down")
         else:
             print(f"[{DEVICE_SN}] 连接失败: {rc}")
-    
+
     def on_message(self, client, userdata, msg):
         """处理服务器下发的命令"""
         try:
             cmd = json.loads(msg.payload.decode())
             print(f"[{DEVICE_SN}] 收到命令: {cmd}")
-            
+
             if cmd.get("cmd") == "reboot":
                 delay = cmd.get("delay", 5)
                 print(f"[{DEVICE_SN}] 将在 {delay} 秒后重启...")
                 time.sleep(delay)
                 # os.system("reboot")  # Linux 重启
-                
+
             elif cmd.get("cmd") == "debug":
                 duration = cmd.get("duration", 600)
                 interval = cmd.get("interval", 1)
                 print(f"[{DEVICE_SN}] 进入调试模式: {duration}秒, 间隔{interval}秒")
-                
+
             elif cmd.get("cmd") == "calibrate":
                 k = cmd.get("k", 1.0)
                 b = cmd.get("b", 0.0)
                 print(f"[{DEVICE_SN}] 更新校准参数: k={k}, b={b}")
                 # 保存到本地配置文件
-                
+
         except Exception as e:
             print(f"[{DEVICE_SN}] 命令解析错误: {e}")
-    
+
     def read_sensor(self):
         """读取传感器数据 (请替换为实际传感器读取逻辑)"""
         # 示例: 模拟数据
@@ -476,11 +476,11 @@ class SensorDevice:
             "bat": random.randint(80, 100),          # 电量 (%)
             "rssi": random.randint(-80, -60),        # 信号 (dBm)
         }
-    
+
     def send_data(self):
         """上报传感器数据"""
         sensor = self.read_sensor()
-        
+
         payload = {
             "ts": int(time.time()),
             "seq": self.seq,
@@ -492,19 +492,19 @@ class SensorDevice:
             "net": "WiFi",
             "err": 0
         }
-        
+
         topic = f"mcs/{DEVICE_SN}/up"
         self.client.publish(topic, json.dumps(payload))
         print(f"[{DEVICE_SN}] 上报: ppm≈{payload['v_raw']:.1f}, temp={payload['temp']}°C")
-        
+
         self.seq = (self.seq + 1) % 65536
-    
+
     def run(self):
         """主循环"""
         print(f"[{DEVICE_SN}] 连接 {MQTT_HOST}:{MQTT_PORT}...")
         self.client.connect(MQTT_HOST, MQTT_PORT, 60)
         self.client.loop_start()
-        
+
         try:
             while True:
                 self.send_data()
@@ -534,12 +534,12 @@ python device.py
 
 ### 设备 SN 命名规范
 
-| 类型 | 前缀 | 示例 |
-|------|------|------|
-| 甲烷传感器 | `GAS` | GAS001, GAS002 |
+| 类型           | 前缀  | 示例           |
+| -------------- | ----- | -------------- |
+| 甲烷传感器     | `GAS` | GAS001, GAS002 |
 | 二氧化碳传感器 | `CO2` | CO2001, CO2002 |
-| 氨气传感器 | `NH3` | NH3001, NH3002 |
-| 通用传感器 | `DEV` | DEV001, DEV002 |
+| 氨气传感器     | `NH3` | NH3001, NH3002 |
+| 通用传感器     | `DEV` | DEV001, DEV002 |
 
 ### 心跳与离线检测
 
@@ -553,41 +553,41 @@ python device.py
 
 ### 后端技术
 
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| **Python** | 3.11 | 主要编程语言 |
-| **FastAPI** | Latest | REST API 框架 |
-| **asyncio** | Built-in | 异步编程 |
-| **asyncpg** | Latest | PostgreSQL 异步驱动 |
-| **paho-mqtt** | Latest | MQTT 客户端 |
-| **redis.asyncio** | Latest | Redis 异步客户端 |
-| **boto3** | Latest | AWS S3/R2 SDK |
-| **aiohttp** | Latest | 异步 HTTP 客户端 |
+| 技术              | 版本     | 用途                |
+| ----------------- | -------- | ------------------- |
+| **Python**        | 3.11     | 主要编程语言        |
+| **FastAPI**       | Latest   | REST API 框架       |
+| **asyncio**       | Built-in | 异步编程            |
+| **asyncpg**       | Latest   | PostgreSQL 异步驱动 |
+| **paho-mqtt**     | Latest   | MQTT 客户端         |
+| **redis.asyncio** | Latest   | Redis 异步客户端    |
+| **boto3**         | Latest   | AWS S3/R2 SDK       |
+| **aiohttp**       | Latest   | 异步 HTTP 客户端    |
 
 ### 前端技术
 
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| **Vue** | 3.x | 前端框架 |
-| **TypeScript** | 5.x | 类型安全 |
-| **Vite** | Latest | 构建工具 |
-| **Element Plus** | Latest | UI 组件库 |
-| **Vue Router** | 4.x | 路由管理 |
-| **Pinia** | Latest | 状态管理 |
-| **ECharts** | 5.x | 图表可视化 |
-| **Axios** | Latest | HTTP 客户端 |
+| 技术             | 版本   | 用途        |
+| ---------------- | ------ | ----------- |
+| **Vue**          | 3.x    | 前端框架    |
+| **TypeScript**   | 5.x    | 类型安全    |
+| **Vite**         | Latest | 构建工具    |
+| **Element Plus** | Latest | UI 组件库   |
+| **Vue Router**   | 4.x    | 路由管理    |
+| **Pinia**        | Latest | 状态管理    |
+| **ECharts**      | 5.x    | 图表可视化  |
+| **Axios**        | Latest | HTTP 客户端 |
 
 ### 基础设施
 
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| **Docker** | 24+ | 容器化 |
-| **Docker Compose** | 2.x | 容器编排 |
-| **Mosquitto** | 2.x | MQTT Broker |
-| **PostgreSQL** | 15 | 关系数据库 |
-| **TimescaleDB** | Latest | 时序数据扩展 |
-| **Redis** | 7.x | 缓存 |
-| **Nginx** | Alpine | 反向代理 |
+| 技术               | 版本   | 用途         |
+| ------------------ | ------ | ------------ |
+| **Docker**         | 24+    | 容器化       |
+| **Docker Compose** | 2.x    | 容器编排     |
+| **Mosquitto**      | 2.x    | MQTT Broker  |
+| **PostgreSQL**     | 15     | 关系数据库   |
+| **TimescaleDB**    | Latest | 时序数据扩展 |
+| **Redis**          | 7.x    | 缓存         |
+| **Nginx**          | Alpine | 反向代理     |
 
 ---
 
@@ -677,41 +677,41 @@ mcs-iot/
 
 ### Worker 模块
 
-| 文件 | 功能 | 说明 |
-|------|------|------|
-| `main.py` | 入口 | 初始化 Redis/DB/MQTT/Scheduler，启动事件循环 |
-| `mqtt_client.py` | MQTT 连接 | 订阅 `mcs/+/up` 和 `mcs/+/status` |
-| `processor.py` | 消息处理 | 解析 Topic/Payload，调用解算和存储 |
-| `calibrator.py` | 浓度解算 | 公式: `ppm = k * v_raw + b + t_coef * (temp - 25)` |
-| `storage.py` | 数据存储 | 异步写入 TimescaleDB `sensor_data` 表 |
-| `alarm.py` | 报警中心 | 阈值检测 → 时段限制 → 10分钟防抖 → 多通道通知 |
-| `license.py` | 授权守卫 | 硬件指纹 → 在线校验 → 72小时宽限期 |
-| `archiver.py` | 数据归档 | 导出冷数据 → CSV.GZ 压缩 → 上传 R2 → 清理 |
-| `scheduler.py` | 定时任务 | 离线检测/健康检查/归档/授权校验/DB优化 |
+| 文件             | 功能      | 说明                                               |
+| ---------------- | --------- | -------------------------------------------------- |
+| `main.py`        | 入口      | 初始化 Redis/DB/MQTT/Scheduler，启动事件循环       |
+| `mqtt_client.py` | MQTT 连接 | 订阅 `mcs/+/up` 和 `mcs/+/status`                  |
+| `processor.py`   | 消息处理  | 解析 Topic/Payload，调用解算和存储                 |
+| `calibrator.py`  | 浓度解算  | 公式: `ppm = k * v_raw + b + t_coef * (temp - 25)` |
+| `storage.py`     | 数据存储  | 异步写入 TimescaleDB `sensor_data` 表              |
+| `alarm.py`       | 报警中心  | 阈值检测 → 时段限制 → 10 分钟防抖 → 多通道通知     |
+| `license.py`     | 授权守卫  | 硬件指纹 → 在线校验 → 72 小时宽限期                |
+| `archiver.py`    | 数据归档  | 导出冷数据 → CSV.GZ 压缩 → 上传 R2 → 清理          |
+| `scheduler.py`   | 定时任务  | 离线检测/健康检查/归档/授权校验/DB 优化            |
 
 ### Backend 模块
 
-| 文件 | 功能 | API 路径 |
-|------|------|----------|
-| `main.py` | 入口 | 数据库连接池，路由注册，健康检查 |
-| `auth.py` | 认证 | `POST /api/auth/login`, `GET /api/auth/me` |
-| `devices.py` | 设备 | `GET/POST/PUT/DELETE /api/devices` |
-| `alarms.py` | 报警 | `GET /api/alarms`, `POST /api/alarms/{id}/ack` |
-| `config.py` | 配置 | `GET/PUT /api/config/alarm/*` |
-| `dashboard.py` | 大屏 | `GET /api/dashboard/*`, `WS /api/dashboard/ws` |
-| `export.py` | 导出 | `GET /api/export/sensor-data`, `GET /api/export/alarms` |
-| `commands.py` | 命令 | `POST /api/commands/{sn}/*` |
+| 文件           | 功能 | API 路径                                                |
+| -------------- | ---- | ------------------------------------------------------- |
+| `main.py`      | 入口 | 数据库连接池，路由注册，健康检查                        |
+| `auth.py`      | 认证 | `POST /api/auth/login`, `GET /api/auth/me`              |
+| `devices.py`   | 设备 | `GET/POST/PUT/DELETE /api/devices`                      |
+| `alarms.py`    | 报警 | `GET /api/alarms`, `POST /api/alarms/{id}/ack`          |
+| `config.py`    | 配置 | `GET/PUT /api/config/alarm/*`                           |
+| `dashboard.py` | 大屏 | `GET /api/dashboard/*`, `WS /api/dashboard/ws`          |
+| `export.py`    | 导出 | `GET /api/export/sensor-data`, `GET /api/export/alarms` |
+| `commands.py`  | 命令 | `POST /api/commands/{sn}/*`                             |
 
 ### Frontend 页面
 
-| 页面 | 路径 | 功能 |
-|------|------|------|
-| 登录 | `/login` | JWT 认证，表单验证 |
-| 仪表盘 | `/` | 统计卡片，实时设备列表 |
-| 设备管理 | `/devices` | CRUD，校准参数配置 |
-| 报警记录 | `/alarms` | 筛选，确认操作 |
-| 系统配置 | `/config` | 邮件/Webhook/大屏配置 |
-| 可视化大屏 | `/screen` | 全屏展示，ECharts 趋势图 |
+| 页面       | 路径       | 功能                     |
+| ---------- | ---------- | ------------------------ |
+| 登录       | `/login`   | JWT 认证，表单验证       |
+| 仪表盘     | `/`        | 统计卡片，实时设备列表   |
+| 设备管理   | `/devices` | CRUD，校准参数配置       |
+| 报警记录   | `/alarms`  | 筛选，确认操作           |
+| 系统配置   | `/config`  | 邮件/Webhook/大屏配置    |
+| 可视化大屏 | `/screen`  | 全屏展示，ECharts 趋势图 |
 
 ---
 
@@ -719,51 +719,51 @@ mcs-iot/
 
 ### 认证 API (`/api/auth`)
 
-| 方法 | 端点 | 说明 |
-|------|------|------|
+| 方法 | 端点              | 说明                     |
+| ---- | ----------------- | ------------------------ |
 | POST | `/api/auth/login` | 用户登录，返回 JWT Token |
-| GET | `/api/auth/me` | 获取当前用户信息 |
+| GET  | `/api/auth/me`    | 获取当前用户信息         |
 
 ### 设备 API (`/api/devices`)
 
-| 方法 | 端点 | 说明 |
-|------|------|------|
-| GET | `/api/devices` | 获取设备列表 |
-| GET | `/api/devices/{sn}` | 获取单个设备详情 |
-| POST | `/api/devices` | 添加新设备 |
-| PUT | `/api/devices/{sn}` | 更新设备信息 |
-| DELETE | `/api/devices/{sn}` | 删除设备 |
-| GET | `/api/devices/{sn}/history` | 获取历史数据 |
+| 方法   | 端点                        | 说明             |
+| ------ | --------------------------- | ---------------- |
+| GET    | `/api/devices`              | 获取设备列表     |
+| GET    | `/api/devices/{sn}`         | 获取单个设备详情 |
+| POST   | `/api/devices`              | 添加新设备       |
+| PUT    | `/api/devices/{sn}`         | 更新设备信息     |
+| DELETE | `/api/devices/{sn}`         | 删除设备         |
+| GET    | `/api/devices/{sn}/history` | 获取历史数据     |
 
 ### 报警 API (`/api/alarms`)
 
-| 方法 | 端点 | 说明 |
-|------|------|------|
-| GET | `/api/alarms` | 获取报警列表 (支持筛选) |
-| GET | `/api/alarms/{id}` | 获取报警详情 |
-| POST | `/api/alarms/{id}/ack` | 确认报警 |
+| 方法 | 端点                   | 说明                    |
+| ---- | ---------------------- | ----------------------- |
+| GET  | `/api/alarms`          | 获取报警列表 (支持筛选) |
+| GET  | `/api/alarms/{id}`     | 获取报警详情            |
+| POST | `/api/alarms/{id}/ack` | 确认报警                |
 
 ### 配置 API (`/api/config`)
 
-| 方法 | 端点 | 说明 |
-|------|------|------|
-| GET | `/api/config/{key}` | 获取配置项 |
-| PUT | `/api/config/{key}` | 更新配置项 |
+| 方法 | 端点                | 说明       |
+| ---- | ------------------- | ---------- |
+| GET  | `/api/config/{key}` | 获取配置项 |
+| PUT  | `/api/config/{key}` | 更新配置项 |
 
 ### 大屏 API (`/api/dashboard`)
 
-| 方法 | 端点 | 说明 |
-|------|------|------|
-| GET | `/api/dashboard/stats` | 获取统计数据 |
-| GET | `/api/dashboard/devices` | 获取设备状态列表 |
-| WS | `/api/dashboard/ws` | WebSocket 实时数据推送 |
+| 方法 | 端点                     | 说明                   |
+| ---- | ------------------------ | ---------------------- |
+| GET  | `/api/dashboard/stats`   | 获取统计数据           |
+| GET  | `/api/dashboard/devices` | 获取设备状态列表       |
+| WS   | `/api/dashboard/ws`      | WebSocket 实时数据推送 |
 
 ### 导出 API (`/api/export`) 📥
 
-| 方法 | 端点 | 参数 | 说明 |
-|------|------|------|------|
-| GET | `/api/export/sensor-data` | `sn`, `start`, `end` | 导出传感器数据 CSV |
-| GET | `/api/export/alarms` | `sn`, `type`, `start`, `end` | 导出报警记录 CSV |
+| 方法 | 端点                      | 参数                         | 说明               |
+| ---- | ------------------------- | ---------------------------- | ------------------ |
+| GET  | `/api/export/sensor-data` | `sn`, `start`, `end`         | 导出传感器数据 CSV |
+| GET  | `/api/export/alarms`      | `sn`, `type`, `start`, `end` | 导出报警记录 CSV   |
 
 **示例：**
 
@@ -781,12 +781,12 @@ curl "http://localhost/api/export/alarms?sn=DEV001&type=HIGH" \
 
 ### 设备命令 API (`/api/commands`) 📡
 
-| 方法 | 端点 | 说明 |
-|------|------|------|
-| POST | `/api/commands/{sn}/debug` | 切换调试模式 (1秒采集) |
-| POST | `/api/commands/{sn}/calibrate` | 更新校准参数 |
-| POST | `/api/commands/{sn}/reboot` | 远程重启设备 |
-| POST | `/api/commands/{sn}/ota` | OTA 固件升级 |
+| 方法 | 端点                            | 说明                       |
+| ---- | ------------------------------- | -------------------------- |
+| POST | `/api/commands/{sn}/debug`      | 切换调试模式 (1 秒采集)    |
+| POST | `/api/commands/{sn}/calibrate`  | 更新校准参数               |
+| POST | `/api/commands/{sn}/reboot`     | 远程重启设备               |
+| POST | `/api/commands/{sn}/ota`        | OTA 固件升级               |
 | POST | `/api/commands/broadcast/debug` | 广播调试模式到所有在线设备 |
 
 **示例：**
@@ -823,11 +823,11 @@ curl http://localhost/api/health
   "status": "healthy",
   "timestamp": 1765873958.92,
   "components": {
-    "database": {"status": "up", "latency_ms": 11},
-    "redis": {"status": "up", "latency_ms": 1},
-    "worker": {"status": "healthy"},
-    "mqtt": {"status": "up", "last_message_age_sec": 45},
-    "license": {"status": "valid"}
+    "database": { "status": "up", "latency_ms": 11 },
+    "redis": { "status": "up", "latency_ms": 1 },
+    "worker": { "status": "healthy" },
+    "mqtt": { "status": "up", "last_message_age_sec": 45 },
+    "license": { "status": "valid" }
   },
   "metrics": {
     "devices_online": 95,
@@ -844,13 +844,13 @@ curl http://localhost/api/health
 
 Worker 内置定时任务调度器，自动执行以下任务：
 
-| 执行时间 | 任务名称 | 功能 |
-|----------|----------|------|
-| 每分钟 | 设备离线检测 | 扫描 Redis 在线标记，标记离线设备，触发离线报警 |
-| 每5分钟 | 健康检查 | 检查 DB/Redis/MQTT 状态，存储到 Redis 供 API 查询 |
-| 每日 02:00 | 数据归档 | 导出冷数据到 CSV.GZ，上传 R2，清理本地 |
-| 每日 03:00 | 授权校验 | 向授权服务器验证 License 有效性 |
-| 每日 04:00 | 数据库优化 | 执行 VACUUM ANALYZE 更新统计信息 |
+| 执行时间   | 任务名称     | 功能                                              |
+| ---------- | ------------ | ------------------------------------------------- |
+| 每分钟     | 设备离线检测 | 扫描 Redis 在线标记，标记离线设备，触发离线报警   |
+| 每 5 分钟  | 健康检查     | 检查 DB/Redis/MQTT 状态，存储到 Redis 供 API 查询 |
+| 每日 02:00 | 数据归档     | 导出冷数据到 CSV.GZ，上传 R2，清理本地            |
+| 每日 03:00 | 授权校验     | 向授权服务器验证 License 有效性                   |
+| 每日 04:00 | 数据库优化   | 执行 VACUUM ANALYZE 更新统计信息                  |
 
 ---
 
@@ -858,20 +858,20 @@ Worker 内置定时任务调度器，自动执行以下任务：
 
 ### 报警类型
 
-| 类型 | 触发条件 | 说明 |
-|------|----------|------|
-| `HIGH` | ppm > high_limit | 浓度超标报警 |
-| `LOW` | ppm < low_limit | 浓度过低报警 (可选) |
-| `LOW_BAT` | bat < bat_limit | 低电量报警 (默认 20%) |
-| `OFFLINE` | 设备离线 | 超过 90 秒无数据上报 |
+| 类型      | 触发条件         | 说明                  |
+| --------- | ---------------- | --------------------- |
+| `HIGH`    | ppm > high_limit | 浓度超标报警          |
+| `LOW`     | ppm < low_limit  | 浓度过低报警 (可选)   |
+| `LOW_BAT` | bat < bat_limit  | 低电量报警 (默认 20%) |
+| `OFFLINE` | 设备离线         | 超过 90 秒无数据上报  |
 
 ### 通知渠道
 
-| 渠道 | 配置项 | 说明 |
-|------|--------|------|
-| **邮件** | SMTP 配置 | 支持 QQ/163/企业邮箱 |
+| 渠道        | 配置项         | 说明                          |
+| ----------- | -------------- | ----------------------------- |
+| **邮件**    | SMTP 配置      | 支持 QQ/163/企业邮箱          |
 | **Webhook** | URL + 平台类型 | 钉钉/飞书/企业微信 (支持加签) |
-| **短信** | 阿里云 SMS | 需配置 AccessKey 和模板 |
+| **短信**    | 阿里云 SMS     | 需配置 AccessKey 和模板       |
 
 ### 时段限制
 
@@ -916,12 +916,12 @@ docker-compose ps
 
 ### 访问地址
 
-| 服务 | 地址 | 说明 |
-|------|------|------|
-| 前端 | <http://localhost> | Vue Admin 界面 |
-| 大屏 | <http://localhost/screen> | 可视化大屏 |
-| API | <http://localhost:8000/docs> | Swagger 文档 |
-| 健康检查 | <http://localhost/api/health> | 系统状态 |
+| 服务     | 地址                          | 说明           |
+| -------- | ----------------------------- | -------------- |
+| 前端     | <http://localhost>            | Vue Admin 界面 |
+| 大屏     | <http://localhost/screen>     | 可视化大屏     |
+| API      | <http://localhost:8000/docs>  | Swagger 文档   |
+| 健康检查 | <http://localhost/api/health> | 系统状态       |
 
 ### 默认账号
 
@@ -1051,13 +1051,13 @@ CREATE TABLE users (
 
 ## 🔐 安全特性
 
-| 特性 | 实现 |
-|------|------|
-| MQTT 认证 | 用户名/密码 + ACL 访问控制 |
-| MQTT 加密 | TLS 1.2+ (端口 8883) |
-| API 认证 | JWT Token (24小时过期) |
-| 授权保护 | 硬件指纹 + 在线校验 + 宽限期 |
-| Webhook 签名 | 钉钉机器人加签验证 |
+| 特性         | 实现                         |
+| ------------ | ---------------------------- |
+| MQTT 认证    | 用户名/密码 + ACL 访问控制   |
+| MQTT 加密    | TLS 1.2+ (端口 8883)         |
+| API 认证     | JWT Token (24 小时过期)      |
+| 授权保护     | 硬件指纹 + 在线校验 + 宽限期 |
+| Webhook 签名 | 钉钉机器人加签验证           |
 
 ---
 
@@ -1095,6 +1095,96 @@ curl http://localhost/api/health
 # 数据库备份
 ./scripts/backup.sh
 ```
+
+---
+
+## 🌐 生产环境部署
+
+### 1. 申请 SSL 证书 (Let's Encrypt)
+
+使用 Certbot 免费申请 SSL 证书，支持自动续期：
+
+```bash
+# 安装 Certbot
+sudo apt update
+sudo apt install -y certbot
+
+# 停止占用 80 端口的服务
+docker-compose down
+
+# 申请证书 (替换为你的域名和邮箱)
+sudo certbot certonly --standalone \
+    -d iot.yourdomain.com \
+    -d mqtt.yourdomain.com \
+    --email your@email.com \
+    --agree-tos \
+    --non-interactive
+
+# 证书会保存在:
+# /etc/letsencrypt/live/iot.yourdomain.com/fullchain.pem (证书链)
+# /etc/letsencrypt/live/iot.yourdomain.com/privkey.pem   (私钥)
+```
+
+### 2. 复制证书到项目目录
+
+```bash
+# 创建证书目录
+mkdir -p nginx/ssl
+
+# 复制证书 (需要 root 权限)
+sudo cp /etc/letsencrypt/live/iot.yourdomain.com/fullchain.pem nginx/ssl/server.crt
+sudo cp /etc/letsencrypt/live/iot.yourdomain.com/privkey.pem nginx/ssl/server.key
+sudo cp /etc/letsencrypt/live/iot.yourdomain.com/chain.pem nginx/ssl/ca.crt
+
+# 设置权限
+sudo chmod 644 nginx/ssl/*.crt nginx/ssl/*.key
+sudo chown $USER:$USER nginx/ssl/*
+```
+
+### 3. 启用 Mosquitto SSL
+
+编辑 `mosquitto/config/mosquitto.conf`，取消注释 SSL 部分：
+
+```bash
+# =================================================================
+# Listener 2: SSL (Port 8883) - Device Connections
+# =================================================================
+listener 8883
+allow_anonymous false
+password_file /mosquitto/config/passwd
+acl_file /mosquitto/config/acl
+cafile /mosquitto/certs/ca.crt
+certfile /mosquitto/certs/server.crt
+keyfile /mosquitto/certs/server.key
+require_certificate false
+```
+
+### 4. 使用生产环境配置启动
+
+```bash
+# 使用生产环境 docker-compose 配置
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+### 5. 设置证书自动续期
+
+```bash
+# 测试续期
+sudo certbot renew --dry-run
+
+# 添加续期后自动复制证书的钩子脚本
+sudo tee /etc/letsencrypt/renewal-hooks/deploy/mcs-iot.sh << 'EOF'
+#!/bin/bash
+cp /etc/letsencrypt/live/iot.yourdomain.com/fullchain.pem /opt/mcs-iot/nginx/ssl/server.crt
+cp /etc/letsencrypt/live/iot.yourdomain.com/privkey.pem /opt/mcs-iot/nginx/ssl/server.key
+cp /etc/letsencrypt/live/iot.yourdomain.com/chain.pem /opt/mcs-iot/nginx/ssl/ca.crt
+cd /opt/mcs-iot && docker-compose restart mosquitto frontend
+EOF
+
+sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/mcs-iot.sh
+```
+
+> 💡 **提示**: Let's Encrypt 证书有效期 90 天，Certbot 会自动续期。
 
 ---
 

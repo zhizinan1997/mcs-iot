@@ -3,7 +3,8 @@
     <!-- Sidebar -->
     <el-aside width="220px" class="sidebar">
       <div class="logo">
-        <h2>MCS-IoT</h2>
+        <img v-if="siteConfig.logo_url" :src="siteConfig.logo_url" class="logo-img" alt="Logo" />
+        <h2 v-if="!siteConfig.logo_url || siteConfig.site_name">{{ siteConfig.site_name }}</h2>
       </div>
       
       <el-menu
@@ -42,6 +43,9 @@
       <!-- Header -->
       <el-header class="header">
         <div class="header-left">
+          <div class="header-logo" v-if="siteConfig.logo_url">
+             <img :src="siteConfig.logo_url" class="header-logo-img" alt="Logo" />
+          </div>
           <el-breadcrumb separator="/">
             <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
             <el-breadcrumb-item>{{ route.name }}</el-breadcrumb-item>
@@ -75,13 +79,39 @@
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { configApi } from '../api'
 import { ElMessage } from 'element-plus'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+
+const siteConfig = ref({
+  site_name: "MCS-IoT",
+  logo_url: "",
+  browser_title: ""
+})
+
+async function loadSiteConfig() {
+  try {
+    const res = await configApi.getSite()
+    if (res.data) {
+      siteConfig.value = { ...siteConfig.value, ...res.data }
+      if (siteConfig.value.browser_title) {
+        document.title = siteConfig.value.browser_title
+      }
+    }
+  } catch (error) {
+    console.error("Failed to load site config")
+  }
+}
+
+onMounted(() => {
+  loadSiteConfig()
+})
 
 function handleLogout() {
   authStore.logout()
@@ -105,12 +135,22 @@ function handleLogout() {
   align-items: center;
   justify-content: center;
   background-color: #263445;
+  gap: 10px;
+  padding: 0 10px;
+}
+
+.logo-img {
+  height: 32px;
+  width: auto;
 }
 
 .logo h2 {
   color: #fff;
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .header {
@@ -125,6 +165,12 @@ function handleLogout() {
 .header-left {
   display: flex;
   align-items: center;
+  gap: 12px;
+}
+
+.header-logo-img {
+  height: 24px;
+  width: auto;
 }
 
 .header-right {

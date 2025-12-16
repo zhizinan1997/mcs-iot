@@ -74,6 +74,9 @@ class DeviceSimulator:
         if random.random() < 0.1:
             self.bat = max(10, self.bat - 1)
         
+        # 随机网络类型
+        net_types = ["4G", "5G", "WiFi", "NB-IoT", "LoRa"]
+        
         payload = {
             "ts": int(time.time()),
             "seq": self.seq,
@@ -82,7 +85,7 @@ class DeviceSimulator:
             "humi": round(humi, 1),
             "bat": self.bat,
             "rssi": random.randint(-85, -60),
-            "net": "4G",
+            "net": random.choice(net_types),
             "err": 0
         }
         self.seq = (self.seq + 1) % 65536

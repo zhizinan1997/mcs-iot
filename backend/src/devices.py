@@ -21,6 +21,9 @@ class DeviceResponse(DeviceBase):
     status: str = "offline"
     last_seen: Optional[datetime] = None
     last_ppm: Optional[float] = None
+    battery: Optional[int] = None  # 电池百分比
+    rssi: Optional[int] = None     # 信号强度 (dBm)
+    network: Optional[str] = None  # 网络类型 (4G, WiFi等)
 
 class DeviceList(BaseModel):
     total: int
@@ -53,7 +56,7 @@ async def list_devices(
     async with db.acquire() as conn:
         total = await conn.fetchval("SELECT COUNT(*) FROM devices")
         rows = await conn.fetch(
-            "SELECT sn, name, model, high_limit, low_limit, k_val, b_val, t_coef, status, last_seen FROM devices ORDER BY sn LIMIT $1 OFFSET $2",
+            "SELECT sn, name, model, high_limit, low_limit, calib_k, calib_b, calib_t_comp, status, last_seen FROM devices ORDER BY sn LIMIT $1 OFFSET $2",
             size, offset
         )
     
@@ -69,12 +72,15 @@ async def list_devices(
             model=row['model'],
             high_limit=row['high_limit'] or 1000,
             low_limit=row['low_limit'],
-            k_val=row['k_val'] or 1.0,
-            b_val=row['b_val'] or 0.0,
-            t_coef=row['t_coef'] or 0.0,
+            k_val=row['calib_k'] or 1.0,
+            b_val=row['calib_b'] or 0.0,
+            t_coef=row['calib_t_comp'] or 0.0,
             status="online" if is_online else "offline",
             last_seen=row['last_seen'],
-            last_ppm=float(rt_data.get('ppm')) if rt_data.get('ppm') else None
+            last_ppm=float(rt_data.get('ppm')) if rt_data.get('ppm') else None,
+            battery=int(rt_data.get('bat')) if rt_data.get('bat') else None,
+            rssi=int(rt_data.get('rssi')) if rt_data.get('rssi') else None,
+            network=rt_data.get('net') if rt_data.get('net') else None
         ))
     
     return DeviceList(total=total, data=devices)
@@ -96,12 +102,15 @@ async def get_device(sn: str, db = Depends(get_db), redis = Depends(get_redis)):
         model=row['model'],
         high_limit=row['high_limit'] or 1000,
         low_limit=row['low_limit'],
-        k_val=row['k_val'] or 1.0,
-        b_val=row['b_val'] or 0.0,
-        t_coef=row['t_coef'] or 0.0,
+        k_val=row['calib_k'] or 1.0,
+        b_val=row['calib_b'] or 0.0,
+        t_coef=row['calib_t_comp'] or 0.0,
         status="online" if is_online else "offline",
         last_seen=row['last_seen'],
-        last_ppm=float(rt_data.get('ppm')) if rt_data.get('ppm') else None
+        last_ppm=float(rt_data.get('ppm')) if rt_data.get('ppm') else None,
+        battery=int(rt_data.get('bat')) if rt_data.get('bat') else None,
+        rssi=int(rt_data.get('rssi')) if rt_data.get('rssi') else None,
+        network=rt_data.get('net') if rt_data.get('net') else None
     )
 
 @router.post("")
@@ -109,7 +118,7 @@ async def create_device(device: DeviceBase, db = Depends(get_db)):
     async with db.acquire() as conn:
         try:
             await conn.execute(
-                """INSERT INTO devices (sn, name, model, high_limit, low_limit, k_val, b_val, t_coef) 
+                """INSERT INTO devices (sn, name, model, high_limit, low_limit, calib_k, calib_b, calib_t_comp) 
                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)""",
                 device.sn, device.name, device.model, device.high_limit, device.low_limit,
                 device.k_val, device.b_val, device.t_coef
@@ -123,7 +132,7 @@ async def update_device(sn: str, device: DeviceBase, db = Depends(get_db), redis
     async with db.acquire() as conn:
         result = await conn.execute(
             """UPDATE devices SET name=$2, model=$3, high_limit=$4, low_limit=$5, 
-               k_val=$6, b_val=$7, t_coef=$8 WHERE sn=$1""",
+               calib_k=$6, calib_b=$7, calib_t_comp=$8 WHERE sn=$1""",
             sn, device.name, device.model, device.high_limit, device.low_limit,
             device.k_val, device.b_val, device.t_coef
         )
@@ -151,33 +160,69 @@ async def delete_device(sn: str, db = Depends(get_db)):
 @router.get("/{sn}/history")
 async def get_device_history(
     sn: str,
-    start: datetime = Query(None),
-    end: datetime = Query(None),
-    interval: str = Query("1m"),
+    hours: int = Query(1, ge=1, le=72),  # 1-72 hours
     db = Depends(get_db)
 ):
-    # Default to last 1 hour
-    if not end:
-        end = datetime.now()
-    if not start:
-        start = end - timedelta(hours=1)
+    """Get device history data for charts
+    
+    Args:
+        sn: Device serial number
+        hours: Time range in hours (1, 3, 24, 72)
+    """
+    end = datetime.now()
+    start = end - timedelta(hours=hours)
+    
+    # Choose interval based on time range
+    if hours <= 1:
+        interval = timedelta(minutes=1)
+    elif hours <= 3:
+        interval = timedelta(minutes=2)
+    elif hours <= 24:
+        interval = timedelta(minutes=10)
+    else:
+        interval = timedelta(minutes=30)
     
     async with db.acquire() as conn:
         rows = await conn.fetch(
-            """SELECT time_bucket($1::interval, time) AS bucket, 
-                      AVG(ppm) as ppm, AVG(temp) as temp
+            """SELECT time_bucket($1, time) AS bucket, 
+                      AVG(ppm) as ppm, AVG(temp) as temp, AVG(humi) as humi
                FROM sensor_data 
                WHERE sn = $2 AND time BETWEEN $3 AND $4
                GROUP BY bucket ORDER BY bucket""",
             interval, sn, start, end
+        )
+        
+        # Also get alarms in this period
+        alarms = await conn.fetch(
+            """SELECT triggered_at, type, value 
+               FROM alarm_logs 
+               WHERE sn = $1 AND triggered_at BETWEEN $2 AND $3
+               ORDER BY triggered_at""",
+            sn, start, end
         )
     
     return {
         "sn": sn,
         "start": start.isoformat(),
         "end": end.isoformat(),
-        "interval": interval,
-        "points": [{"ts": r['bucket'].isoformat(), "ppm": r['ppm'], "temp": r['temp']} for r in rows]
+        "hours": hours,
+        "points": [
+            {
+                "ts": r['bucket'].isoformat(), 
+                "ppm": round(r['ppm'], 2) if r['ppm'] else None, 
+                "temp": round(r['temp'], 1) if r['temp'] else None,
+                "humi": round(r['humi'], 1) if r['humi'] else None
+            } 
+            for r in rows
+        ],
+        "alarms": [
+            {
+                "ts": a['triggered_at'].isoformat(),
+                "type": a['type'],
+                "value": a['value']
+            }
+            for a in alarms
+        ]
     }
 
 from datetime import timedelta

@@ -57,6 +57,7 @@ class Processor:
             "humi": str(data.get('humi', 0)),
             "bat": str(bat),
             "rssi": str(data.get('rssi', 0)),
+            "net": str(data.get('net', '')),
             "ts": str(int(data.get('ts', 0)))
         }
         await self.redis.hset(f"realtime:{sn}", mapping=rt_data)

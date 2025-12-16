@@ -68,7 +68,14 @@ export const configApi = {
     // MQTT 账号管理
     getMqtt: () => api.get('/config/mqtt'),
     updateMqtt: (data: any) => api.put('/config/mqtt', data),
-    reloadMqtt: () => api.post('/config/mqtt/reload')
+    reloadMqtt: () => api.post('/config/mqtt/reload'),
+    // R2 归档配置
+    getArchive: () => api.get('/config/archive'),
+    updateArchive: (data: any) => api.put('/config/archive', data),
+    testArchive: () => api.post('/config/archive/test'),
+    // 站点品牌配置
+    getSite: () => api.get('/config/site'),
+    updateSite: (data: any) => api.put('/config/site', data)
 }
 
 // Dashboard API
