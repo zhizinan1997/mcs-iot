@@ -91,6 +91,67 @@
 
 ---
 
+## 🌐 网络配置
+
+### 端口说明
+
+| 端口 | 协议 | 用途 | 对外暴露 |
+|------|------|------|----------|
+| **80** | HTTP | Web 前端界面 | ✅ 必须 |
+| **443** | HTTPS | Web 前端界面 (SSL) | ✅ 生产环境必须 |
+| **8000** | HTTP | REST API | ⚠️ 开发环境（生产环境通过 Nginx 代理） |
+| **1883** | MQTT/TCP | 设备连接 (无加密) | ⚠️ 仅开发环境 |
+| **8883** | MQTTS/TLS | 设备连接 (加密) | ✅ 生产环境必须 |
+| **9001** | WebSocket | MQTT over WS | ❌ 可选 |
+| **5432** | TCP | PostgreSQL | ❌ 内部使用 |
+| **6379** | TCP | Redis | ❌ 内部使用 |
+
+### 域名配置
+
+生产环境部署需要配置以下域名：
+
+| 域名 | 用途 | 指向 |
+|------|------|------|
+| `iot.yourdomain.com` | Web 界面 + API | 服务器 IP (端口 80/443) |
+| `mqtt.yourdomain.com` | 设备 MQTT 连接 | 服务器 IP (端口 8883) |
+
+### 需要修改的配置文件
+
+部署到生产环境时，需要修改以下文件中的地址：
+
+```bash
+# 1. 前端 API 地址 (必须修改)
+frontend/src/api/index.ts
+  └── baseURL: 'https://iot.yourdomain.com/api'
+
+# 2. 设备固件中的 MQTT 地址
+  └── MQTT_HOST: mqtt.yourdomain.com
+  └── MQTT_PORT: 8883
+
+# 3. Nginx 配置 (生产环境)
+nginx/nginx.conf
+  └── server_name: iot.yourdomain.com
+
+# 4. 环境变量 (docker-compose.prod.yml)
+  └── JWT_SECRET: 改为安全的随机字符串
+  └── DB_PASS: 改为安全的数据库密码
+```
+
+### 防火墙规则
+
+```bash
+# 开放必要端口
+sudo ufw allow 80/tcp    # HTTP
+sudo ufw allow 443/tcp   # HTTPS
+sudo ufw allow 8883/tcp  # MQTTS (设备连接)
+
+# 可选 (开发调试用)
+sudo ufw allow 1883/tcp  # MQTT (无加密)
+sudo ufw allow 8000/tcp  # API 直连
+```
+
+---
+
 ## 🛠️ 技术栈
 
 ### 后端技术
