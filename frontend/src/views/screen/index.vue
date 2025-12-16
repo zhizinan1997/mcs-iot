@@ -1,5 +1,5 @@
 <template>
-  <div class="screen-container" ref="containerRef">
+  <div class="screen-container">
     <!-- Header -->
     <header class="screen-header">
       <div class="header-left">
@@ -82,7 +82,7 @@
           <div class="info-grid">
             <div class="info-item">
               <span class="label">浓度</span>
-              <span class="value" :class="{ alarm: selectedDevice.ppm > 1000 }">
+              <span class="value" :class="{ alarm: (selectedDevice.ppm ?? 0) > 1000 }">
                 {{ selectedDevice.ppm?.toFixed(2) || '-' }} ppm
               </span>
             </div>
@@ -164,7 +164,6 @@ interface Alarm {
   value: number
 }
 
-const containerRef = ref<HTMLElement>()
 const mapRef = ref<HTMLElement>()
 
 const currentTime = ref('')
@@ -297,7 +296,7 @@ function selectDevice(device: Device) {
   trendData.value = [] // Reset trend data
 }
 
-function onDragStart(event: DragEvent, device: Device) {
+function onDragStart(_event: DragEvent, device: Device) {
   draggingDevice.value = device
 }
 

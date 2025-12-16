@@ -113,6 +113,20 @@ services:
       - mcs-net
     restart: unless-stopped
 
+  # 🟠 Frontend (Vue + Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: mcs_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - mcs-net
+    restart: unless-stopped
+
 volumes:
   pg_data:
   redis_data:
