@@ -1015,10 +1015,10 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 /* ========== Markers: Breathing Light Bubbles ========== */
 .marker { position: absolute; cursor: pointer; transform: translate(-50%, -50%); z-index: 10; }
 .marker .dot {
-  display: block; width: 24px; height: 24px;
+  display: block; width: 19px; height: 19px;
   background: radial-gradient(circle, #4ade80 0%, #22c55e 40%, rgba(34,197,94,0.4) 80%);
   border-radius: 50%;
-  box-shadow: 0 0 20px #4ade80, 0 0 40px #22c55e, 0 0 60px rgba(34,197,94,0.6);
+  box-shadow: 0 0 18px #4ade80, 0 0 35px #22c55e, 0 0 50px rgba(34,197,94,0.6);
   animation: pulse 2s ease-in-out infinite;
 }
 .marker.alarm .dot {
