@@ -47,6 +47,10 @@ class SiteConfig(BaseModel):
     logo_url: str = ""
     browser_title: str = "MCS-IoT Dashboard"
 
+class ScreenBgConfig(BaseModel):
+    """大屏背景配置"""
+    image_url: str = ""
+
 async def get_redis():
     from .main import redis_pool
     return redis_pool
@@ -364,3 +368,15 @@ async def update_site_config(config: SiteConfig, redis = Depends(get_redis)):
     await redis.set("config:site", json.dumps(config.dict()))
     return config
 
+# Screen Background Config
+@router.get("/screen_bg", response_model=ScreenBgConfig)
+async def get_screen_bg_config(redis = Depends(get_redis)):
+    data = await redis.get("config:screen_bg")
+    if data:
+        return json.loads(data)
+    return ScreenBgConfig()
+
+@router.put("/screen_bg")
+async def update_screen_bg_config(config: ScreenBgConfig, redis = Depends(get_redis)):
+    await redis.set("config:screen_bg", json.dumps(config.dict()))
+    return config

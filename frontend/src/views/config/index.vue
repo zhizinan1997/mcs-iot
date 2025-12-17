@@ -828,4 +828,31 @@ onMounted(() => {
   border-radius: 4px;
   border: 1px solid rgba(0, 0, 0, 0.1);
 }
+
+.upload-area {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.bg-preview {
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  padding: 10px;
+  background: #f5f7fa;
+}
+
+.bg-preview img {
+  max-width: 400px;
+  max-height: 225px;
+  display: block;
+}
+
+.color-dot {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
 </style>

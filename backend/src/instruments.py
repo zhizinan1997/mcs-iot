@@ -18,6 +18,8 @@ class InstrumentResponse(InstrumentBase):
     id: int
     sensor_count: int = 0
     is_displayed: bool = True
+    pos_x: float = 50.0
+    pos_y: float = 50.0
     created_at: Optional[datetime] = None
 
 class InstrumentList(BaseModel):
@@ -51,6 +53,8 @@ async def list_instruments(db = Depends(get_db)):
                 color=row['color'] or '#409eff',
                 sort_order=row['sort_order'],
                 is_displayed=row['is_displayed'],
+                pos_x=row.get('pos_x', 50.0) or 50.0,
+                pos_y=row.get('pos_y', 50.0) or 50.0,
                 sensor_count=row['sensor_count'],
                 created_at=row['created_at']
             )
@@ -79,6 +83,8 @@ async def get_instrument(instrument_id: int, db = Depends(get_db)):
         color=row['color'] or '#409eff',
         sort_order=row['sort_order'],
         is_displayed=row['is_displayed'],
+        pos_x=row.get('pos_x', 50.0) or 50.0,
+        pos_y=row.get('pos_y', 50.0) or 50.0,
         sensor_count=row['sensor_count'],
         created_at=row['created_at']
     )
@@ -151,3 +157,23 @@ async def delete_instrument(instrument_id: int, db = Depends(get_db)):
             raise HTTPException(status_code=404, detail="Instrument not found")
     
     return {"message": "Instrument deleted", "id": instrument_id}
+
+
+class PositionUpdate(BaseModel):
+    pos_x: float
+    pos_y: float
+
+
+@router.patch("/{instrument_id}/position")
+async def update_instrument_position(instrument_id: int, position: PositionUpdate, db = Depends(get_db)):
+    """更新仪表在大屏上的位置"""
+    async with db.acquire() as conn:
+        result = await conn.execute("""
+            UPDATE instruments SET pos_x=$2, pos_y=$3
+            WHERE id=$1
+        """, instrument_id, position.pos_x, position.pos_y)
+        
+        if result == "UPDATE 0":
+            raise HTTPException(status_code=404, detail="Instrument not found")
+    
+    return {"message": "Position updated", "id": instrument_id, "pos_x": position.pos_x, "pos_y": position.pos_y}

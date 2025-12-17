@@ -77,7 +77,21 @@ export const configApi = {
     testArchive: () => api.post('/config/archive/test'),
     // 站点品牌配置
     getSite: () => api.get('/config/site'),
-    updateSite: (data: any) => api.put('/config/site', data)
+    updateSite: (data: any) => api.put('/config/site', data),
+    // 大屏背景配置
+    getScreenBg: () => api.get('/config/screen_bg'),
+    updateScreenBg: (data: any) => api.put('/config/screen_bg', data)
+}
+
+// Upload API
+export const uploadApi = {
+    uploadImage: (file: File) => {
+        const formData = new FormData()
+        formData.append('file', file)
+        return api.post('/uploads', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        })
+    }
 }
 
 // Dashboard API
@@ -94,5 +108,7 @@ export const instrumentsApi = {
     get: (id: number) => api.get(`/instruments/${id}`),
     create: (data: any) => api.post('/instruments', data),
     update: (id: number, data: any) => api.put(`/instruments/${id}`, data),
-    delete: (id: number) => api.delete(`/instruments/${id}`)
+    delete: (id: number) => api.delete(`/instruments/${id}`),
+    updatePosition: (id: number, pos_x: number, pos_y: number) => 
+        api.patch(`/instruments/${id}/position`, { pos_x, pos_y })
 }

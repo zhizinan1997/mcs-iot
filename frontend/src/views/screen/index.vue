@@ -111,26 +111,25 @@
           <div class="alert-bar">
             园区严重污染物: <strong>{{ topPollutant.name }}</strong> ({{ topPollutant.value }} {{ topPollutant.unit }})
           </div>
-          <div class="map-box">
-            <!-- 3D Building Placeholder Image - Replace src with actual 3D factory image -->
-            <img class="map-bg-image" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" alt="3D Factory Map" />
+          <div class="map-box" :style="mapBoxStyle">
             <div class="map-3d">
               <div
-                v-for="d in devices"
-                :key="d.sn"
+                v-for="inst in displayedInstruments"
+                :key="inst.id"
                 class="marker"
-                :class="{ alarm: (d.ppm||0) > 1000 }"
-                :style="{ left: pos(d.sn, 'x') + '%', top: pos(d.sn, 'y') + '%' }"
-                @click="selected = selected === d.sn ? null : d.sn"
+                :class="{ alarm: instrumentHasAlarm(inst.id) }"
+                :style="{ left: instrumentPos(inst.id, 'x') + '%', top: instrumentPos(inst.id, 'y') + '%' }"
+                @click="selectedInstrument = selectedInstrument === inst.id ? null : inst.id"
               >
                 <span class="dot"></span>
-                <span class="pin-line"></span>
-                <span class="name">{{ d.name || d.sn }}</span>
-                <div class="tooltip" v-if="selected === d.sn">
-                  <p><b>{{ d.name }}</b></p>
-                  <p>SN: {{ d.sn }}</p>
-                  <p>状态: {{ d.status }}</p>
-                  <p class="val">{{ d.ppm?.toFixed(1) }} {{ d.unit }}</p>
+                <span class="name">{{ inst.name }}</span>
+                <div class="tooltip" v-if="selectedInstrument === inst.id">
+                  <p><b>{{ inst.name }}</b></p>
+                  <p v-if="inst.description">{{ inst.description }}</p>
+                  <p>传感器数量: {{ getInstrumentDevices(inst.id).length }}</p>
+                  <p :class="{ 'alarm-text': instrumentHasAlarm(inst.id) }">
+                    状态: {{ instrumentHasAlarm(inst.id) ? '⚠️ 告警中' : '✅ 正常' }}
+                  </p>
                 </div>
               </div>
             </div>
@@ -218,7 +217,7 @@ import { CanvasRenderer } from 'echarts/renderers'
 import { PieChart, LineChart, GaugeChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import VChart, { THEME_KEY } from 'vue-echarts'
-import { dashboardApi, alarmsApi, instrumentsApi } from '../../api'
+import { dashboardApi, alarmsApi, instrumentsApi, configApi } from '../../api'
 // @ts-ignore - splitpanes doesn't have type declarations
 import { Splitpanes, Pane } from 'splitpanes'
 import 'splitpanes/dist/splitpanes.css'
@@ -291,15 +290,15 @@ function onLeftCenterResize(panes: Array<{ size: number }>) {
   }
 }
 
-interface Device { sn: string; name: string | null; ppm: number | null; temp: number | null; status: string; unit: string }
+interface Device { sn: string; name: string | null; ppm: number | null; temp: number | null; status: string; unit: string; instrument_id?: number | null; high_limit?: number }
 interface Alarm { id: number; time: string; sn: string; value: number }
-interface Instrument { id: number; name: string; description: string | null; color: string | null; is_displayed?: boolean; sensor_count?: number; sensor_types?: string }
+interface Instrument { id: number; name: string; description: string | null; color: string | null; is_displayed?: boolean; sensor_count?: number; sensor_types?: string; pos_x?: number; pos_y?: number }
 
 const currentDate = ref('')
 const devices = ref<Device[]>([])
 const alarms = ref<Alarm[]>([])
 const instruments = ref<Instrument[]>([])
-const selected = ref<string | null>(null)
+const selectedInstrument = ref<number | null>(null)
 const trend = ref<number[]>([])
 const trendLabels = ref<string[]>([])
 const stats = reactive({ devices_total: 0, devices_online: 0 })
@@ -315,6 +314,31 @@ const displayedInstruments = computed(() => {
   // Filter for instruments where is_displayed is explicitly true
   return instruments.value.filter((i: Instrument) => i.is_displayed === true)
 })
+
+// Get devices belonging to a specific instrument
+function getInstrumentDevices(instrumentId: number): Device[] {
+  return devices.value.filter((d: Device) => d.instrument_id === instrumentId)
+}
+
+// Check if any device in the instrument has alarm (ppm > high_limit or > 1000)
+function instrumentHasAlarm(instrumentId: number): boolean {
+  const instrumentDevices = getInstrumentDevices(instrumentId)
+  return instrumentDevices.some((d: Device) => {
+    const limit = d.high_limit || 1000
+    return (d.ppm || 0) > limit
+  })
+}
+
+// Get position for instrument marker from database
+function instrumentPos(id: number, axis: 'x' | 'y'): number {
+  const inst = instruments.value.find((i: Instrument) => i.id === id)
+  if (inst) {
+    return axis === 'x' ? (inst.pos_x || 50) : (inst.pos_y || 50)
+  }
+  // Fallback: generate position based on ID
+  const seed = axis === 'x' ? id * 13 : id * 17 + 7
+  return 15 + (seed % 70)
+}
 
 const safetyPercent = computed(() => {
   if (!stats.devices_total) return 0
@@ -441,11 +465,6 @@ const trendOption = computed(() => ({
   }]
 }))
 
-function pos(sn: string, axis: 'x' | 'y'): number {
-  let h = 0; const s = axis === 'x' ? sn : sn.split('').reverse().join('')
-  for (let i = 0; i < s.length; i++) { h = ((h << 5) - h) + s.charCodeAt(i); h |= 0 }
-  return 15 + Math.abs(h % 70)
-}
 function fmtTime(t: string) { return new Date(t).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) }
 
 async function fetchData() {
@@ -547,10 +566,36 @@ async function fetchAI() {
 
 let timer: ReturnType<typeof setInterval>
 let aiTimer: ReturnType<typeof setInterval>
+
+// Screen Background
+const screenBgUrl = ref('')
+const mapBoxStyle = computed(() => {
+  if (screenBgUrl.value) {
+    return {
+      backgroundImage: `url(${screenBgUrl.value})`,
+      backgroundSize: '100% 100%',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat'
+    }
+  }
+  return {}
+})
+
+async function fetchScreenBg() {
+  try {
+    const res = await configApi.getScreenBg()
+    if (res.data?.image_url) {
+      screenBgUrl.value = res.data.image_url
+    }
+  } catch (e) {
+    console.log('No screen background configured')
+  }
+}
+
 onMounted(() => {
   loadLayoutSizes() // Restore saved panel sizes
   currentDate.value = new Date().toLocaleDateString('zh-CN')
-  fetchData(); fetchWeather(); fetchAI()
+  fetchData(); fetchWeather(); fetchAI(); fetchScreenBg()
   timer = setInterval(() => { currentDate.value = new Date().toLocaleDateString('zh-CN'); fetchData() }, 3000)
   aiTimer = setInterval(fetchAI, 60000) // Refresh AI summary every minute
 })
@@ -970,26 +1015,19 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 /* ========== Markers: Breathing Light Bubbles ========== */
 .marker { position: absolute; cursor: pointer; transform: translate(-50%, -50%); z-index: 10; }
 .marker .dot {
-  display: block; width: 14px; height: 14px;
-  background: radial-gradient(circle, #22d3ee 30%, rgba(34,211,238,0.6) 70%);
+  display: block; width: 24px; height: 24px;
+  background: radial-gradient(circle, #4ade80 0%, #22c55e 40%, rgba(34,197,94,0.4) 80%);
   border-radius: 50%;
-  box-shadow: 0 0 15px #22d3ee, 0 0 30px rgba(34,211,238,0.4);
+  box-shadow: 0 0 20px #4ade80, 0 0 40px #22c55e, 0 0 60px rgba(34,197,94,0.6);
   animation: pulse 2s ease-in-out infinite;
 }
 .marker.alarm .dot {
-  background: radial-gradient(circle, #f87171 30%, rgba(248,113,113,0.6) 70%);
-  box-shadow: 0 0 15px #f87171, 0 0 30px rgba(248,113,113,0.4);
+  background: radial-gradient(circle, #fb923c 0%, #f97316 40%, rgba(249,115,22,0.4) 80%);
+  box-shadow: 0 0 20px #fb923c, 0 0 40px #f97316, 0 0 60px rgba(249,115,22,0.6);
 }
 @keyframes pulse {
-  0%, 100% { transform: scale(1); box-shadow: 0 0 15px currentColor, 0 0 30px rgba(34,211,238,0.4); }
-  50% { transform: scale(1.3); box-shadow: 0 0 25px currentColor, 0 0 50px rgba(34,211,238,0.6); }
-}
-/* Pin line connecting to ground */
-.marker .pin-line {
-  position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
-  width: 1px; height: 30px;
-  background: linear-gradient(to bottom, #22d3ee, transparent);
-  opacity: 0.5;
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.4); opacity: 1; }
 }
 .marker .name {
   position: absolute; top: -24px; left: 50%; transform: translateX(-50%);

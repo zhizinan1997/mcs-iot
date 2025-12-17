@@ -107,6 +107,7 @@ services:
       - ./backend/src:/app/src
       - ./mosquitto/config:/app/mosquitto # MQTT 配置管理
       - /var/run/docker.sock:/var/run/docker.sock # Docker API 用于重载 Mosquitto
+      - uploads_data:/app/uploads # 持久化上传文件
     depends_on:
       timescaledb:
         condition: service_healthy
@@ -133,6 +134,7 @@ services:
 volumes:
   pg_data:
   redis_data:
+  uploads_data:
 
 
 networks:

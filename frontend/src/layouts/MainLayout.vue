@@ -35,10 +35,20 @@
           <span>系统配置</span>
         </el-menu-item>
         <el-divider />
-        <el-menu-item index="/screen">
-          <el-icon><FullScreen /></el-icon>
-          <span>可视化大屏</span>
-        </el-menu-item>
+        <el-sub-menu index="/screen-group">
+          <template #title>
+            <el-icon><FullScreen /></el-icon>
+            <span>可视化大屏</span>
+          </template>
+          <el-menu-item index="/screen">
+            <el-icon><Monitor /></el-icon>
+            <span>大屏显示</span>
+          </el-menu-item>
+          <el-menu-item index="/screen/background">
+            <el-icon><Picture /></el-icon>
+            <span>背景设置</span>
+          </el-menu-item>
+        </el-sub-menu>
       </el-menu>
     </el-aside>
     

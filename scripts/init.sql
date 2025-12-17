@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS instruments (
     color VARCHAR(16) DEFAULT '#409eff',
     sort_order INT DEFAULT 0,
     is_displayed BOOLEAN DEFAULT TRUE,
+    pos_x FLOAT DEFAULT 50.0,      -- 大屏 X 坐标 (百分比 0-100)
+    pos_y FLOAT DEFAULT 50.0,      -- 大屏 Y 坐标 (百分比 0-100)
     created_at TIMESTAMP DEFAULT NOW()
 );
 
