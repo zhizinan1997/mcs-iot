@@ -63,10 +63,10 @@
         </el-table-column>
         <el-table-column prop="sn" label="传感器编号" min-width="100" sortable="custom" />
         <el-table-column prop="name" label="传感器名称" min-width="100" sortable="custom" />
-        <el-table-column prop="ppm" label="浓度 (PPM)" min-width="100" sortable="custom">
+        <el-table-column prop="ppm" label="监测值" min-width="120" sortable="custom">
           <template #default="{ row }">
             <span :class="{ 'alarm-value': row.ppm > 1000 }">
-              {{ row.ppm?.toFixed(2) || '-' }}
+              {{ row.ppm?.toFixed(2) }} {{ row.unit || 'ppm' }}
             </span>
           </template>
         </el-table-column>
@@ -202,6 +202,7 @@ interface Device {
   network: string | null
   instrument_name: string | null
   instrument_color: string | null
+  unit: string
 }
 
 interface HistoryPoint {

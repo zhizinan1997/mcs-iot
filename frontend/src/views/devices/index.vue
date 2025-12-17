@@ -23,6 +23,12 @@
         </el-table-column>
         <el-table-column prop="sn" label="传感器编号" min-width="120" sortable="custom" />
         <el-table-column prop="name" label="传感器名称" min-width="150" sortable="custom" />
+        <el-table-column prop="sensor_type" label="监测类型" width="100" align="center">
+          <template #default="{ row }">
+            {{ getSensorTypeName(row.sensor_type) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="unit" label="单位" width="70" align="center" />
         <el-table-column prop="status" label="状态" width="80" align="center" sortable="custom">
           <template #default="{ row }">
             <el-tag
@@ -77,7 +83,7 @@
         <el-table-column prop="last_ppm" label="当前浓度" width="110" align="right" sortable="custom">
           <template #default="{ row }">
             <span v-if="row.last_ppm != null" :class="{ 'alarm-value': row.last_ppm > row.high_limit }">
-              {{ row.last_ppm.toFixed(1) }} ppm
+              {{ row.last_ppm.toFixed(1) }} {{ row.unit || 'ppm' }}
             </span>
             <span v-else>-</span>
           </template>
@@ -120,6 +126,31 @@
         </el-form-item>
         <el-form-item label="传感器型号">
           <el-input v-model="form.model" placeholder="如: MCS-100" />
+        </el-form-item>
+        <el-form-item label="监测类型">
+          <el-select v-model="form.sensor_type" @change="handleTypeChange" placeholder="选择类型">
+            <el-option
+              v-for="type in sensorTypes"
+              :key="type.value"
+              :label="type.label"
+              :value="type.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="单位">
+          <el-select
+            v-if="availableUnits.length > 0 && form.sensor_type !== 'custom'"
+            v-model="form.unit"
+            placeholder="选择单位"
+          >
+            <el-option
+              v-for="unit in availableUnits"
+              :key="unit"
+              :label="unit"
+              :value="unit"
+            />
+          </el-select>
+          <el-input v-else v-model="form.unit" placeholder="输入单位" />
         </el-form-item>
         <el-form-item label="所属仪表">
           <el-select v-model="form.instrument_id" placeholder="选择仪表" clearable style="width: 100%">
@@ -218,6 +249,8 @@ interface Device {
   sn: string;
   name: string;
   model: string;
+  sensor_type: string;
+  unit: string;
   k_val: number;
   b_val: number;
   t_coef: number;
@@ -254,6 +287,8 @@ const form = reactive({
   sn: "",
   name: "",
   model: "",
+  sensor_type: "custom",
+  unit: "ppm",
   k_val: 1.0,
   b_val: 0.0,
   t_coef: 0.0,
@@ -262,6 +297,37 @@ const form = reactive({
   instrument_id: null as number | null,
   sensor_order: 0,
 });
+
+const sensorTypes = [
+  { label: '氢气 (H2)', value: 'H2', units: ['ppm', '%'] },
+  { label: '甲烷 (CH4)', value: 'CH4', units: ['ppm', '%'] },
+  { label: '温度', value: 'Temperature', units: ['°C', '°F'] },
+  { label: '湿度', value: 'Humidity', units: ['%RH'] },
+  { label: 'VOCs', value: 'VOCs', units: ['ppm', '%'] },
+  { label: 'PM2.5', value: 'PM2.5', units: ['μg/m³'] },
+  { label: '自定义', value: 'custom', units: [] }
+];
+
+const availableUnits = ref<string[]>([]);
+
+function getSensorTypeName(value: string) {
+  const type = sensorTypes.find(t => t.value === value);
+  return type ? type.label : value;
+}
+
+function handleTypeChange(val: string) {
+  const type = sensorTypes.find(t => t.value === val);
+  if (type) {
+    availableUnits.value = type.units;
+    if (type.value === 'custom') {
+      form.unit = '';
+    } else if (type.units.length > 0) {
+      form.unit = type.units[0] || ''; // Default to first unit
+    }
+  } else {
+    availableUnits.value = [];
+  }
+}
 
 
 
@@ -293,6 +359,8 @@ function showAddDialog() {
     sn: "",
     name: "",
     model: "",
+    sensor_type: "custom",
+    unit: "ppm",
     k_val: 1.0,
     b_val: 0.0,
     t_coef: 0.0,
@@ -301,12 +369,17 @@ function showAddDialog() {
     instrument_id: null,
     sensor_order: 0,
   });
+  handleTypeChange('custom');
   dialogVisible.value = true;
 }
 
 function editDevice(device: Device) {
   isEdit.value = true;
   Object.assign(form, device);
+  // Initial unit options
+  handleTypeChange(device.sensor_type);
+  // Restore unit (handleTypeChange might reset it)
+  form.unit = device.unit;
   dialogVisible.value = true;
 }
 

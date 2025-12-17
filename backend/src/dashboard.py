@@ -56,6 +56,7 @@ class DeviceRealtime(BaseModel):
     network: Optional[str] = None
     instrument_name: Optional[str] = None
     instrument_color: Optional[str] = None
+    unit: str = "ppm"
 
 @router.get("/stats", response_model=DashboardStats)
 async def get_dashboard_stats(db = Depends(get_db), redis = Depends(get_redis)):
@@ -93,7 +94,7 @@ async def get_realtime_data(db = Depends(get_db), redis = Depends(get_redis)):
     
     async with db.acquire() as conn:
         rows = await conn.fetch("""
-            SELECT d.sn, d.name,
+            SELECT d.sn, d.name, d.unit,
                    i.name as instrument_name, i.color as instrument_color
             FROM devices d
             LEFT JOIN instruments i ON d.instrument_id = i.id
@@ -118,7 +119,8 @@ async def get_realtime_data(db = Depends(get_db), redis = Depends(get_redis)):
             rssi=int(rt_data.get('rssi')) if rt_data.get('rssi') else None,
             network=rt_data.get('net') if rt_data.get('net') else None,
             instrument_name=row['instrument_name'],
-            instrument_color=row['instrument_color']
+            instrument_color=row['instrument_color'],
+            unit=row['unit']
         ))
     
     return devices
@@ -139,7 +141,7 @@ async def websocket_endpoint(websocket: WebSocket):
             # Get all device SNs (simplified)
             # In production, maintain a set of registered devices
             async with (await get_db()).acquire() as conn:
-                rows = await conn.fetch("SELECT sn, name FROM devices")
+                rows = await conn.fetch("SELECT sn, name, unit FROM devices")
             
             for row in rows:
                 sn = row['sn']
@@ -151,7 +153,8 @@ async def websocket_endpoint(websocket: WebSocket):
                     "name": row['name'],
                     "ppm": float(rt_data.get('ppm')) if rt_data.get('ppm') else None,
                     "temp": float(rt_data.get('temp')) if rt_data.get('temp') else None,
-                    "status": "online" if is_online else "offline"
+                    "status": "online" if is_online else "offline",
+                    "unit": row['unit']
                 })
             
             await websocket.send_json({

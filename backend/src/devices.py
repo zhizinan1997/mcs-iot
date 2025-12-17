@@ -11,6 +11,8 @@ class DeviceBase(BaseModel):
     sn: str
     name: Optional[str] = None
     model: Optional[str] = None
+    sensor_type: str = "custom"
+    unit: str = "ppm"
     high_limit: float = 1000.0
     low_limit: Optional[float] = None
     k_val: float = 1.0
@@ -62,7 +64,7 @@ async def list_devices(
     async with db.acquire() as conn:
         total = await conn.fetchval("SELECT COUNT(*) FROM devices")
         rows = await conn.fetch(
-            """SELECT d.sn, d.name, d.model, d.high_limit, d.low_limit, d.calib_k, d.calib_b, 
+            """SELECT d.sn, d.name, d.model, d.sensor_type, d.unit, d.high_limit, d.low_limit, d.calib_k, d.calib_b, 
                       d.calib_t_comp, d.status, d.last_seen,
                       d.instrument_id, d.sensor_order, i.name as instrument_name, i.color as instrument_color
                FROM devices d 
@@ -82,6 +84,8 @@ async def list_devices(
             sn=row['sn'],
             name=row['name'],
             model=row['model'],
+            sensor_type=row['sensor_type'],
+            unit=row['unit'],
             high_limit=row['high_limit'] or 1000,
             low_limit=row['low_limit'],
             k_val=row['calib_k'] or 1.0,
@@ -117,6 +121,8 @@ async def get_device(sn: str, db = Depends(get_db), redis = Depends(get_redis)):
         sn=row['sn'],
         name=row['name'],
         model=row['model'],
+        sensor_type=row['sensor_type'],
+        unit=row['unit'],
         high_limit=row['high_limit'] or 1000,
         low_limit=row['low_limit'],
         k_val=row['calib_k'] or 1.0,
@@ -135,9 +141,9 @@ async def create_device(device: DeviceBase, db = Depends(get_db)):
     async with db.acquire() as conn:
         try:
             await conn.execute(
-                """INSERT INTO devices (sn, name, model, high_limit, low_limit, calib_k, calib_b, calib_t_comp, instrument_id, sensor_order) 
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)""",
-                device.sn, device.name, device.model, device.high_limit, device.low_limit,
+                """INSERT INTO devices (sn, name, model, sensor_type, unit, high_limit, low_limit, calib_k, calib_b, calib_t_comp, instrument_id, sensor_order) 
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)""",
+                device.sn, device.name, device.model, device.sensor_type, device.unit, device.high_limit, device.low_limit,
                 device.k_val, device.b_val, device.t_coef, device.instrument_id, device.sensor_order
             )
         except Exception as e:
@@ -148,9 +154,9 @@ async def create_device(device: DeviceBase, db = Depends(get_db)):
 async def update_device(sn: str, device: DeviceBase, db = Depends(get_db), redis = Depends(get_redis)):
     async with db.acquire() as conn:
         result = await conn.execute(
-            """UPDATE devices SET name=$2, model=$3, high_limit=$4, low_limit=$5, 
-               calib_k=$6, calib_b=$7, calib_t_comp=$8, instrument_id=$9, sensor_order=$10 WHERE sn=$1""",
-            sn, device.name, device.model, device.high_limit, device.low_limit,
+            """UPDATE devices SET name=$2, model=$3, sensor_type=$4, unit=$5, high_limit=$6, low_limit=$7, 
+               calib_k=$8, calib_b=$9, calib_t_comp=$10, instrument_id=$11, sensor_order=$12 WHERE sn=$1""",
+            sn, device.name, device.model, device.sensor_type, device.unit, device.high_limit, device.low_limit,
             device.k_val, device.b_val, device.t_coef, device.instrument_id, device.sensor_order
         )
     
@@ -163,7 +169,8 @@ async def update_device(sn: str, device: DeviceBase, db = Depends(get_db), redis
     await redis.hset(f"device:{sn}", mapping={
         "name": device.name or sn,
         "high_limit": device.high_limit,
-        "low_limit": device.low_limit or ""
+        "low_limit": device.low_limit or "",
+        "unit": device.unit
     })
     
     return {"message": "Device updated", "sn": sn}
