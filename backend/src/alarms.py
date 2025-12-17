@@ -9,6 +9,9 @@ class AlarmLog(BaseModel):
     id: int
     time: datetime
     sn: str
+    device_name: Optional[str] = None
+    instrument_name: Optional[str] = None
+    instrument_color: Optional[str] = None
     type: str
     value: float
     threshold: float
@@ -59,9 +62,14 @@ async def list_alarms(
         
         params.extend([size, offset])
         rows = await conn.fetch(
-            f"""SELECT id, triggered_at as time, sn, type, value, threshold, status, notified 
-                FROM alarm_logs WHERE {where_sql} 
-                ORDER BY triggered_at DESC LIMIT ${param_idx} OFFSET ${param_idx+1}""",
+            f"""SELECT a.id, a.triggered_at as time, a.sn, d.name as device_name,
+                       i.name as instrument_name, i.color as instrument_color,
+                       a.type, a.value, a.threshold, a.status, a.notified 
+                FROM alarm_logs a
+                LEFT JOIN devices d ON a.sn = d.sn
+                LEFT JOIN instruments i ON d.instrument_id = i.id
+                WHERE {where_sql} 
+                ORDER BY a.triggered_at DESC LIMIT ${param_idx} OFFSET ${param_idx+1}""",
             *params
         )
     

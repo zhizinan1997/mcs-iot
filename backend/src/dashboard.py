@@ -54,12 +54,22 @@ class DeviceRealtime(BaseModel):
     battery: Optional[int] = None
     rssi: Optional[int] = None
     network: Optional[str] = None
+    instrument_name: Optional[str] = None
+    instrument_color: Optional[str] = None
 
 @router.get("/stats", response_model=DashboardStats)
 async def get_dashboard_stats(db = Depends(get_db), redis = Depends(get_redis)):
     async with db.acquire() as conn:
-        total = await conn.fetchval("SELECT COUNT(*) FROM devices")
-        online_count = await conn.fetchval("SELECT COUNT(*) FROM devices WHERE status = 'online'")
+        total = await conn.fetchval("""
+            SELECT COUNT(*) FROM devices d
+            LEFT JOIN instruments i ON d.instrument_id = i.id
+            WHERE i.id IS NULL OR i.is_displayed = TRUE
+        """)
+        online_count = await conn.fetchval("""
+            SELECT COUNT(*) FROM devices d
+            LEFT JOIN instruments i ON d.instrument_id = i.id
+            WHERE d.status = 'online' AND (i.id IS NULL OR i.is_displayed = TRUE)
+        """)
         alarms_today = await conn.fetchval(
             "SELECT COUNT(*) FROM alarm_logs WHERE triggered_at >= CURRENT_DATE"
         )
@@ -82,7 +92,13 @@ async def get_realtime_data(db = Depends(get_db), redis = Depends(get_redis)):
     devices = []
     
     async with db.acquire() as conn:
-        rows = await conn.fetch("SELECT sn, name FROM devices")
+        rows = await conn.fetch("""
+            SELECT d.sn, d.name,
+                   i.name as instrument_name, i.color as instrument_color
+            FROM devices d
+            LEFT JOIN instruments i ON d.instrument_id = i.id
+            WHERE i.id IS NULL OR i.is_displayed = TRUE
+        """)
     
     for row in rows:
         sn = row['sn']
@@ -100,7 +116,9 @@ async def get_realtime_data(db = Depends(get_db), redis = Depends(get_redis)):
             position_y=float(pos_data.get('y')) if pos_data.get('y') else None,
             battery=int(rt_data.get('bat')) if rt_data.get('bat') else None,
             rssi=int(rt_data.get('rssi')) if rt_data.get('rssi') else None,
-            network=rt_data.get('net') if rt_data.get('net') else None
+            network=rt_data.get('net') if rt_data.get('net') else None,
+            instrument_name=row['instrument_name'],
+            instrument_color=row['instrument_color']
         ))
     
     return devices

@@ -3,17 +3,27 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>设备管理</span>
+          <span>传感器管理</span>
           <el-button type="primary" @click="showAddDialog">
-            <el-icon><Plus /></el-icon> 添加设备
+            <el-icon><Plus /></el-icon> 添加传感器
           </el-button>
         </div>
       </template>
 
-      <el-table :data="devices" stripe v-loading="loading" style="width: 100%">
-        <el-table-column prop="sn" label="设备编号" min-width="120" />
-        <el-table-column prop="name" label="设备名称" min-width="150" />
-        <el-table-column label="状态" width="80" align="center">
+      <el-table :data="devices" stripe v-loading="loading" style="width: 100%" @sort-change="handleSortChange">
+        <el-table-column type="index" label="#" width="50" align="center" />
+        <el-table-column prop="instrument_name" label="仪表" min-width="140" sortable="custom">
+          <template #default="{ row }">
+            <span v-if="row.instrument_name" class="instrument-cell">
+              <span class="color-dot" :style="{ backgroundColor: row.instrument_color || '#409eff' }"></span>
+              {{ row.instrument_name }}
+            </span>
+            <span v-else style="color: #999">未分组</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="sn" label="传感器编号" min-width="120" sortable="custom" />
+        <el-table-column prop="name" label="传感器名称" min-width="150" sortable="custom" />
+        <el-table-column prop="status" label="状态" width="80" align="center" sortable="custom">
           <template #default="{ row }">
             <el-tag
               :type="row.status === 'online' ? 'success' : 'info'"
@@ -23,7 +33,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="电池" width="70" align="center">
+        <el-table-column prop="battery" label="电池" width="70" align="center" sortable="custom">
           <template #default="{ row }">
             <span
               v-if="row.battery != null"
@@ -41,7 +51,7 @@
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column label="信号" width="85" align="center">
+        <el-table-column prop="rssi" label="信号" width="85" align="center" sortable="custom">
           <template #default="{ row }">
             <span
               v-if="row.rssi != null"
@@ -64,7 +74,7 @@
             {{ row.network || "-" }}
           </template>
         </el-table-column>
-        <el-table-column prop="last_ppm" label="当前浓度" width="110" align="right">
+        <el-table-column prop="last_ppm" label="当前浓度" width="110" align="right" sortable="custom">
           <template #default="{ row }">
             <span v-if="row.last_ppm != null" :class="{ 'alarm-value': row.last_ppm > row.high_limit }">
               {{ row.last_ppm.toFixed(1) }} ppm
@@ -72,7 +82,7 @@
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="high_limit" label="报警阈值" width="90" align="right" />
+        <el-table-column prop="high_limit" label="报警阈值" width="90" align="right" sortable="custom" />
         <el-table-column label="操作" width="150" fixed="right" align="center">
           <template #default="{ row }">
             <el-button size="small" @click="editDevice(row)">编辑</el-button>
@@ -94,23 +104,38 @@
     <!-- Add/Edit Dialog -->
     <el-dialog
       v-model="dialogVisible"
-      :title="isEdit ? '编辑设备' : '添加设备'"
+      :title="isEdit ? '编辑传感器' : '添加传感器'"
       width="600px"
     >
       <el-form :model="form" label-width="100px">
-        <el-form-item label="设备编号" required>
+        <el-form-item label="传感器编号" required>
           <el-input
             v-model="form.sn"
             :disabled="isEdit"
             placeholder="如: A001"
           />
         </el-form-item>
-        <el-form-item label="设备名称">
+        <el-form-item label="传感器名称">
           <el-input v-model="form.name" placeholder="如: 1号检测点" />
         </el-form-item>
-        <el-form-item label="设备型号">
+        <el-form-item label="传感器型号">
           <el-input v-model="form.model" placeholder="如: MCS-100" />
         </el-form-item>
+        <el-form-item label="所属仪表">
+          <el-select v-model="form.instrument_id" placeholder="选择仪表" clearable style="width: 100%">
+            <el-option
+              v-for="inst in instruments"
+              :key="inst.id"
+              :label="inst.name"
+              :value="inst.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="传感器序号">
+          <el-input-number v-model="form.sensor_order" :min="0" :max="99" />
+          <span style="margin-left: 8px; color: #999">仪表内排序</span>
+        </el-form-item>
+
 
         <el-divider>校准参数</el-divider>
         <el-alert
@@ -187,7 +212,7 @@
 import { ref, reactive, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { QuestionFilled } from "@element-plus/icons-vue";
-import { devicesApi } from "../../api";
+import { devicesApi, instrumentsApi } from "../../api";
 
 interface Device {
   sn: string;
@@ -198,6 +223,9 @@ interface Device {
   t_coef: number;
   high_limit: number;
   low_limit: number | null;
+  instrument_id: number | null;
+  instrument_name: string | null;
+  sensor_order: number;
   status: string;
   last_ppm: number | null;
   battery: number | null;
@@ -205,7 +233,15 @@ interface Device {
   network: string | null;
 }
 
+
+
+interface Instrument {
+  id: number;
+  name: string;
+}
+
 const devices = ref<Device[]>([]);
+const instruments = ref<Instrument[]>([]);
 const loading = ref(false);
 const saving = ref(false);
 const page = ref(1);
@@ -223,7 +259,20 @@ const form = reactive({
   t_coef: 0.0,
   high_limit: 1000,
   low_limit: null as number | null,
+  instrument_id: null as number | null,
+  sensor_order: 0,
 });
+
+
+
+async function loadInstruments() {
+  try {
+    const res = await instrumentsApi.list();
+    instruments.value = res.data.data;
+  } catch (error) {
+    console.error('Failed to load instruments:', error);
+  }
+}
 
 async function fetchDevices() {
   loading.value = true;
@@ -232,7 +281,7 @@ async function fetchDevices() {
     devices.value = res.data.data;
     total.value = res.data.total;
   } catch (error) {
-    ElMessage.error("获取设备列表失败");
+    ElMessage.error("获取传感器列表失败");
   } finally {
     loading.value = false;
   }
@@ -249,6 +298,8 @@ function showAddDialog() {
     t_coef: 0.0,
     high_limit: 1000,
     low_limit: null,
+    instrument_id: null,
+    sensor_order: 0,
   });
   dialogVisible.value = true;
 }
@@ -264,10 +315,10 @@ async function saveDevice() {
   try {
     if (isEdit.value) {
       await devicesApi.update(form.sn, form);
-      ElMessage.success("设备更新成功");
+      ElMessage.success("传感器更新成功");
     } else {
       await devicesApi.create(form);
-      ElMessage.success("设备添加成功");
+      ElMessage.success("传感器添加成功");
     }
     dialogVisible.value = false;
     fetchDevices();
@@ -280,16 +331,45 @@ async function saveDevice() {
 
 async function deleteDevice(sn: string) {
   try {
-    await ElMessageBox.confirm("确定删除该设备吗？", "确认删除", {
+    await ElMessageBox.confirm("确定删除该传感器吗？", "确认删除", {
       type: "warning",
     });
     await devicesApi.delete(sn);
-    ElMessage.success("设备已删除");
+    ElMessage.success("传感器已删除");
     fetchDevices();
   } catch {}
 }
 
-onMounted(fetchDevices);
+function handleSortChange({ prop, order }: { prop: string; order: string | null }) {
+  if (!order) {
+    // 取消排序时恢复默认顺序
+    fetchDevices();
+    return;
+  }
+  
+  const direction = order === 'ascending' ? 1 : -1;
+  devices.value = [...devices.value].sort((a: any, b: any) => {
+    let aVal = a[prop];
+    let bVal = b[prop];
+    
+    // 处理 null 值
+    if (aVal == null) aVal = '';
+    if (bVal == null) bVal = '';
+    
+    // 数字比较
+    if (typeof aVal === 'number' && typeof bVal === 'number') {
+      return (aVal - bVal) * direction;
+    }
+    
+    // 字符串比较
+    return String(aVal).localeCompare(String(bVal)) * direction;
+  });
+}
+
+onMounted(() => {
+  fetchDevices();
+  loadInstruments();
+});
 </script>
 
 <style scoped>
@@ -302,5 +382,25 @@ onMounted(fetchDevices);
 .pagination {
   margin-top: 20px;
   justify-content: flex-end;
+}
+
+
+
+.alarm-value {
+  color: #f56c6c;
+  font-weight: bold;
+}
+
+.instrument-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 </style>

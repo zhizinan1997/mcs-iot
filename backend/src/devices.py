@@ -17,6 +17,9 @@ class DeviceBase(BaseModel):
     b_val: float = 0.0
     t_coef: float = 0.0
 
+    instrument_id: Optional[int] = None
+    sensor_order: int = 0
+
 class DeviceResponse(DeviceBase):
     status: str = "offline"
     last_seen: Optional[datetime] = None
@@ -24,6 +27,9 @@ class DeviceResponse(DeviceBase):
     battery: Optional[int] = None  # 电池百分比
     rssi: Optional[int] = None     # 信号强度 (dBm)
     network: Optional[str] = None  # 网络类型 (4G, WiFi等)
+    network: Optional[str] = None  # 网络类型 (4G, WiFi等)
+    instrument_name: Optional[str] = None  # 仪表名称
+    instrument_color: Optional[str] = None  # 仪表颜色
 
 class DeviceList(BaseModel):
     total: int
@@ -52,11 +58,17 @@ async def list_devices(
 ):
     offset = (page - 1) * size
     
-    # Get devices from DB
+    # Get devices from DB with zone and instrument info
     async with db.acquire() as conn:
         total = await conn.fetchval("SELECT COUNT(*) FROM devices")
         rows = await conn.fetch(
-            "SELECT sn, name, model, high_limit, low_limit, calib_k, calib_b, calib_t_comp, status, last_seen FROM devices ORDER BY sn LIMIT $1 OFFSET $2",
+            """SELECT d.sn, d.name, d.model, d.high_limit, d.low_limit, d.calib_k, d.calib_b, 
+                      d.calib_t_comp, d.status, d.last_seen,
+                      d.instrument_id, d.sensor_order, i.name as instrument_name, i.color as instrument_color
+               FROM devices d 
+               LEFT JOIN instruments i ON d.instrument_id = i.id
+               ORDER BY COALESCE(i.sort_order, 999999), i.name NULLS LAST, d.sensor_order, d.sn 
+               LIMIT $1 OFFSET $2""",
             size, offset
         )
     
@@ -75,6 +87,11 @@ async def list_devices(
             k_val=row['calib_k'] or 1.0,
             b_val=row['calib_b'] or 0.0,
             t_coef=row['calib_t_comp'] or 0.0,
+
+            instrument_id=row['instrument_id'],
+            sensor_order=row['sensor_order'] or 0,
+            instrument_name=row['instrument_name'],
+            instrument_color=row['instrument_color'],
             status="online" if is_online else "offline",
             last_seen=row['last_seen'],
             last_ppm=float(rt_data.get('ppm')) if rt_data.get('ppm') else None,
@@ -118,10 +135,10 @@ async def create_device(device: DeviceBase, db = Depends(get_db)):
     async with db.acquire() as conn:
         try:
             await conn.execute(
-                """INSERT INTO devices (sn, name, model, high_limit, low_limit, calib_k, calib_b, calib_t_comp) 
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8)""",
+                """INSERT INTO devices (sn, name, model, high_limit, low_limit, calib_k, calib_b, calib_t_comp, instrument_id, sensor_order) 
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)""",
                 device.sn, device.name, device.model, device.high_limit, device.low_limit,
-                device.k_val, device.b_val, device.t_coef
+                device.k_val, device.b_val, device.t_coef, device.instrument_id, device.sensor_order
             )
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
@@ -132,9 +149,9 @@ async def update_device(sn: str, device: DeviceBase, db = Depends(get_db), redis
     async with db.acquire() as conn:
         result = await conn.execute(
             """UPDATE devices SET name=$2, model=$3, high_limit=$4, low_limit=$5, 
-               calib_k=$6, calib_b=$7, calib_t_comp=$8 WHERE sn=$1""",
+               calib_k=$6, calib_b=$7, calib_t_comp=$8, instrument_id=$9, sensor_order=$10 WHERE sn=$1""",
             sn, device.name, device.model, device.high_limit, device.low_limit,
-            device.k_val, device.b_val, device.t_coef
+            device.k_val, device.b_val, device.t_coef, device.instrument_id, device.sensor_order
         )
     
     # Update Redis cache for calibration params

@@ -1,7 +1,9 @@
 import axios from 'axios'
 
+// Use relative URL to go through nginx proxy in production
+// In dev, this still works because Vite proxy or direct access
 const api = axios.create({
-    baseURL: 'http://localhost:8000/api',
+    baseURL: '/api',
     timeout: 10000
 })
 
@@ -82,4 +84,15 @@ export const configApi = {
 export const dashboardApi = {
     stats: () => api.get('/dashboard/stats'),
     realtime: () => api.get('/dashboard/realtime')
+}
+
+
+
+// Instruments API
+export const instrumentsApi = {
+    list: () => api.get('/instruments'),
+    get: (id: number) => api.get(`/instruments/${id}`),
+    create: (data: any) => api.post('/instruments', data),
+    update: (id: number, data: any) => api.put(`/instruments/${id}`, data),
+    delete: (id: number) => api.delete(`/instruments/${id}`)
 }

@@ -6,8 +6,9 @@
           <span>报警记录</span>
           <div class="filter-area">
             <el-select v-model="filters.type" placeholder="报警类型" clearable @change="fetchAlarms">
-              <el-option label="高报" value="HIGH" />
-              <el-option label="低报" value="LOW" />
+              <el-option label="高浓度" value="HIGH" />
+              <el-option label="低浓度" value="LOW" />
+              <el-option label="低电量" value="LOW_BAT" />
               <el-option label="离线" value="OFFLINE" />
             </el-select>
             <el-select v-model="filters.status" placeholder="状态" clearable @change="fetchAlarms">
@@ -18,30 +19,44 @@
         </div>
       </template>
 
-      <el-table :data="alarms" stripe v-loading="loading">
-        <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="time" label="时间" width="180">
+      <el-table :data="alarms" stripe v-loading="loading" @sort-change="handleSortChange">
+        <el-table-column prop="id" label="ID" width="80" sortable="custom" />
+        <el-table-column prop="time" label="时间" width="180" sortable="custom">
           <template #default="{ row }">
             {{ formatTime(row.time) }}
           </template>
         </el-table-column>
-        <el-table-column prop="sn" label="设备编号" width="120" />
-        <el-table-column prop="type" label="类型" width="100">
+        <el-table-column prop="instrument_name" label="仪表" min-width="120" sortable="custom">
           <template #default="{ row }">
-            <el-tag :type="getTypeColor(row.type)">{{ row.type }}</el-tag>
+            <span v-if="row.instrument_name" class="instrument-cell">
+              <span class="color-dot" :style="{ backgroundColor: row.instrument_color || '#409eff' }"></span>
+              {{ row.instrument_name }}
+            </span>
+            <span v-else style="color: #999">-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="value" label="报警值" width="120">
+        <el-table-column prop="sn" label="设备编号" width="120" sortable="custom" />
+        <el-table-column prop="device_name" label="设备名称" min-width="120" sortable="custom">
+          <template #default="{ row }">
+            {{ row.device_name || row.sn }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="type" label="类型" width="100" sortable="custom">
+          <template #default="{ row }">
+            <el-tag :type="getTypeColor(row.type)">{{ getTypeName(row.type) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="value" label="报警值" width="120" sortable="custom">
           <template #default="{ row }">
             {{ row.value?.toFixed(2) }}
           </template>
         </el-table-column>
-        <el-table-column prop="threshold" label="阈值" width="120">
+        <el-table-column prop="threshold" label="阈值" width="120" sortable="custom">
           <template #default="{ row }">
             {{ row.threshold?.toFixed(2) }}
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column prop="status" label="状态" width="100" sortable="custom">
           <template #default="{ row }">
             <el-tag :type="row.status === 'new' ? 'danger' : 'success'">
               {{ row.status === 'new' ? '新报警' : '已确认' }}
@@ -83,6 +98,9 @@ interface Alarm {
   id: number
   time: string
   sn: string
+  device_name: string
+  instrument_name: string | null
+  instrument_color: string | null
   type: string
   value: number
   threshold: number
@@ -130,16 +148,51 @@ async function ackAlarm(id: number) {
 }
 
 function formatTime(time: string) {
-  return new Date(time).toLocaleString('zh-CN')
+  // 将 UTC 时间转换为中国时间 (UTC+8)
+  const date = new Date(time + 'Z')  // 添加 Z 表示 UTC
+  return date.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
+}
+
+function getTypeName(type: string) {
+  const typeMap: Record<string, string> = {
+    'HIGH': '高浓度',
+    'LOW': '低浓度',
+    'LOW_BAT': '低电量',
+    'OFFLINE': '离线'
+  }
+  return typeMap[type] || type
 }
 
 function getTypeColor(type: string) {
   switch (type) {
     case 'HIGH': return 'danger'
     case 'LOW': return 'warning'
+    case 'LOW_BAT': return 'warning'
     case 'OFFLINE': return 'info'
     default: return ''
   }
+}
+
+function handleSortChange({ prop, order }: { prop: string; order: string | null }) {
+  if (!order) {
+    fetchAlarms();
+    return;
+  }
+  
+  const direction = order === 'ascending' ? 1 : -1;
+  alarms.value = [...alarms.value].sort((a: any, b: any) => {
+    let aVal = a[prop];
+    let bVal = b[prop];
+    
+    if (aVal == null) aVal = '';
+    if (bVal == null) bVal = '';
+    
+    if (typeof aVal === 'number' && typeof bVal === 'number') {
+      return (aVal - bVal) * direction;
+    }
+    
+    return String(aVal).localeCompare(String(bVal)) * direction;
+  });
 }
 
 onMounted(fetchAlarms)
@@ -160,5 +213,18 @@ onMounted(fetchAlarms)
 .pagination {
   margin-top: 20px;
   justify-content: flex-end;
+}
+
+.instrument-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 </style>

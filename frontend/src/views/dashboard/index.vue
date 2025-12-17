@@ -7,7 +7,7 @@
           <div class="stat-icon blue"><el-icon><Monitor /></el-icon></div>
           <div class="stat-info">
             <div class="stat-value">{{ stats.devices_total }}</div>
-            <div class="stat-label">设备总数</div>
+            <div class="stat-label">传感器总数</div>
           </div>
         </el-card>
       </el-col>
@@ -16,7 +16,7 @@
           <div class="stat-icon green"><el-icon><CircleCheck /></el-icon></div>
           <div class="stat-info">
             <div class="stat-value">{{ stats.devices_online }}</div>
-            <div class="stat-label">在线设备</div>
+            <div class="stat-label">在线传感器</div>
           </div>
         </el-card>
       </el-col>
@@ -25,7 +25,7 @@
           <div class="stat-icon gray"><el-icon><CircleClose /></el-icon></div>
           <div class="stat-info">
             <div class="stat-value">{{ stats.devices_offline }}</div>
-            <div class="stat-label">离线设备</div>
+            <div class="stat-label">离线传感器</div>
           </div>
         </el-card>
       </el-col>
@@ -44,29 +44,38 @@
     <el-card class="device-card">
       <template #header>
         <div class="card-header">
-          <span>实时设备状态</span>
+          <span>实时传感器状态</span>
           <el-button type="primary" size="small" @click="fetchData">
             <el-icon><Refresh /></el-icon> 刷新
           </el-button>
         </div>
       </template>
       
-      <el-table :data="sortedDevices" stripe>
-        <el-table-column prop="sn" label="设备编号" min-width="100" />
-        <el-table-column prop="name" label="设备名称" min-width="100" />
-        <el-table-column prop="ppm" label="浓度 (PPM)" min-width="100">
+      <el-table :data="sortedDevices" stripe @sort-change="handleSortChange">
+        <el-table-column prop="instrument_name" label="仪表" min-width="120" sortable="custom">
+          <template #default="{ row }">
+            <span v-if="row.instrument_name" class="instrument-cell">
+              <span class="color-dot" :style="{ backgroundColor: row.instrument_color || '#409eff' }"></span>
+              {{ row.instrument_name }}
+            </span>
+            <span v-else style="color: #999">-</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="sn" label="传感器编号" min-width="100" sortable="custom" />
+        <el-table-column prop="name" label="传感器名称" min-width="100" sortable="custom" />
+        <el-table-column prop="ppm" label="浓度 (PPM)" min-width="100" sortable="custom">
           <template #default="{ row }">
             <span :class="{ 'alarm-value': row.ppm > 1000 }">
               {{ row.ppm?.toFixed(2) || '-' }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="temp" label="温度 (°C)" min-width="90">
+        <el-table-column prop="temp" label="温度 (°C)" min-width="90" sortable="custom">
           <template #default="{ row }">
             {{ row.temp?.toFixed(1) || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="电池" min-width="70" align="center">
+        <el-table-column prop="battery" label="电池" min-width="70" align="center" sortable="custom">
           <template #default="{ row }">
             <span v-if="row.battery != null" :style="{ color: row.battery < 20 ? '#F56C6C' : row.battery < 50 ? '#E6A23C' : '#67C23A' }">
               {{ row.battery }}%
@@ -74,7 +83,7 @@
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column label="信号" min-width="85" align="center">
+        <el-table-column prop="rssi" label="信号" min-width="85" align="center" sortable="custom">
           <template #default="{ row }">
             <span v-if="row.rssi != null" :style="{ color: row.rssi < -80 ? '#F56C6C' : row.rssi < -70 ? '#E6A23C' : '#67C23A' }">
               {{ row.rssi }}dBm
@@ -82,12 +91,12 @@
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="network" label="网络" min-width="70" align="center">
+        <el-table-column prop="network" label="网络" min-width="70" align="center" sortable="custom">
           <template #default="{ row }">
             {{ row.network || '-' }}
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" min-width="80" align="center">
+        <el-table-column prop="status" label="状态" min-width="80" align="center" sortable="custom">
           <template #default="{ row }">
             <el-tag :type="row.status === 'online' ? 'success' : 'info'" size="small">
               {{ row.status === 'online' ? '在线' : '离线' }}
@@ -191,6 +200,8 @@ interface Device {
   battery: number | null
   rssi: number | null
   network: string | null
+  instrument_name: string | null
+  instrument_color: string | null
 }
 
 interface HistoryPoint {
@@ -216,10 +227,33 @@ const stats = ref<Stats>({
 
 const devices = ref<Device[]>([])
 
-// Sorted devices by sn (device number)
+// Current sort state
+const currentSort = ref<{ prop: string; order: string | null }>({ prop: 'sn', order: 'ascending' })
+
+// Sorted devices
 const sortedDevices = computed(() => {
-  return [...devices.value].sort((a, b) => a.sn.localeCompare(b.sn))
+  const { prop, order } = currentSort.value
+  if (!order) return [...devices.value].sort((a, b) => (a.instrument_name || '').localeCompare(b.instrument_name || '') || a.sn.localeCompare(b.sn))
+  
+  const direction = order === 'ascending' ? 1 : -1
+  return [...devices.value].sort((a: any, b: any) => {
+    let aVal = a[prop]
+    let bVal = b[prop]
+    
+    if (aVal == null) aVal = ''
+    if (bVal == null) bVal = ''
+    
+    if (typeof aVal === 'number' && typeof bVal === 'number') {
+      return (aVal - bVal) * direction
+    }
+    
+    return String(aVal).localeCompare(String(bVal)) * direction
+  })
 })
+
+function handleSortChange({ prop, order }: { prop: string; order: string | null }) {
+  currentSort.value = { prop: prop || 'sn', order }
+}
 
 // History dialog state
 const historyDialogVisible = ref(false)
@@ -445,4 +479,18 @@ onMounted(() => {
 :deep(.history-dialog .el-dialog__body) {
   padding-top: 10px;
 }
+
+.instrument-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.color-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 </style>

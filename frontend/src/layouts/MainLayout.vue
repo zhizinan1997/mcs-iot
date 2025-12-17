@@ -18,9 +18,13 @@
           <el-icon><DataBoard /></el-icon>
           <span>仪表盘</span>
         </el-menu-item>
+        <el-menu-item index="/instruments">
+          <el-icon><Odometer /></el-icon>
+          <span>仪表管理</span>
+        </el-menu-item>
         <el-menu-item index="/devices">
           <el-icon><Monitor /></el-icon>
-          <span>设备管理</span>
+          <span>传感器管理</span>
         </el-menu-item>
         <el-menu-item index="/alarms">
           <el-icon><Bell /></el-icon>
@@ -103,10 +107,24 @@ async function loadSiteConfig() {
       if (siteConfig.value.browser_title) {
         document.title = siteConfig.value.browser_title
       }
+      // Update favicon if logo_url is set
+      if (siteConfig.value.logo_url) {
+        updateFavicon(siteConfig.value.logo_url)
+      }
     }
   } catch (error) {
     console.error("Failed to load site config")
   }
+}
+
+function updateFavicon(url: string) {
+  let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement
+  if (!link) {
+    link = document.createElement('link')
+    link.rel = 'icon'
+    document.head.appendChild(link)
+  }
+  link.href = url
 }
 
 onMounted(() => {

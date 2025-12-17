@@ -204,6 +204,43 @@
         </el-card>
       </el-tab-pane>
 
+      <!-- Zones Config -->
+      <!-- Screen Management (Formerly Zones Config) -->
+      <el-tab-pane label="大屏显示管理" name="screen">
+        <el-card>
+          <el-tabs type="border-card">
+            <el-tab-pane label="显示仪表设置">
+              <div class="card-header" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+                <span>选择在大屏上显示的仪表</span>
+                <el-button type="primary" size="small" @click="fetchInstruments">
+                  <el-icon><Refresh /></el-icon> 刷新列表
+                </el-button>
+              </div>
+              
+              <el-table :data="instruments" stripe v-loading="loadingInstruments" style="width: 100%">
+                <el-table-column label="显示" width="80" align="center">
+                  <template #default="{ row }">
+                    <el-switch 
+                      v-model="row.is_displayed" 
+                      @change="handleInstrumentDisplayChange(row)"
+                      :loading="row.saving"
+                    />
+                  </template>
+                </el-table-column>
+                <el-table-column label="颜色" width="60" align="center">
+                  <template #default="{ row }">
+                    <span class="color-dot" :style="{ backgroundColor: row.color }"></span>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="name" label="仪表名称" min-width="150" />
+                <el-table-column prop="description" label="描述" min-width="200" />
+                <el-table-column prop="sensor_count" label="关联传感器数" width="120" align="center" />
+              </el-table>
+            </el-tab-pane>
+          </el-tabs>
+        </el-card>
+      </el-tab-pane>
+
       <!-- MQTT Account Config -->
       <el-tab-pane label="MQTT账号" name="mqtt">
         <el-card>
@@ -451,13 +488,15 @@
         </el-card>
       </el-tab-pane>
     </el-tabs>
+
+
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from "vue";
 import { ElMessage } from "element-plus";
-import { configApi } from "../../api";
+import { configApi, instrumentsApi } from "../../api";
 
 const activeTab = ref("site");
 const saving = ref(false);
@@ -503,6 +542,51 @@ const archiveConfig = reactive({
 });
 
 const testingArchive = ref(false);
+
+// Instruments state
+const instruments = ref<any[]>([]); // Define type for instruments
+const loadingInstruments = ref(false);
+
+// Instruments Management
+async function fetchInstruments() {
+  loadingInstruments.value = true;
+  try {
+    const res = await instrumentsApi.list();
+    // Ensure is_displayed is boolean
+    instruments.value = res.data.data.map((i: any) => ({
+      ...i,
+      is_displayed: i.is_displayed !== false, // Default true
+      saving: false,
+    }));
+  } catch (error) {
+    console.error("Failed to fetch instruments:", error);
+  } finally {
+    loadingInstruments.value = false;
+  }
+}
+
+async function handleInstrumentDisplayChange(row: any) {
+  row.saving = true;
+  try {
+    await instrumentsApi.update(row.id, {
+      name: row.name,
+      description: row.description,
+      color: row.color,
+      sort_order: row.sort_order,
+      zone_id: row.zone_id,
+      is_displayed: row.is_displayed,
+    });
+    ElMessage.success("更新成功");
+  } catch (error) {
+    console.error("Update failed:", error);
+    row.is_displayed = !row.is_displayed; // Revert on error
+    ElMessage.error("更新失败");
+  } finally {
+    row.saving = false;
+  }
+}
+
+
 
 async function loadConfigs() {
   try {
@@ -662,11 +746,25 @@ async function saveSiteConfig() {
     if (data.data.browser_title) {
       document.title = data.data.browser_title
     }
+    // Update favicon if logo_url is set
+    if (data.data.logo_url) {
+      updateFavicon(data.data.logo_url)
+    }
   } catch (error: any) {
     ElMessage.error("保存失败")
   } finally {
     saving.value = false
   }
+}
+
+function updateFavicon(url: string) {
+  let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement
+  if (!link) {
+    link = document.createElement('link')
+    link.rel = 'icon'
+    document.head.appendChild(link)
+  }
+  link.href = url
 }
 
 function previewTitle() {
@@ -679,7 +777,8 @@ onMounted(() => {
   loadConfigs(); // This already loads email, webhook, dashboard
   loadMqttConfig();
   loadArchiveConfig();
-  loadSiteConfig(); // Added this line
+  loadSiteConfig();
+  fetchInstruments();
 });
 </script>
 
@@ -705,5 +804,28 @@ onMounted(() => {
 
 .tips li {
   margin-bottom: 4px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-preview {
+  margin-top: 8px;
+}
+
+.logo-preview img {
+  max-height: 40px;
+  max-width: 200px;
+}
+
+.zone-color {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 </style>

@@ -16,6 +16,8 @@ from .export import router as export_router
 from .commands import router as commands_router
 from .mqtt import router as mqtt_router
 
+from .instruments import router as instruments_router
+
 # Setup Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -81,6 +83,8 @@ app.include_router(dashboard_router, prefix="/api/dashboard", tags=["Dashboard"]
 app.include_router(export_router, prefix="/api/export", tags=["Export"])
 app.include_router(commands_router, prefix="/api/commands", tags=["Commands"])
 app.include_router(mqtt_router, prefix="/api/config", tags=["MQTT"])
+
+app.include_router(instruments_router, prefix="/api/instruments", tags=["Instruments"])
 
 @app.get("/api/health")
 async def health_check():
