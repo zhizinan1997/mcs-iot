@@ -1,12 +1,31 @@
 -- Enable TimescaleDB extension
 CREATE EXTENSION IF NOT EXISTS timescaledb;
 
--- 1. Device Management Table
+-- 1. Instruments Table (仪表/分组)
+CREATE TABLE IF NOT EXISTS instruments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(128) NOT NULL,
+    description TEXT,
+    color VARCHAR(16) DEFAULT '#409eff',
+    sort_order INT DEFAULT 0,
+    is_displayed BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 2. Device Management Table
 CREATE TABLE IF NOT EXISTS devices (
     sn VARCHAR(64) PRIMARY KEY,
     name VARCHAR(128),
     model VARCHAR(32),
     location VARCHAR(256),           -- 安装位置描述
+    
+    -- Sensor type and unit
+    sensor_type VARCHAR(32) DEFAULT 'custom',
+    unit VARCHAR(16) DEFAULT 'ppm',
+    
+    -- Instrument association
+    instrument_id INT REFERENCES instruments(id) ON DELETE SET NULL,
+    sensor_order INT DEFAULT 0,
     
     -- 大屏坐标 (百分比)
     pos_x FLOAT DEFAULT 50.0,
@@ -49,7 +68,7 @@ CREATE TABLE IF NOT EXISTS sensor_data (
     err_code INT DEFAULT 0,
     
     -- Metadata
-    seq INT
+    msg_seq INT
 );
 
 -- Turn into Hypertable (Partition by time, 1 day chunks)
@@ -65,7 +84,7 @@ ALTER TABLE sensor_data SET (
 );
 SELECT add_compression_policy('sensor_data', INTERVAL '1 day', if_not_exists => TRUE);
 
--- 3. Alarm Logs
+-- 4. Alarm Logs
 CREATE TABLE IF NOT EXISTS alarm_logs (
     id SERIAL PRIMARY KEY,
     triggered_at TIMESTAMP DEFAULT NOW(),
@@ -73,6 +92,7 @@ CREATE TABLE IF NOT EXISTS alarm_logs (
     type VARCHAR(32),                -- HIGH, LOW, OFFLINE, LOW_BAT, ERROR
     value FLOAT,
     threshold FLOAT,
+    status VARCHAR(32) DEFAULT 'active', -- active, ack, resolved
     notified BOOLEAN DEFAULT FALSE,
     channels VARCHAR(128),           -- 通知渠道: email,sms,webhook
     ack_at TIMESTAMP,
