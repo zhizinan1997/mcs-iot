@@ -42,6 +42,7 @@ class DashboardStats(BaseModel):
     devices_offline: int
     devices_alarm: int
     alarms_today: int
+    alarms_confirmed_today: int
 
 class DeviceRealtime(BaseModel):
     sn: str
@@ -68,6 +69,9 @@ async def get_dashboard_stats(db = Depends(get_db), redis = Depends(get_redis)):
         alarms_today = await conn.fetchval(
             "SELECT COUNT(*) FROM alarm_logs WHERE triggered_at >= CURRENT_DATE"
         )
+        alarms_confirmed_today = await conn.fetchval(
+            "SELECT COUNT(*) FROM alarm_logs WHERE triggered_at >= CURRENT_DATE AND status = 'ack'"
+        )
         # 报警中的设备数 (今日有未确认报警)
         devices_alarm = await conn.fetchval("""
             SELECT COUNT(DISTINCT sn) FROM alarm_logs 
@@ -79,7 +83,8 @@ async def get_dashboard_stats(db = Depends(get_db), redis = Depends(get_redis)):
         devices_online=online_count or 0,
         devices_offline=(total or 0) - (online_count or 0),
         devices_alarm=devices_alarm or 0,
-        alarms_today=alarms_today or 0
+        alarms_today=alarms_today or 0,
+        alarms_confirmed_today=alarms_confirmed_today or 0
     )
 
 @router.get("/realtime", response_model=List[DeviceRealtime])

@@ -481,3 +481,4 @@ To fix this, use `chmod 0700 /mosquitto/config/acl`.
 1766023826: New client connected from 172.18.0.1:63086 as NH3019 (p2, c1, k60, u'zhizinan').
 1766023826: New connection from 172.18.0.1:63094 on port 1883.
 1766023826: New client connected from 172.18.0.1:63094 as NH3020 (p2, c1, k60, u'zhizinan').
+1766025504: Saving in-memory database to /mosquitto/data//mosquitto.db.

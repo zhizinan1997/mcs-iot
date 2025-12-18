@@ -61,33 +61,51 @@
             <div class="header-sub">SAFETY SUPERVISION</div>
           </div>
           <div class="safety-body">
-            <!-- Center gauge -->
-            <div class="gauge-container">
-              <v-chart class="gauge-chart" :option="gaugeOption" autoresize />
-              <div class="gauge-overlay">
-                <span class="g-val">{{ safetyPercent }}<small>%</small></span>
-                <span class="g-label">安全率</span>
+            <!-- Left: Gauge -->
+            <div class="safety-left">
+              <div class="gauge-container">
+                <v-chart class="gauge-chart" :option="gaugeOption" autoresize />
+                <div class="gauge-overlay">
+                  <span class="g-val">{{ safetyPercent }}<small>%</small></span>
+                  <span class="g-label">安全率</span>
+                </div>
               </div>
             </div>
             
-            <!-- Left Stats -->
-            <div class="safety-stat stat-tl">
-              <div class="s-val">{{ stats.devices_online || 0 }} <small>个</small></div>
-              <div class="s-label"><span class="dot"></span>在线传感器</div>
-            </div>
-            <div class="safety-stat stat-bl">
-               <div class="s-val">{{ stats.devices_total - stats.devices_online }} <small>个</small></div>
-               <div class="s-label"><span class="dot"></span>离线传感器</div>
-            </div>
-            
-            <!-- Right Stats -->
-            <div class="safety-stat stat-tr">
-               <div class="s-val">{{ todayAlarmCount }} <small>次</small></div>
-               <div class="s-label">今日报警<span class="dot"></span></div>
-            </div>
-             <div class="safety-stat stat-br">
-               <div class="s-val">{{ systemUptime }} <small>天</small></div>
-               <div class="s-label">系统运行<span class="dot"></span></div>
+            <!-- Right: Progress Bars -->
+            <div class="safety-right">
+              <!-- Bar 1: Online Rate -->
+              <div class="progress-item">
+                <div class="p-header">
+                  <span class="p-label">在线率</span>
+                  <span class="p-val">{{ safetyPercent }}%</span>
+                </div>
+                <div class="p-track">
+                  <div class="p-bar bar-blue" :style="{ width: safetyPercent + '%' }"></div>
+                </div>
+              </div>
+
+              <!-- Bar 2: Alarm Handling Rate -->
+              <div class="progress-item">
+                <div class="p-header">
+                  <span class="p-label">报警处理率</span>
+                  <span class="p-val">{{ alarmHandlingPercent }}%</span>
+                </div>
+                <div class="p-track">
+                  <div class="p-bar bar-orange" :style="{ width: alarmHandlingPercent + '%' }"></div>
+                </div>
+              </div>
+
+              <!-- Bar 3: Device Health Rate -->
+              <div class="progress-item">
+                <div class="p-header">
+                  <span class="p-label">设备健康率</span>
+                  <span class="p-val">{{ healthPercent }}%</span>
+                </div>
+                <div class="p-track">
+                  <div class="p-bar bar-green" :style="{ width: healthPercent + '%' }"></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -115,9 +133,6 @@
       <section class="col col-center">
         <!-- Top: Alert + Map -->
         <div class="center-top">
-          <div class="alert-bar">
-            园区严重污染物: <strong>{{ topPollutant.name }}</strong> ({{ topPollutant.value }} {{ topPollutant.unit }})
-          </div>
           <div class="map-box" :style="mapBoxStyle">
             <div class="map-3d">
               <div
@@ -314,6 +329,13 @@ function onLeftCenterResize(panes: Array<{ size: number }>) {
 interface Device { sn: string; name: string | null; ppm: number | null; temp: number | null; status: string; unit: string; instrument_id?: number | null; high_limit?: number }
 interface Alarm { id: number; time: string; sn: string; value: number }
 interface Instrument { id: number; name: string; description: string | null; color: string | null; is_displayed?: boolean; sensor_count?: number; sensor_types?: string; pos_x?: number; pos_y?: number }
+interface ScreenStats {
+  devices_total: number
+  devices_online: number
+  devices_alarm: number
+  alarms_today: number
+  alarms_confirmed_today: number
+}
 
 const currentDate = ref('')
 const devices = ref<Device[]>([])
@@ -322,13 +344,12 @@ const instruments = ref<Instrument[]>([])
 const selectedInstrument = ref<number | null>(null)
 const trend = ref<number[]>([])
 const trendLabels = ref<string[]>([])
-const stats = reactive({ devices_total: 0, devices_online: 0 })
+const stats = reactive<ScreenStats>({ devices_total: 0, devices_online: 0, devices_alarm: 0, alarms_today: 0, alarms_confirmed_today: 0 })
 const alarmStats = reactive({ today: 0, total: 0 })
 const weather = reactive({ temp: '--', humidity: '--', wind: '--', desc: '--', location: '', icon: '🌤️' })
 const aiSummary = ref('')
 const aiLoading = ref(false)
 const aiThinking = ref('正在分析数据...')
-const systemStartDate = new Date('2024-12-01') // System launch date
 
 // Filter instruments by is_displayed field
 const displayedInstruments = computed(() => {
@@ -366,12 +387,18 @@ const safetyPercent = computed(() => {
   return Math.round((stats.devices_online / stats.devices_total) * 100)
 })
 
-const todayAlarmCount = computed(() => alarmStats.today)
-
-const systemUptime = computed(() => {
-  const days = Math.max(1, Math.floor((Date.now() - systemStartDate.getTime()) / 86400000))
-  return `${days}天`
+const alarmHandlingPercent = computed(() => {
+  if (!stats.alarms_today) return 100
+  return Math.round((stats.alarms_confirmed_today / stats.alarms_today) * 100)
 })
+
+const healthPercent = computed(() => {
+  if (!stats.devices_total) return 100
+  // Health rate = (Total - Alarming) / Total
+  return Math.round(((stats.devices_total - stats.devices_alarm) / stats.devices_total) * 100)
+})
+
+const todayAlarmCount = computed(() => alarmStats.today)
 
 const gaugeOption = computed(() => ({
   backgroundColor: 'transparent',
@@ -810,101 +837,92 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
   font-family: 'Arial', sans-serif; opacity: 0.7; margin-top: 3px;
 }
 
+/* Safety Body - Row Layout */
 .safety-body {
   flex: 1; position: relative;
-  display: flex; align-items: center; justify-content: center;
+  display: flex; flex-direction: row; align-items: center; justify-content: space-between;
   min-height: 180px;
-  padding: 10px 0;
+  padding: 10px 15px;
+  gap: 15px;
 }
 
-/* Center Gauge - Larger for better visibility */
+/* Left: Gauge Area */
+.safety-left {
+  flex: 0 0 130px;
+  display: flex; justify-content: center; align-items: center;
+}
 .gauge-container {
-  width: 140px; height: 140px; position: relative;
+  width: 130px; height: 130px; position: relative;
   z-index: 10;
 }
-.gauge-chart { 
-  width: 100%; height: 100%; 
-  background: transparent !important;
-}
+.gauge-chart { width: 100%; height: 100%; background: transparent !important; }
 .gauge-overlay {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   pointer-events: none; text-align: center;
 }
 .g-val {
-  font-size: 28px; font-weight: 700; color: #fbbf24; line-height: 1;
-  text-shadow: 0 0 15px rgba(251,191,36,0.5);
+  font-size: 26px; font-weight: 700; color: #fff; line-height: 1;
+  text-shadow: 0 0 15px rgba(59,130,246,0.8);
   font-family: 'Arial Black', sans-serif;
 }
-.g-val small { font-size: 12px; font-weight: normal; color: #fbbf24; margin-left: 1px;}
+.g-val small { font-size: 12px; font-weight: normal; color: #93c5fd; margin-left: 2px; }
 .g-label {
-  font-size: 10px; color: #94a3b8; margin-top: 4px; letter-spacing: 1px;
+  font-size: 11px; color: #94a3b8; margin-top: 6px; letter-spacing: 1px;
 }
 
-/* Stats - positioned very close to gauge with curved backgrounds */
-.safety-stat {
-  position: absolute;
+/* Right: Progress Bars */
+.safety-right {
+  flex: 1;
   display: flex; flex-direction: column; justify-content: center;
-  z-index: 5;
-  padding: 8px 12px;
-  /* Curved arc background */
-  background: linear-gradient(135deg, rgba(30,58,138,0.4) 0%, rgba(15,23,42,0.6) 100%);
-  border: 1px solid rgba(59,130,246,0.3);
+  gap: 15px;
+  padding-right: 5px;
 }
+.progress-item {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.p-header {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 12px; color: #cbd5e1;
+}
+.p-label { font-weight: 500; letter-spacing: 0.5px; }
+.p-val { font-family: 'Courier New', monospace; font-weight: 700; font-size: 14px; }
 
-/* Top Left - curved bottom-right corner */
-.stat-tl { 
-  top: 10px; left: calc(50% - 145px); 
-  align-items: flex-end; text-align: right;
-  border-radius: 8px 8px 40px 8px;
-  border-right-color: rgba(59,130,246,0.5);
-  border-bottom-color: rgba(59,130,246,0.5);
+/* Progress Track & Bar */
+.p-track {
+  height: 6px; width: 100%;
+  background: rgba(30,41,59,0.5);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);
 }
-/* Bottom Left - curved top-right corner */
-.stat-bl { 
-  bottom: 10px; left: calc(50% - 145px); 
-  align-items: flex-end; text-align: right;
-  border-radius: 8px 40px 8px 8px;
-  border-right-color: rgba(59,130,246,0.5);
-  border-top-color: rgba(59,130,246,0.5);
+.p-bar {
+  height: 100%;
+  border-radius: 3px;
+  position: relative;
+  transition: width 1s ease-out;
 }
-/* Top Right - curved bottom-left corner */
-.stat-tr { 
-  top: 10px; right: calc(50% - 145px); 
-  align-items: flex-start; text-align: left;
-  border-radius: 8px 8px 8px 40px;
-  border-left-color: rgba(59,130,246,0.5);
-  border-bottom-color: rgba(59,130,246,0.5);
+/* Bar Gradients */
+.bar-blue {
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  box-shadow: 0 0 8px rgba(59,130,246,0.5);
 }
-/* Bottom Right - curved top-left corner */
-.stat-br { 
-  bottom: 10px; right: calc(50% - 145px); 
-  align-items: flex-start; text-align: left;
-  border-radius: 40px 8px 8px 8px;
-  border-left-color: rgba(59,130,246,0.5);
-  border-top-color: rgba(59,130,246,0.5);
+.bar-orange {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+  box-shadow: 0 0 8px rgba(245,158,11,0.5);
 }
+.bar-green {
+  background: linear-gradient(90deg, #10b981, #34d399);
+  box-shadow: 0 0 8px rgba(16,185,129,0.5);
+}
+/* Text colors matching bars */
+.progress-item:nth-child(1) .p-val { color: #60a5fa; text-shadow: 0 0 8px rgba(96,165,250,0.4); }
+.progress-item:nth-child(2) .p-val { color: #fbbf24; text-shadow: 0 0 8px rgba(251,191,36,0.4); }
+.progress-item:nth-child(3) .p-val { color: #34d399; text-shadow: 0 0 8px rgba(52,211,153,0.4); }
 
-/* Value styling */
-.s-val {
-  font-size: 20px; font-weight: 700; color: #fbbf24;
-  font-family: 'Arial Black', sans-serif; line-height: 1;
-  display: flex; align-items: baseline;
-}
-.s-val small { font-size: 10px; color: #94a3b8; font-weight: 400; margin: 0 3px; }
-
-/* Label styling */
-.s-label {
-  font-size: 10px; color: #94a3b8; display: flex; align-items: center; gap: 4px;
-  margin-top: 3px;
-}
-.s-label .dot {
-  width: 4px; height: 4px; background: #fbbf24; border-radius: 50%;
-  box-shadow: 0 0 4px #fbbf24;
-}
-
-/* Dot position: left stats have dot on right, right stats have dot on left */
-.stat-tl .s-label, .stat-bl .s-label { flex-direction: row-reverse; }
+/* Remove old stats styles */
+.stats-col, .safety-stat, .s-val, .s-label { display: none; }
 
 /* Remove the old decorative rings - now using the gauge series instead */
 
@@ -1018,12 +1036,6 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 /* ========== CENTER: Alert Bar ========== */
 .col-center { display: flex; flex-direction: column; gap: 10px; }
 .center-top { flex: 2; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
-.alert-bar {
-  background: rgba(239,68,68,0.08);
-  border: 1px solid rgba(239,68,68,0.3);
-  color: #fca5a5; text-align: center; padding: 8px 16px; font-size: 13px; border-radius: 6px;
-}
-.alert-bar strong { color: #f87171; font-family: 'Courier New', monospace; text-shadow: 0 0 10px rgba(239,68,68,0.5); }
 
 /* ========== CENTER: Map Area ========== */
 .map-box {
