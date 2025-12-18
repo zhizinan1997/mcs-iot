@@ -357,14 +357,21 @@ configure_domains() {
     echo -e "${CYAN}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     
-    # 获取服务器 IP
-    SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || curl -s ip.sb 2>/dev/null || echo "无法获取")
-    log_info "当前服务器公网 IP: $SERVER_IP"
+    # 获取服务器 IP (忽略错误)
+    SERVER_IP=$(curl -s --connect-timeout 5 ifconfig.me 2>/dev/null) || SERVER_IP=""
+    if [[ -z "$SERVER_IP" ]]; then
+        SERVER_IP=$(curl -s --connect-timeout 5 ip.sb 2>/dev/null) || SERVER_IP=""
+    fi
+    if [[ -z "$SERVER_IP" ]]; then
+        SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}') || SERVER_IP="无法获取"
+    fi
+    log_info "当前服务器 IP: $SERVER_IP"
     echo ""
     log_warn "请确保以下 4 个域名都已解析到此 IP 地址!"
     echo ""
     
-    wait_for_enter
+    echo -e "${YELLOW}按 Enter 键继续输入域名...${NC}"
+    read -r DUMMY || true
     
     # 输入域名
     echo ""
@@ -463,6 +470,9 @@ configure_credentials() {
 
 clone_repository() {
     log_step "第九步：下载项目代码"
+    
+    # 确保不在安装目录内
+    cd /root || cd /tmp || cd /
     
     if [[ -d "$INSTALL_DIR" ]]; then
         log_warn "安装目录 $INSTALL_DIR 已存在"
