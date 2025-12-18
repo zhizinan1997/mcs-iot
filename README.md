@@ -9,6 +9,28 @@
 
 **全自动部署脚本**，支持环境检测、依赖安装、HTTPS/SSL配置、内网自适应及防火墙设置。
 
+### 🪟 Windows (10/11 / Server)
+适用于 Windows 开发环境或服务器。需要开启 Hyper-V (Docker Desktop 依赖)。
+
+#### 方式一：公网一键部署 (推荐)
+仅适用于 **公开仓库**。使用 PowerShell (管理员) 运行：
+```powershell
+Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/zhizinan1997/mcs-iot/main/scripts/deploy.ps1'))
+```
+
+#### 方式二：私有仓库/手动部署
+适用于 **私有仓库**。
+```powershell
+# 1. 克隆仓库
+git clone https://github.com/zhizinan1997/mcs-iot.git
+cd mcs-iot
+
+# 2. 运行脚本 (管理员权限)
+Set-ExecutionPolicy Bypass -Scope Process -Force
+.\scripts\deploy.ps1
+```
+*(脚本会自动检测 Docker，如果未安装会尝试调用 winget 安装)*
+
 ### 🐧 Linux (Ubuntu / Debian / CentOS)
 适用于云服务器或本地 Linux 虚拟机。
 

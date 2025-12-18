@@ -56,7 +56,22 @@ function Step-CheckSystem {
         $dockerVersion = docker --version
         Log-Success "Docker 已安装: $dockerVersion"
     } catch {
-        Log-Error "未检测到 Docker，请先安装 Docker Desktop for Windows: https://www.docker.com/products/docker-desktop/"
+        Log-Warn "未检测到 Docker。"
+        $installDocker = Read-Host "是否尝试自动安装 Docker Desktop? (y/n) [y]"
+        if ($installDocker -ne 'n') {
+            Log-Info "正在尝试使用 Winget 安装 Docker Desktop..."
+            try {
+                winget install Docker.DockerDesktop
+                Log-Warn "Docker Desktop 安装程序已启动或完成。"
+                Log-Warn "请注意: 安装完成后可能需要重启电脑，并手动启动 Docker Desktop。"
+                Log-Warn "安装并启动 Docker 后，请重新运行此脚本。"
+                exit 0
+            } catch {
+                Log-Error "Winget 安装失败。"
+            }
+        }
+        
+        Log-Error "请手动下载并安装 Docker Desktop for Windows: https://www.docker.com/products/docker-desktop/"
         exit 1
     }
 
@@ -80,8 +95,6 @@ function Step-CheckSystem {
 }
 
 function Step-PrepareCode {
-    Log-Info "准备代码..."
-    
     # 检查 Git
     try {
         git --version | Out-Null
@@ -90,6 +103,19 @@ function Step-PrepareCode {
         exit 1
     }
 
+    # 检查是否在项目根目录下运行 (本地部署模式)
+    if ((Test-Path "docker-compose.yml") -and (Test-Path ".git")) {
+        Log-Info "检测到当前目录似乎是项目根目录。"
+        $useCurrent = Read-Host "是否直接在当前目录 ($PWD) 进行部署? (y/n) [y]"
+        if ($useCurrent -ne 'n') {
+            $Global:InstallDir = Get-Location
+            Log-Info "已选择本地部署模式，跳过代码克隆。"
+            return
+        }
+    }
+
+    Log-Info "准备代码..."
+    
     if (Test-Path $Global:InstallDir) {
         Log-Warn "安装目录 $Global:InstallDir 已存在"
         $choice = Read-Host "是否覆盖更新? (y/n) [y]"
