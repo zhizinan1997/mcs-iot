@@ -64,10 +64,12 @@
             <!-- Left: Gauge -->
             <div class="safety-left">
               <div class="gauge-container">
+                <!-- Rotating Tech Ring -->
+                <div class="tech-ring"></div>
                 <v-chart class="gauge-chart" :option="gaugeOption" autoresize />
                 <div class="gauge-overlay">
-                  <span class="g-val">{{ safetyPercent }}<small>%</small></span>
-                  <span class="g-label">安全率</span>
+                  <span class="g-val" :style="{ color: scoreColor.end }">{{ overallScore }}<small>分</small></span>
+                  <span class="g-label">综合评分</span>
                 </div>
               </div>
             </div>
@@ -398,6 +400,25 @@ const healthPercent = computed(() => {
   return Math.round(((stats.devices_total - stats.devices_alarm) / stats.devices_total) * 100)
 })
 
+const overallScore = computed(() => {
+  // Weights: Online(30%), Health(40%), AlarmHandling(30%)
+  const s = safetyPercent.value || 0
+  const h = healthPercent.value || 0
+  const a = alarmHandlingPercent.value || 0
+  
+  // Initial state check
+  if (!stats.devices_total && !stats.alarms_today) return 100 
+  
+  return Math.round((s * 0.3) + (h * 0.4) + (a * 0.3))
+})
+
+const scoreColor = computed(() => {
+  const s = overallScore.value
+  if (s >= 90) return { start: '#34d399', end: '#10b981', shadow: 'rgba(52,211,153,0.8)', stop1: 'rgba(16,185,129,0.8)', stop2: 'rgba(16,185,129,0.2)' } 
+  if (s >= 70) return { start: '#fbbf24', end: '#f59e0b', shadow: 'rgba(251,191,36,0.8)', stop1: 'rgba(251,191,36,0.8)', stop2: 'rgba(251,191,36,0.2)' }
+  return { start: '#f87171', end: '#ef4444', shadow: 'rgba(248,113,113,0.8)', stop1: 'rgba(248,113,113,0.8)', stop2: 'rgba(248,113,113,0.2)' }
+})
+
 const todayAlarmCount = computed(() => alarmStats.today)
 
 const gaugeOption = computed(() => ({
@@ -425,7 +446,7 @@ const gaugeOption = computed(() => ({
       axisLabel: { show: false },
       data: []
     },
-    // Inner tick bars (gradient yellow based on percentage)
+    // Inner tick bars (gradient based on score)
     {
       type: 'gauge',
       startAngle: 90, endAngle: -270, radius: '75%',
@@ -441,17 +462,17 @@ const gaugeOption = computed(() => ({
             type: 'linear',
             x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
-              { offset: 0, color: 'rgba(251,191,36,0.8)' },
-              { offset: 1, color: 'rgba(251,191,36,0.2)' }
+              { offset: 0, color: scoreColor.value.stop1 },
+              { offset: 1, color: scoreColor.value.stop2 }
             ]
           }
         } 
       },
       axisTick: { show: false },
       axisLabel: { show: false },
-      data: [{ value: safetyPercent.value }]
+      data: [{ value: overallScore.value }]
     },
-    // Main progress ring (orange/gold with glow)
+    // Main progress ring (gradient based on score)
     {
       type: 'gauge',
       startAngle: 90, endAngle: -270, radius: '85%',
@@ -465,11 +486,11 @@ const gaugeOption = computed(() => ({
             type: 'linear',
             x: 0, y: 0, x2: 1, y2: 0,
             colorStops: [
-              { offset: 0, color: '#fbbf24' },
-              { offset: 1, color: '#f59e0b' }
+              { offset: 0, color: scoreColor.value.start },
+              { offset: 1, color: scoreColor.value.end }
             ]
           },
-          shadowColor: 'rgba(251,191,36,0.8)',
+          shadowColor: scoreColor.value.shadow,
           shadowBlur: 15
         } 
       },
@@ -477,7 +498,7 @@ const gaugeOption = computed(() => ({
       splitLine: { show: false },
       axisTick: { show: false },
       axisLabel: { show: false },
-      data: [{ value: safetyPercent.value }],
+      data: [{ value: overallScore.value }],
       detail: { show: false }
     }
   ]
@@ -662,7 +683,7 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
     repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(34,211,238,0.03) 40px, rgba(34,211,238,0.03) 41px),
     linear-gradient(to bottom, #0f172a, #020617);
   color: #cbd5e1;
-  font-family: 'Microsoft YaHei', sans-serif;
+  font-family: 'Rajdhani', 'Microsoft YaHei', sans-serif;
   display: flex; flex-direction: column; overflow: hidden;
 }
 
@@ -681,12 +702,14 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
   text-align: center;
 }
 .header h1 {
-  margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 4px;
+  margin: 0; font-size: 28px; font-weight: 700; letter-spacing: 4px;
   color: #22d3ee;
   text-shadow: 0 0 20px rgba(34,211,238,0.5), 0 0 40px rgba(34,211,238,0.3);
+  font-family: 'Orbitron', sans-serif;
+  text-transform: uppercase;
 }
 .header p { display: none; }
-.header-right { display: flex; gap: 20px; font-size: 13px; color: #94a3b8; font-family: 'Courier New', monospace; }
+.header-right { display: flex; gap: 20px; font-size: 15px; color: #94a3b8; font-family: 'Chakra Petch', monospace; font-weight: 500; }
 .header-right .loc { color: #22d3ee; text-shadow: 0 0 8px rgba(34,211,238,0.4); }
 .header-right .date { color: #64748b; }
 .header-right .weather { color: #22d3ee; text-shadow: 0 0 8px rgba(34,211,238,0.4); }
@@ -826,15 +849,17 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 }
 
 .header-text {
-  font-size: 16px; font-weight: 800; color: #fff;
+  font-size: 18px; font-weight: 700; color: #fff;
   letter-spacing: 1px; margin-left: 10px; margin-right: 12px;
-  font-family: 'PingFang SC', sans-serif;
+  font-family: 'Rajdhani', sans-serif;
   font-style: italic;
+  text-transform: uppercase;
   text-shadow: 0 0 10px rgba(59,130,246,0.8);
 }
 .header-sub {
-  font-size: 10px; color: #94a3b8; letter-spacing: 0.5px;
-  font-family: 'Arial', sans-serif; opacity: 0.7; margin-top: 3px;
+  font-size: 11px; color: #94a3b8; letter-spacing: 1px;
+  font-family: 'Rajdhani', sans-serif; opacity: 0.7; margin-top: 3px;
+  font-weight: 600;
 }
 
 /* Safety Body - Row Layout */
@@ -854,7 +879,26 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 .gauge-container {
   width: 130px; height: 130px; position: relative;
   z-index: 10;
+  display: flex; align-items: center; justify-content: center;
 }
+.tech-ring {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 110%; height: 110%;
+  transform: translate(-50%, -50%);
+  border: 1px dashed rgba(34,211,238,0.3);
+  border-radius: 50%;
+  animation: spin 10s linear infinite;
+  pointer-events: none;
+}
+.tech-ring::before {
+  content: ''; position: absolute; top: -2px; left: 50%;
+  width: 10px; height: 4px; background: #22d3ee;
+  transform: translateX(-50%);
+  box-shadow: 0 0 10px #22d3ee;
+}
+@keyframes spin { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
+
 .gauge-chart { width: 100%; height: 100%; background: transparent !important; }
 .gauge-overlay {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -862,13 +906,14 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
   pointer-events: none; text-align: center;
 }
 .g-val {
-  font-size: 26px; font-weight: 700; color: #fff; line-height: 1;
+  font-size: 28px; font-weight: 700; color: #fff; line-height: 1;
   text-shadow: 0 0 15px rgba(59,130,246,0.8);
-  font-family: 'Arial Black', sans-serif;
+  font-family: 'Chakra Petch', sans-serif;
 }
-.g-val small { font-size: 12px; font-weight: normal; color: #93c5fd; margin-left: 2px; }
+.g-val small { font-size: 14px; font-weight: normal; color: #93c5fd; margin-left: 2px; }
 .g-label {
-  font-size: 11px; color: #94a3b8; margin-top: 6px; letter-spacing: 1px;
+  font-size: 12px; color: #94a3b8; margin-top: 6px; letter-spacing: 1px;
+  font-family: 'Rajdhani', sans-serif; font-weight: 600; text-transform: uppercase;
 }
 
 /* Right: Progress Bars */
@@ -883,10 +928,10 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 }
 .p-header {
   display: flex; justify-content: space-between; align-items: center;
-  font-size: 12px; color: #cbd5e1;
+  font-size: 13px; color: #cbd5e1;
 }
-.p-label { font-weight: 500; letter-spacing: 0.5px; }
-.p-val { font-family: 'Courier New', monospace; font-weight: 700; font-size: 14px; }
+.p-label { font-weight: 600; letter-spacing: 0.5px; font-family: 'Rajdhani', sans-serif; }
+.p-val { font-family: 'Chakra Petch', monospace; font-weight: 700; font-size: 16px; }
 
 /* Progress Track & Bar */
 .p-track {
@@ -1003,18 +1048,19 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
   display: flex; align-items: flex-end; justify-content: space-between;
 }
 .sensor-count {
-  font-size: 24px; font-weight: 700;
+  font-size: 26px; font-weight: 700;
   color: var(--card-color, #22d3ee);
-  font-family: 'Courier New', monospace;
+  font-family: 'Chakra Petch', monospace;
   line-height: 1;
   text-shadow: 0 0 15px rgba(34, 211, 238, 0.4);
 }
 .sensor-types {
-  font-size: 10px; color: #64748b;
-  font-weight: 500;
+  font-size: 11px; color: #64748b;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1px;
   margin-bottom: 3px;
+  font-family: 'Rajdhani', sans-serif;
 }
 .empty-instruments {
   text-align: center; color: #475569;
@@ -1027,11 +1073,11 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 .donut-label { position: absolute; text-align: center; pointer-events: none; }
 .donut-label .num {
   display: block; font-size: 36px; font-weight: 700;
-  font-family: 'Courier New', monospace;
+  font-family: 'Chakra Petch', monospace;
   color: #22d3ee;
   text-shadow: 0 0 20px rgba(34,211,238,0.6), 0 0 40px rgba(34,211,238,0.3);
 }
-.donut-label .txt { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 2px; }
+.donut-label .txt { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 2px; font-family: 'Rajdhani', sans-serif; font-weight: 600; }
 
 /* ========== CENTER: Alert Bar ========== */
 .col-center { display: flex; flex-direction: column; gap: 10px; }
