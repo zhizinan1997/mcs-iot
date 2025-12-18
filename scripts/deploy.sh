@@ -531,11 +531,21 @@ setup_ssl_certificates() {
     log_info "  - $DOMAIN_SCREEN"
     echo ""
     
+    echo -e "${YELLOW}提示: 证书申请过程可能需要 1-3 分钟，请耐心等待...${NC}"
+    echo -e "${YELLOW}      Let's Encrypt 需要验证您的域名解析是否正确${NC}"
+    echo ""
+    
     # 确保 80 端口可用
+    log_info "正在释放 80 端口..."
     systemctl stop nginx 2>/dev/null || true
     docker stop mcs_frontend 2>/dev/null || true
+    sleep 2
     
-    # 申请证书
+    # 创建临时文件存储 certbot 输出
+    CERTBOT_LOG=$(mktemp)
+    
+    # 后台运行 certbot
+    log_info "正在与 Let's Encrypt 服务器通信..."
     certbot certonly --standalone \
         --non-interactive \
         --agree-tos \
@@ -543,15 +553,58 @@ setup_ssl_certificates() {
         -d "$DOMAIN_MAIN" \
         -d "$DOMAIN_API" \
         -d "$DOMAIN_MQTT" \
-        -d "$DOMAIN_SCREEN"
+        -d "$DOMAIN_SCREEN" > "$CERTBOT_LOG" 2>&1 &
     
-    if [[ $? -ne 0 ]]; then
-        log_error "SSL 证书申请失败，请检查域名解析是否正确"
-        log_info "您可以稍后手动运行: certbot certonly --standalone -d $DOMAIN_MAIN -d $DOMAIN_API -d $DOMAIN_MQTT -d $DOMAIN_SCREEN"
+    CERTBOT_PID=$!
+    
+    # 显示动态进度
+    SPINNER='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+    SPINNER_LEN=${#SPINNER}
+    i=0
+    elapsed=0
+    
+    while kill -0 $CERTBOT_PID 2>/dev/null; do
+        printf "\r${CYAN}[%s]${NC} 正在验证域名... (%d 秒)" "${SPINNER:i++%SPINNER_LEN:1}" "$elapsed"
+        sleep 1
+        ((elapsed++))
+        
+        # 每 30 秒显示一次提示
+        if [[ $((elapsed % 30)) -eq 0 ]]; then
+            echo ""
+            log_info "仍在处理中，请继续等待..."
+        fi
+    done
+    
+    # 清除进度行
+    printf "\r%-60s\r" " "
+    
+    # 等待进程结束并获取退出码
+    wait $CERTBOT_PID
+    CERTBOT_EXIT=$?
+    
+    if [[ $CERTBOT_EXIT -ne 0 ]]; then
+        echo ""
+        log_error "SSL 证书申请失败！"
+        echo ""
+        echo -e "${RED}错误详情:${NC}"
+        cat "$CERTBOT_LOG"
+        echo ""
+        log_info "常见原因:"
+        log_info "  1. 域名未正确解析到此服务器 IP"
+        log_info "  2. 80 端口被防火墙阻挡"
+        log_info "  3. Let's Encrypt 申请次数超限 (等待 1 小时后重试)"
+        echo ""
+        log_info "您可以稍后手动运行:"
+        echo "  certbot certonly --standalone -d $DOMAIN_MAIN -d $DOMAIN_API -d $DOMAIN_MQTT -d $DOMAIN_SCREEN"
+        rm -f "$CERTBOT_LOG"
         exit 1
     fi
     
+    rm -f "$CERTBOT_LOG"
+    log_info "✓ SSL 证书申请成功！(耗时 ${elapsed} 秒)"
+    
     # 复制证书到项目目录
+    log_info "正在复制证书到项目目录..."
     mkdir -p "$INSTALL_DIR/nginx/ssl"
     cp "/etc/letsencrypt/live/$DOMAIN_MAIN/fullchain.pem" "$INSTALL_DIR/nginx/ssl/server.crt"
     cp "/etc/letsencrypt/live/$DOMAIN_MAIN/privkey.pem" "$INSTALL_DIR/nginx/ssl/server.key"
@@ -564,7 +617,7 @@ setup_ssl_certificates() {
 0 3 * * * root certbot renew --quiet --deploy-hook "cp /etc/letsencrypt/live/$DOMAIN_MAIN/fullchain.pem $INSTALL_DIR/nginx/ssl/server.crt && cp /etc/letsencrypt/live/$DOMAIN_MAIN/privkey.pem $INSTALL_DIR/nginx/ssl/server.key && docker restart mcs_frontend"
 EOF
     
-    log_info "✓ SSL 证书申请成功，已配置自动续签"
+    log_info "✓ 证书已配置自动续签"
 }
 
 generate_nginx_config() {
