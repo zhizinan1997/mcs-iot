@@ -12,7 +12,7 @@
         </div>
         <div class="title-box">
           <div class="chip-lines"></div>
-          <h1>元芯物联网智慧云平台</h1>
+          <h1>{{ dashboardTitle }}</h1>
           <div class="chip-light"></div>
         </div>
         <div class="title-deco-right">
@@ -332,7 +332,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted, provide } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, provide, watch } from 'vue'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { PieChart, LineChart, GaugeChart } from 'echarts/charts'
@@ -1060,11 +1060,74 @@ async function fetchScreenBg() {
   }
 }
 
+// Dashboard Configuration
+const dashboardTitle = ref('元芯物联网智慧云平台')
+const refreshRate = ref(5) // default 5 seconds
+
+function updateFavicon(url: string) {
+  let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement
+  if (!link) {
+    link = document.createElement('link')
+    link.rel = 'icon'
+    document.head.appendChild(link)
+  }
+  link.href = url
+}
+
+async function fetchConfigs() {
+  try {
+    const [dashRes, siteRes] = await Promise.all([
+      configApi.getDashboard(),
+      configApi.getSite()
+    ])
+    
+    // Dashboard Config
+    if (dashRes.data) {
+      dashboardTitle.value = dashRes.data.title || '元芯物联网智慧云平台'
+      refreshRate.value = (dashRes.data.refresh_rate && dashRes.data.refresh_rate >= 1) ? dashRes.data.refresh_rate : 5
+    }
+
+    // Site Config
+    if (siteRes.data) {
+       if (siteRes.data.browser_title) {
+         document.title = siteRes.data.browser_title
+       }
+       if (siteRes.data.logo_url) {
+         updateFavicon(siteRes.data.logo_url)
+       }
+    }
+  } catch (e) {
+    console.error('Failed to load configs', e)
+  }
+}
+
+// Watch refresh rate to update timer
+watch(refreshRate, (newRate) => {
+  if (timer) clearInterval(timer)
+  timer = setInterval(() => { 
+      currentDate.value = new Date().toLocaleDateString('zh-CN')
+      fetchData() 
+  }, newRate * 1000)
+})
+
 onMounted(() => {
   loadLayoutSizes() // Restore saved panel sizes
   currentDate.value = new Date().toLocaleDateString('zh-CN')
+  
+  // Initial data fetch
   fetchData(); fetchWeather(); fetchAI(); fetchScreenBg()
-  timer = setInterval(() => { currentDate.value = new Date().toLocaleDateString('zh-CN'); fetchData() }, 3000)
+  
+  // Fetch configs and setup timer
+  fetchConfigs().then(() => {
+    // If watch didn't trigger (rate is same as default), set timer manually
+    if (!timer) {
+        timer = setInterval(() => { 
+            currentDate.value = new Date().toLocaleDateString('zh-CN')
+            fetchData() 
+        }, refreshRate.value * 1000)
+    }
+  })
+
   aiTimer = setInterval(fetchAI, 60000) // Refresh AI summary every minute
 })
 onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
