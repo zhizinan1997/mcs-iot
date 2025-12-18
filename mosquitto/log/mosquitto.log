@@ -424,3 +424,60 @@ To fix this, use `chmod 0700 /mosquitto/config/acl`.
 1765975991: New client connected from 172.19.0.1:53482 as NH3018 (p2, c1, k60, u'zhizinan').
 1765975991: New connection from 172.19.0.1:53490 on port 1883.
 1765975991: New client connected from 172.19.0.1:53490 as GAS006 (p2, c1, k60, u'zhizinan').
+1766023704: mosquitto version 2.0.22 starting
+1766023704: Config loaded from /mosquitto/config/mosquitto.conf.
+1766023704: Warning: File /mosquitto/config/passwd has world readable permissions. Future versions will refuse to load this file.
+To fix this, use `chmod 0700 /mosquitto/config/passwd`.
+1766023704: Warning: File /mosquitto/config/passwd has world readable permissions. Future versions will refuse to load this file.
+To fix this, use `chmod 0700 /mosquitto/config/passwd`.
+1766023704: Warning: File /mosquitto/config/acl has world readable permissions. Future versions will refuse to load this file.
+To fix this, use `chmod 0700 /mosquitto/config/acl`.
+1766023704: Warning: File /mosquitto/config/acl has world readable permissions. Future versions will refuse to load this file.
+To fix this, use `chmod 0700 /mosquitto/config/acl`.
+1766023704: Opening ipv4 listen socket on port 1883.
+1766023704: Opening ipv6 listen socket on port 1883.
+1766023704: Opening ipv4 listen socket on port 8883.
+1766023704: Opening ipv6 listen socket on port 8883.
+1766023704: mosquitto version 2.0.22 running
+1766023709: New connection from 172.18.0.5:40879 on port 1883.
+1766023709: New client connected from 172.18.0.5:40879 as worker_1766023709 (p2, c1, k60, u'worker').
+1766023824: New connection from 172.18.0.1:62944 on port 1883.
+1766023824: New client connected from 172.18.0.1:62944 as GAS001 (p2, c1, k60, u'zhizinan').
+1766023824: New connection from 172.18.0.1:62952 on port 1883.
+1766023824: New client connected from 172.18.0.1:62952 as GAS002 (p2, c1, k60, u'zhizinan').
+1766023824: New connection from 172.18.0.1:62954 on port 1883.
+1766023824: New client connected from 172.18.0.1:62954 as GAS003 (p2, c1, k60, u'zhizinan').
+1766023824: New connection from 172.18.0.1:62964 on port 1883.
+1766023824: New client connected from 172.18.0.1:62964 as GAS004 (p2, c1, k60, u'zhizinan').
+1766023824: New connection from 172.18.0.1:62976 on port 1883.
+1766023824: New client connected from 172.18.0.1:62976 as GAS005 (p2, c1, k60, u'zhizinan').
+1766023824: New connection from 172.18.0.1:62978 on port 1883.
+1766023824: New client connected from 172.18.0.1:62978 as GAS006 (p2, c1, k60, u'zhizinan').
+1766023824: New connection from 172.18.0.1:62980 on port 1883.
+1766023824: New client connected from 172.18.0.1:62980 as GAS007 (p2, c1, k60, u'zhizinan').
+1766023824: New connection from 172.18.0.1:62990 on port 1883.
+1766023824: New client connected from 172.18.0.1:62990 as GAS008 (p2, c1, k60, u'zhizinan').
+1766023825: New connection from 172.18.0.1:63004 on port 1883.
+1766023825: New client connected from 172.18.0.1:63004 as GAS009 (p2, c1, k60, u'zhizinan').
+1766023825: New connection from 172.18.0.1:63014 on port 1883.
+1766023825: New client connected from 172.18.0.1:63014 as GAS010 (p2, c1, k60, u'zhizinan').
+1766023825: New connection from 172.18.0.1:63022 on port 1883.
+1766023825: New client connected from 172.18.0.1:63022 as CO2011 (p2, c1, k60, u'zhizinan').
+1766023825: New connection from 172.18.0.1:63030 on port 1883.
+1766023825: New client connected from 172.18.0.1:63030 as CO2012 (p2, c1, k60, u'zhizinan').
+1766023825: New connection from 172.18.0.1:63046 on port 1883.
+1766023825: New client connected from 172.18.0.1:63046 as CO2013 (p2, c1, k60, u'zhizinan').
+1766023825: New connection from 172.18.0.1:63048 on port 1883.
+1766023825: New client connected from 172.18.0.1:63048 as CO2014 (p2, c1, k60, u'zhizinan').
+1766023825: New connection from 172.18.0.1:63060 on port 1883.
+1766023825: New client connected from 172.18.0.1:63060 as CO2015 (p2, c1, k60, u'zhizinan').
+1766023825: New connection from 172.18.0.1:63066 on port 1883.
+1766023825: New client connected from 172.18.0.1:63066 as NH3016 (p2, c1, k60, u'zhizinan').
+1766023825: New connection from 172.18.0.1:63068 on port 1883.
+1766023825: New client connected from 172.18.0.1:63068 as NH3017 (p2, c1, k60, u'zhizinan').
+1766023826: New connection from 172.18.0.1:63082 on port 1883.
+1766023826: New client connected from 172.18.0.1:63082 as NH3018 (p2, c1, k60, u'zhizinan').
+1766023826: New connection from 172.18.0.1:63086 on port 1883.
+1766023826: New client connected from 172.18.0.1:63086 as NH3019 (p2, c1, k60, u'zhizinan').
+1766023826: New connection from 172.18.0.1:63094 on port 1883.
+1766023826: New client connected from 172.18.0.1:63094 as NH3020 (p2, c1, k60, u'zhizinan').

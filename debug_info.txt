@@ -1,0 +1,42 @@
+# Debugging Information
+
+## Service Status
+All services are running:
+- **Frontend**: http://localhost:80
+- **Backend API**: http://localhost:8000
+- **Mosquitto (MQTT)**: localhost:1883
+- **TimescaleDB**: localhost:5432
+- **Redis**: localhost:6379
+
+## Useful Commands
+
+### View Logs
+- Follow all logs: `docker-compose logs -f`
+- Backend logs: `docker-compose logs -f backend`
+- Worker logs: `docker-compose logs -f worker`
+- Frontend logs: `docker-compose logs -f frontend`
+
+### Restart Services
+- Restart all: `docker-compose restart`
+- Restart specific service: `docker-compose restart backend`
+
+### Rebuild and Restart
+If you change `Dockerfile` or dependencies:
+```bash
+docker-compose up -d --build
+```
+
+### Access Database
+```bash
+docker-compose exec timescaledb psql -U postgres -d mcs_iot
+```
+
+### Access Redis
+```bash
+docker-compose exec redis redis-cli
+```
+
+### Stop Services
+```bash
+docker-compose down
+```

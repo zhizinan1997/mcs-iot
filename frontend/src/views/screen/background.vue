@@ -1,6 +1,6 @@
 <template>
   <div class="screen-background-page">
-    <el-card>
+    <el-card class="full-card">
       <template #header>
         <div class="card-header">
           <span>大屏背景与仪表位置配置</span>
@@ -8,7 +8,7 @@
         </div>
       </template>
 
-      <el-form :model="screenBgConfig" label-width="120px">
+      <el-form :model="screenBgConfig" label-width="120px" class="main-form">
         <el-form-item label="上传背景图">
           <div class="upload-area">
             <input 
@@ -27,7 +27,7 @@
           </div>
         </el-form-item>
 
-        <el-form-item label="位置编辑器">
+        <el-form-item label="位置编辑器" class="editor-form-item">
           <div class="position-editor">
             <div 
               class="preview-container" 
@@ -244,7 +244,42 @@ onMounted(() => {
 
 <style scoped>
 .screen-background-page {
-  max-width: 900px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+:deep(.full-card) {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+:deep(.full-card .el-card__body) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+.main-form {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-form-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+  overflow: hidden;
+}
+
+:deep(.editor-form-item .el-form-item__content) {
+  height: 100%;
+  align-items: stretch;
 }
 
 .card-header {
@@ -261,12 +296,15 @@ onMounted(() => {
 
 .position-editor {
   width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .preview-container {
   position: relative;
-  width: 800px;
-  height: 450px;
+  width: 100%;
+  flex: 1;
   border: 2px solid #409eff;
   border-radius: 8px;
   background: #1a1a2e;
@@ -277,7 +315,7 @@ onMounted(() => {
 .preview-bg {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: fill;
   pointer-events: none;
   user-select: none;
 }

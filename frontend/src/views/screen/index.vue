@@ -5,7 +5,6 @@
       <div class="header-left"></div>
       <div class="header-center">
         <h1>元芯物联网智慧云平台</h1>
-        <p>Infinicore IoT Smart Ecosystem</p>
       </div>
       <div class="header-right">
         <span class="loc">📍 {{ weather.location || '定位中...' }}</span>
@@ -28,7 +27,11 @@
                 <section class="col col-left">
         <!-- Panel: 仪表概览 -->
         <div class="panel panel-sm">
-          <div class="panel-title">仪表概览</div>
+          <div class="safety-header">
+            <div class="header-deco"><div class="deco-dot"></div><div class="deco-ring"></div></div>
+            <div class="header-text">仪表概览</div>
+            <div class="header-sub">INSTRUMENT OVERVIEW</div>
+          </div>
           <div class="instruments-grid">
             <div class="instrument-card" v-for="inst in displayedInstruments" :key="inst.id" :style="{ '--card-color': inst.color || '#22d3ee' }">
               <div class="inst-header">
@@ -91,7 +94,11 @@
         
         <!-- Panel: AI 智能总结 -->
         <div class="panel panel-ai">
-          <div class="panel-title">🤖 AI 智能分析</div>
+          <div class="safety-header">
+            <div class="header-deco"><div class="deco-dot"></div><div class="deco-ring"></div></div>
+            <div class="header-text">AI 智能分析</div>
+            <div class="header-sub">AI ANALYSIS</div>
+          </div>
           <div class="ai-content">
             <div class="ai-summary">
               <p v-if="aiLoading" class="ai-thinking">{{ aiThinking }}</p>
@@ -151,9 +158,11 @@
           <Pane :size="panelSizes.trendHeight" min-size="15" max-size="50">
             <div class="trend-section">
               <div class="panel trend-panel">
-                <div class="panel-title">
-                  污染物趋势图
-                  <span class="tabs">
+                <div class="safety-header">
+                  <div class="header-deco"><div class="deco-dot"></div><div class="deco-ring"></div></div>
+                  <div class="header-text">污染物趋势图</div>
+                  <div class="header-sub">POLLUTANT TRENDS</div>
+                  <span class="tabs" style="margin-left: auto;">
                     <button class="tab active">今日</button>
                     <button class="tab">昨日</button>
                   </span>
@@ -170,7 +179,11 @@
         <section class="col col-right col-right-full">
           <!-- Panel: 天气概况 -->
           <div class="panel weather-panel">
-            <div class="panel-title">天气概况</div>
+            <div class="safety-header">
+              <div class="header-deco"><div class="deco-dot"></div><div class="deco-ring"></div></div>
+              <div class="header-text">天气概况</div>
+              <div class="header-sub">WEATHER OVERVIEW</div>
+            </div>
             <div class="weather-main">
               <span class="icon">{{ weather.icon }}</span>
               <span class="temp">{{ weather.temp }}<small>°C</small></span>
@@ -183,7 +196,11 @@
           </div>
           <!-- Panel: 设备状态 -->
           <div class="panel device-panel">
-            <div class="panel-title">设备状态</div>
+            <div class="safety-header">
+              <div class="header-deco"><div class="deco-dot"></div><div class="deco-ring"></div></div>
+              <div class="header-text">设备状态</div>
+              <div class="header-sub">DEVICE STATUS</div>
+            </div>
             <div class="device-list">
               <div class="device-item" v-for="d in devices" :key="d.sn">
                 <span class="status-dot" :class="d.status"></span>
@@ -194,7 +211,11 @@
           </div>
           <!-- Panel: 最新报警 (fills remaining space) -->
           <div class="panel alarm-panel alarm-panel-fill">
-            <div class="panel-title">最新报警</div>
+            <div class="safety-header">
+              <div class="header-deco"><div class="deco-dot"></div><div class="deco-ring"></div></div>
+              <div class="header-text">最新报警</div>
+              <div class="header-sub">LATEST ALARMS</div>
+            </div>
             <div class="alarm-list">
               <div class="alarm-item" v-for="a in alarms" :key="a.id">
                 <span class="a-time">{{ fmtTime(a.time) }}</span>
@@ -624,13 +645,20 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
   padding: 0 30px;
   background: linear-gradient(90deg, rgba(15,23,42,0.9), rgba(30,41,59,0.7), rgba(15,23,42,0.9));
   border-bottom: 1px solid rgba(34,211,238,0.2);
+  position: relative;
+}
+.header-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
 }
 .header h1 {
   margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 4px;
   color: #22d3ee;
   text-shadow: 0 0 20px rgba(34,211,238,0.5), 0 0 40px rgba(34,211,238,0.3);
 }
-.header p { margin: 2px 0 0 0; font-size: 10px; color: #64748b; letter-spacing: 6px; text-transform: uppercase; }
+.header p { display: none; }
 .header-right { display: flex; gap: 20px; font-size: 13px; color: #94a3b8; font-family: 'Courier New', monospace; }
 .header-right .loc { color: #22d3ee; text-shadow: 0 0 8px rgba(34,211,238,0.4); }
 .header-right .date { color: #64748b; }
