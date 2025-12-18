@@ -62,9 +62,11 @@ class Processor:
         }
         await self.redis.hset(f"realtime:{sn}", mapping=rt_data)
         
-        # 5. Check Alarm (包含浓度和低电量)
+        # 5. Check Alarm (包含浓度、低电量、弱信号)
         if self.alarm:
-            await self.alarm.check_and_alert(sn, ppm, temp, bat)
+            rssi = int(data.get('rssi', 0)) if data.get('rssi') else None
+            network = data.get('net', '')
+            await self.alarm.check_and_alert(sn, ppm, temp, bat, rssi=rssi, network=network)
         
         logger.info(f"[{sn}] v={v_raw:.1f}, ppm={ppm:.2f}, bat={bat}% (Saved)")
 

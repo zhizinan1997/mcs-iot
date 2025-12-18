@@ -87,7 +87,28 @@ class AlarmCenter:
         
         return start_time <= current_time <= end_time
 
-    async def check_and_alert(self, sn: str, ppm: float, temp: float, bat: int = 100):
+    # Network-specific signal edge thresholds (dBm)
+    # When RSSI falls to or below these values, signal is at dropout edge
+    SIGNAL_EDGE_THRESHOLDS = {
+        '4G': -115,
+        'LTE': -115,
+        'WIFI': -85,
+        'WI-FI': -85,
+        'NBIOT': -130,
+        'NB-IOT': -130,
+        'LORA': -140,
+        'DEFAULT': -85  # WiFi-like default
+    }
+
+    def get_signal_edge_threshold(self, network: str = None) -> int:
+        """Get the signal edge threshold for a network type"""
+        if not network:
+            return self.SIGNAL_EDGE_THRESHOLDS['DEFAULT']
+        net_type = network.upper().replace(' ', '')
+        return self.SIGNAL_EDGE_THRESHOLDS.get(net_type, self.SIGNAL_EDGE_THRESHOLDS['DEFAULT'])
+
+    async def check_and_alert(self, sn: str, ppm: float, temp: float, bat: int = 100, 
+                             rssi: int = None, network: str = None):
         """Check thresholds and trigger alerts if needed"""
         config = await self.get_device_config(sn)
         high_limit = config["high_limit"]
@@ -109,6 +130,14 @@ class AlarmCenter:
         if bat < bat_limit:
             await self.process_alarm(sn, "LOW_BAT", bat, bat_limit,
                 f"设备 {device_name} 电量过低: {bat}% (阈值: {bat_limit}%)")
+        
+        # 检查弱信号报警
+        if rssi is not None:
+            edge_threshold = self.get_signal_edge_threshold(network)
+            if rssi <= edge_threshold:
+                network_label = network.upper() if network else "未知"
+                await self.process_alarm(sn, "WEAK_SIGNAL", rssi, edge_threshold,
+                    f"设备 {device_name} 信号不好: {rssi} dBm ({network_label}, 阈值: {edge_threshold} dBm)")
 
     async def process_alarm(self, sn: str, alarm_type: str, value: float, 
                            threshold: float, message: str = ""):

@@ -136,8 +136,8 @@
                       <div class="panel panel-ai" style="height: 100%; border-radius: 0;">
                         <div class="safety-header">
                           <div class="header-deco"><div class="deco-dot"></div><div class="deco-ring"></div></div>
-                          <div class="header-text">AI 智能分析</div>
-                          <div class="header-sub">AI ANALYSIS</div>
+                          <div class="header-text">元芯AI总结</div>
+                          <div class="header-sub">METACHIP AI ANALYSIS</div>
                         </div>
                         <div class="ai-content">
                           <div class="ai-summary">
@@ -267,11 +267,25 @@
               <div class="header-sub">DEVICE STATUS</div>
             </div>
             <div class="device-list">
-              <div class="scroll-wrapper" :style="{ animationDuration: devices.length * 2 + 's' }">
-                <div class="device-item" v-for="(d, i) in [...devices, ...devices]" :key="i">
+              <div class="scroll-wrapper" :style="{ animationDuration: sortedDevices.length * 2 + 's' }">
+                <div 
+                  class="device-item" 
+                  v-for="(d, i) in [...sortedDevices, ...sortedDevices]" 
+                  :key="i"
+                  :class="{ 'device-alarm': d.hasUnhandledAlarm }"
+                >
                   <span class="status-dot" :class="d.status"></span>
                   <span class="d-name">{{ d.name || d.sn }}</span>
-                  <span class="d-val" :class="{ alarm: (d.ppm||0) > 1000 }">{{ d.ppm?.toFixed(0) }} <small>{{ d.unit }}</small></span>
+                  <span class="d-signal" v-if="d.network || d.rssi !== null">
+                    <span class="signal-type">{{ getNetworkType(d.network) }}</span>
+                    <span class="signal-bars" :class="{ 'signal-critical': isSignalCritical(d.rssi, d.network) }">
+                      <span class="bar" :class="{ active: getSignalBars(d.rssi, d.network) >= 1 }"></span>
+                      <span class="bar" :class="{ active: getSignalBars(d.rssi, d.network) >= 2 }"></span>
+                      <span class="bar" :class="{ active: getSignalBars(d.rssi, d.network) >= 3 }"></span>
+                      <span class="bar" :class="{ active: getSignalBars(d.rssi, d.network) >= 4 }"></span>
+                    </span>
+                  </span>
+                  <span class="d-val" :class="{ alarm: (d.ppm||0) > (d.high_limit || 1000) }">{{ d.ppm?.toFixed(0) }} <small>{{ d.unit }}</small></span>
                 </div>
               </div>
             </div>
@@ -287,8 +301,10 @@
               <div class="scroll-wrapper" :style="{ animationDuration: alarms.length * 2 + 's' }">
                 <div class="alarm-item" v-for="(a, i) in [...alarms, ...alarms]" :key="i">
                   <span class="a-time">{{ fmtTime(a.time) }}</span>
-                  <span class="a-sn">{{ a.sn }}</span>
-                  <span class="a-val">{{ a.value.toFixed(1) }}</span>
+                  <span class="a-info">
+                    <span class="a-name">{{ a.instrument_name || '' }}{{ a.instrument_name && a.device_name ? ' · ' : '' }}{{ a.device_name || a.sn }}</span>
+                  </span>
+                  <span class="a-type" :class="getAlarmTypeClass(a.type)">{{ fmtAlarmType(a.type) }}</span>
                 </div>
               </div>
               <div v-if="!alarms.length" class="empty">暂无报警</div>
@@ -435,8 +451,8 @@ function onLeftColumnResize(panes: Array<{ size: number }>) {
   }
 }
 
-interface Device { sn: string; name: string | null; ppm: number | null; temp: number | null; status: string; unit: string; instrument_id?: number | null; high_limit?: number; sensor_type?: string }
-interface Alarm { id: number; time: string; sn: string; value: number }
+interface Device { sn: string; name: string | null; ppm: number | null; temp: number | null; status: string; unit: string; instrument_id?: number | null; high_limit?: number; sensor_type?: string; network?: string | null; rssi?: number | null; hasUnhandledAlarm?: boolean }
+interface Alarm { id: number; time: string; sn: string; value: number; status?: string; type?: string; device_name?: string; instrument_name?: string }
 interface Instrument { id: number; name: string; description: string | null; color: string | null; is_displayed?: boolean; sensor_count?: number; sensor_types?: string; pos_x?: number; pos_y?: number; alarms_today?: number; alarms_unhandled?: number }
 interface ScreenStats {
   devices_total: number
@@ -449,6 +465,81 @@ interface ScreenStats {
 const currentDate = ref('')
 const devices = ref<Device[]>([])
 const alarms = ref<Alarm[]>([])
+
+// Sorted devices by name for display
+const sortedDevices = computed(() => {
+  return [...devices.value].sort((a, b) => {
+    const nameA = a.name || a.sn
+    const nameB = b.name || b.sn
+    return nameA.localeCompare(nameB, 'zh-CN')
+  })
+})
+
+// Network-specific signal thresholds
+// 4G (RSRP): Excellent > -90, Critical -105, Edge -115
+// WiFi (RSSI): Excellent > -60, Critical -70, Edge -85
+// NB-IoT (RSRP): Excellent > -105, Critical -115, Edge -130
+// LoRa (RSSI): Excellent > -105, Critical -120, Edge -140
+
+interface SignalThreshold {
+  excellent: number
+  good: number
+  fair: number
+  edge: number
+}
+
+const SIGNAL_THRESHOLDS: Record<string, SignalThreshold> = {
+  '4G': { excellent: -90, good: -100, fair: -105, edge: -115 },
+  'LTE': { excellent: -90, good: -100, fair: -105, edge: -115 },
+  'WIFI': { excellent: -60, good: -65, fair: -70, edge: -85 },
+  'WI-FI': { excellent: -60, good: -65, fair: -70, edge: -85 },
+  'NBIOT': { excellent: -105, good: -110, fair: -115, edge: -130 },
+  'NB-IOT': { excellent: -105, good: -110, fair: -115, edge: -130 },
+  'LORA': { excellent: -105, good: -115, fair: -120, edge: -140 },
+  // Default fallback (WiFi-like)
+  'DEFAULT': { excellent: -60, good: -65, fair: -70, edge: -85 }
+}
+
+// Get signal bars count (1-4) based on network type
+function getSignalBars(rssi: number | null | undefined, network?: string | null): number {
+  if (rssi === null || rssi === undefined) return 0
+  
+  const netType = (network || '').toUpperCase().replace(/[^A-Z0-9-]/g, '')
+  const th = SIGNAL_THRESHOLDS[netType] || SIGNAL_THRESHOLDS['DEFAULT']
+  
+  // Fallback defaults to ensure non-undefined
+  const excellent = th?.excellent ?? -60
+  const good = th?.good ?? -65
+  const fair = th?.fair ?? -70
+  const edge = th?.edge ?? -85
+  
+  if (rssi >= excellent) return 4
+  if (rssi >= good) return 3
+  if (rssi >= fair) return 2
+  if (rssi >= edge) return 1
+  return 0  // Below edge = critical/disconnected
+}
+
+// Check if signal is at critical edge level
+function isSignalCritical(rssi: number | null | undefined, network?: string | null): boolean {
+  if (rssi === null || rssi === undefined) return false
+  const netType = (network || '').toUpperCase().replace(/[^A-Z0-9-]/g, '')
+  const th = SIGNAL_THRESHOLDS[netType] || SIGNAL_THRESHOLDS['DEFAULT']
+  const edge = th?.edge ?? -85
+  return rssi <= edge
+}
+
+// Get network type label
+function getNetworkType(network: string | null | undefined): string {
+  if (!network) return ''
+  const n = network.toUpperCase()
+  if (n.includes('5G')) return '5G'
+  if (n.includes('4G') || n.includes('LTE')) return '4G'
+  if (n.includes('3G')) return '3G'
+  if (n.includes('WIFI') || n.includes('WI-FI')) return 'WiFi'
+  if (n.includes('ETH') || n.includes('LAN')) return 'ETH'
+  return network.substring(0, 4)
+}
 const instruments = ref<Instrument[]>([])
 const selectedInstrument = ref<number | null>(null)
 const tooltipPos = reactive({ x: 0, y: 0, placement: 'top' })
@@ -890,7 +981,39 @@ const metrics = computed(() => {
 })
 
 
-function fmtTime(t: string) { return new Date(t).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) }
+// Format time to Beijing timezone (Asia/Shanghai)
+function fmtTime(t: string) { 
+  const date = new Date(t + (t.includes('Z') || t.includes('+') ? '' : 'Z'))
+  return date.toLocaleTimeString('zh-CN', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    timeZone: 'Asia/Shanghai'
+  }) 
+}
+
+// Format alarm type to Chinese display
+function fmtAlarmType(type: string | undefined): string {
+  if (!type) return '未知'
+  const typeMap: Record<string, string> = {
+    'HIGH': '浓度超标',
+    'LOW': '浓度过低',
+    'OFFLINE': '设备离线',
+    'LOW_BAT': '电量不足',
+    'WEAK_SIGNAL': '信号不好'
+  }
+  return typeMap[type.toUpperCase()] || type
+}
+
+// Get alarm type color
+function getAlarmTypeClass(type: string | undefined): string {
+  if (!type) return 'type-unknown'
+  const t = type.toUpperCase()
+  if (t === 'HIGH') return 'type-high'
+  if (t === 'OFFLINE') return 'type-offline'
+  if (t === 'LOW_BAT') return 'type-battery'
+  if (t === 'WEAK_SIGNAL') return 'type-signal'
+  return 'type-unknown'
+}
 
 async function fetchData() {
   try {
@@ -902,8 +1025,63 @@ async function fetchData() {
       alarmsApi.stats().catch(() => ({ data: { today: 0, total: 0 } }))
     ])
     Object.assign(stats, st.data)
-    devices.value = dv.data || []
-    alarms.value = al.data?.data || []
+    const newDeviceList = dv.data || []
+    const newAlarmList = al.data?.data || []
+    
+    // Build set of SNs with unhandled (active) alarms
+    const unhandledAlarmSNs = new Set<string>()
+    newAlarmList.forEach((alarm: Alarm) => {
+      if (alarm.status === 'active') {
+        unhandledAlarmSNs.add(alarm.sn)
+      }
+    })
+    
+    // Smart update: Update devices in-place to preserve scroll animation
+    // Only replace array if new device added/removed, otherwise update in place
+    const existingDeviceSNs = new Set(devices.value.map((d: Device) => d.sn))
+    const newDeviceSNs = new Set(newDeviceList.map((d: Device) => d.sn))
+    
+    const devicesChanged = existingDeviceSNs.size !== newDeviceSNs.size ||
+      [...existingDeviceSNs].some(sn => !newDeviceSNs.has(sn))
+    
+    if (devicesChanged || devices.value.length === 0) {
+      // New devices or structure changed - full replace needed
+      devices.value = newDeviceList.map((d: Device) => ({
+        ...d,
+        hasUnhandledAlarm: unhandledAlarmSNs.has(d.sn)
+      }))
+    } else {
+      // Update existing devices in-place (preserve animation)
+      const deviceMap = new Map<string, Device>(newDeviceList.map((d: Device) => [d.sn, d]))
+      for (let idx = 0; idx < devices.value.length; idx++) {
+        const device = devices.value[idx]
+        if (!device) continue
+        const sn = device.sn
+        const newData = deviceMap.get(sn)
+        if (newData) {
+          // Update properties directly without replacing the object reference in array
+          device.ppm = newData.ppm
+          device.temp = newData.temp
+          device.status = newData.status
+          device.network = newData.network
+          device.rssi = newData.rssi
+          device.hasUnhandledAlarm = unhandledAlarmSNs.has(sn)
+        }
+      }
+    }
+    
+    // Smart update for alarms: same logic
+    const existingAlarmIds = new Set(alarms.value.map((a: Alarm) => a.id))
+    const newAlarmIds = new Set(newAlarmList.map((a: Alarm) => a.id))
+    
+    const alarmsChanged = existingAlarmIds.size !== newAlarmIds.size ||
+      [...existingAlarmIds].some(id => !newAlarmIds.has(id))
+    
+    if (alarmsChanged || alarms.value.length === 0) {
+      // Alarms changed - full replace
+      alarms.value = newAlarmList
+    }
+    // If alarms haven't changed structurally, don't update (they don't have dynamic values like PPM)
     
     // Update alarm stats - try to get today count from API
     if (alStats.data) {
@@ -1939,18 +2117,143 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 .d-val.alarm { color: #f87171; text-shadow: 0 0 8px rgba(248,113,113,0.4); }
 .d-val small { font-size: 10px; color: #64748b; font-weight: 400; }
 
+/* Signal Type & Bars */
+.d-signal {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 8px;
+}
+.signal-type {
+  font-size: 9px;
+  font-weight: 600;
+  color: #64748b;
+  background: rgba(100, 116, 139, 0.2);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+.signal-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 12px;
+}
+.signal-bars .bar {
+  width: 3px;
+  background: rgba(100, 116, 139, 0.3);
+  border-radius: 1px;
+}
+.signal-bars .bar:nth-child(1) { height: 3px; }
+.signal-bars .bar:nth-child(2) { height: 6px; }
+.signal-bars .bar:nth-child(3) { height: 9px; }
+.signal-bars .bar:nth-child(4) { height: 12px; }
+.signal-bars .bar.active {
+  background: #22d3ee;
+  box-shadow: 0 0 4px rgba(34, 211, 238, 0.5);
+}
+/* Signal at critical edge level - show red/warning */
+.signal-bars.signal-critical .bar.active {
+  background: #f87171;
+  box-shadow: 0 0 4px rgba(248, 113, 113, 0.6);
+  animation: signal-pulse 1.5s ease-in-out infinite;
+}
+@keyframes signal-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Device Alarm Glow Animation */
+@keyframes alarm-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(239, 68, 68, 0.4), inset 0 0 10px rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.7), 0 0 30px rgba(239, 68, 68, 0.4), inset 0 0 15px rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.8);
+  }
+}
+.device-item.device-alarm {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  animation: alarm-glow 1.5s ease-in-out infinite;
+}
+.device-item.device-alarm .d-name {
+  color: #fca5a5;
+}
+
 /* ========== RIGHT: Alarm List ========== */
 .alarm-panel { flex: 1; min-height: 0; }
 .alarm-list { flex: 1; overflow: hidden; padding: 6px; position: relative; }
 .alarm-item {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 8px 10px; border-radius: 6px; margin-bottom: 4px;
-  background: rgba(239,68,68,0.06); border-left: 2px solid #f87171;
+  display: flex; 
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px; 
+  border-radius: 6px; 
+  margin-bottom: 4px;
+  background: rgba(239,68,68,0.06); 
+  border-left: 3px solid #f87171;
   font-size: 11px;
+  transition: all 0.2s;
 }
-.a-time { color: #64748b; font-family: 'Courier New', monospace; }
-.a-sn { color: #fca5a5; font-weight: 500; }
-.a-val { color: #f87171; font-weight: 700; font-size: 13px; font-family: 'Courier New', monospace; text-shadow: 0 0 8px rgba(248,113,113,0.4); }
+.alarm-item:hover {
+  background: rgba(239,68,68,0.12);
+}
+.a-time { 
+  flex-shrink: 0;
+  color: #94a3b8; 
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  font-weight: 600;
+}
+.a-info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.a-name { 
+  color: #cbd5e1;
+  font-weight: 500;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.a-type {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+/* Alarm type colors */
+.a-type.type-high {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.a-type.type-offline {
+  background: rgba(100, 116, 139, 0.2);
+  color: #94a3b8;
+  border: 1px solid rgba(100, 116, 139, 0.3);
+}
+.a-type.type-battery {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+.a-type.type-signal {
+  background: rgba(168, 85, 247, 0.2);
+  color: #a855f7;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+.a-type.type-unknown {
+  background: rgba(100, 116, 139, 0.15);
+  color: #64748b;
+  border: 1px solid rgba(100, 116, 139, 0.2);
+}
 .empty { text-align: center; color: #475569; padding: 24px; font-size: 12px; }
 
 /* ========== WEATHER PANEL ========== */

@@ -12,7 +12,7 @@
               <el-option label="离线" value="OFFLINE" />
             </el-select>
             <el-select v-model="filters.status" placeholder="状态" clearable @change="fetchAlarms">
-              <el-option label="新报警" value="new" />
+              <el-option label="新报警" value="active" />
               <el-option label="已确认" value="ack" />
             </el-select>
           </div>
@@ -58,15 +58,15 @@
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100" sortable="custom">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'new' ? 'danger' : 'success'">
-              {{ row.status === 'new' ? '新报警' : '已确认' }}
+            <el-tag :type="row.status === 'active' ? 'danger' : 'success'">
+              {{ row.status === 'active' ? '新报警' : '已确认' }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="120" fixed="right">
           <template #default="{ row }">
             <el-button 
-              v-if="row.status === 'new'"
+              v-if="row.status === 'active'"
               size="small" 
               type="primary" 
               @click="ackAlarm(row.id)"

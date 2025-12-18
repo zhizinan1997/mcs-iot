@@ -13,7 +13,7 @@ DB_CONFIG = {
     "host": "localhost",
     "port": 5432,
     "user": "postgres",
-    "password": "postgres",
+    "password": "password",  # Match docker-compose default
     "database": "mcs_iot"
 }
 
@@ -39,19 +39,24 @@ DEVICES = [
     {"sn": "NH3018", "base_v": 280},
     {"sn": "NH3019", "base_v": 310},
     {"sn": "NH3020", "base_v": 290},
+    {"sn": "DEV021", "base_v": 400},
+    {"sn": "DEV022", "base_v": 420},
+    {"sn": "DEV023", "base_v": 380},
+    {"sn": "DEV024", "base_v": 410},
 ]
 
-async def generate_data():
+import argparse
+
+async def generate_data(hours: int = 1):
     print("Connecting to database...")
     conn = await asyncpg.connect(**DB_CONFIG)
     
-    # Generate 3 days of data, every 1 minute = 4320 points per device
-    days = 3
+    # Generate data based on hours parameter
     interval_minutes = 1
-    total_points = days * 24 * 60 // interval_minutes
+    total_points = hours * 60 // interval_minutes
     
     end_time = datetime.now()
-    start_time = end_time - timedelta(days=days)
+    start_time = end_time - timedelta(hours=hours)
     
     print(f"Generating {total_points} data points per device...")
     print(f"Time range: {start_time} to {end_time}")
@@ -103,16 +108,15 @@ async def generate_data():
                 humi,
                 bat,
                 random.randint(-85, -60),  # rssi
-                0,  # err_code
-                0   # seq
+                0   # err_code
             ))
             
             current_time += timedelta(minutes=interval_minutes)
         
         # Batch insert
         await conn.executemany(
-            """INSERT INTO sensor_data (time, sn, v_raw, ppm, temp, humi, bat, rssi, err_code, seq)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            """INSERT INTO sensor_data (time, sn, v_raw, ppm, temp, humi, bat, rssi, err_code)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                ON CONFLICT DO NOTHING""",
             data_points
         )
@@ -124,4 +128,7 @@ async def generate_data():
     print(f"\n✅ Done! Total {inserted} records inserted.")
 
 if __name__ == "__main__":
-    asyncio.run(generate_data())
+    parser = argparse.ArgumentParser(description="Generate historical sensor data")
+    parser.add_argument("-H", "--hours", type=int, default=1, help="Hours of data to generate (default: 1)")
+    args = parser.parse_args()
+    asyncio.run(generate_data(args.hours))
