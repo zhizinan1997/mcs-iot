@@ -77,10 +77,16 @@ install_dependencies() {
     if [[ "$OS" == "ubuntu" || "$OS" == "debian" ]]; then
         apt-get update -y
         apt-get install -y curl git python3 python3-pip openssl
-    elif [[ "$OS" == "centos" || "$OS" == "rhel" ]]; then
+    elif [[ "$OS" == "centos" || "$OS" == "rhel" || "$OS" == "opencloudos" || "$OS" == "rocky" || "$OS" == "alma" ]]; then
         yum install -y curl git python3 python3-pip openssl
     else
         log_warn "未知的操作系统: $OS，尝试继续..."
+    fi
+
+    # 检查 pip 是否安装成功，如果失败尝试手动安装
+    if ! command -v pip3 &> /dev/null; then
+        log_warn "未找到 pip3，尝试手动安装..."
+        curl -sS https://bootstrap.pypa.io/get-pip.py | python3
     fi
 
     # 安装 Python 依赖 (用于模拟器)
@@ -159,6 +165,14 @@ configure_deployment() {
     if [ -z "$DEFAULT_IP" ]; then
         DEFAULT_IP=$(ipconfig getifaddr en0 2>/dev/null)
     fi
+    
+    # 尝试获取公网 IP (用于云服务器)
+    PUBLIC_IP=$(curl -s --connect-timeout 2 ifconfig.me)
+    if [ -n "$PUBLIC_IP" ]; then
+        log_info "检测到公网 IP: $PUBLIC_IP"
+        DEFAULT_IP=$PUBLIC_IP
+    fi
+
     if [ -z "$DEFAULT_IP" ]; then
         DEFAULT_IP="localhost"
     fi
