@@ -1,0 +1,34 @@
+# Docker / Container Data
+mosquitto/data/
+mosquitto/log/
+*.log
+
+# Database Data (if mapped locally)
+pg_data/
+redis_data/
+uploads_data/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+env/
+venv/
+*.egg-info/
+
+# NodeJS / Frontend
+node_modules/
+dist/
+.output/
+.nuxt/
+coverage/
+
+# IDE / System
+.DS_Store
+.vscode/
+.idea/
+
+# Secrets / Local Config
+.env
+license.key
+debug_info.txt
