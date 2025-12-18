@@ -597,3 +597,71 @@ To fix this, use `chmod 0700 /mosquitto/config/acl`.
 1766046026: Client worker_1766045834 disconnected.
 1766046027: New connection from 172.18.0.5:35471 on port 1883.
 1766046027: New client connected from 172.18.0.5:35471 as worker_1766046027 (p2, c1, k60, u'worker').
+1766046549: Client worker_1766046027 disconnected.
+1766046550: mosquitto version 2.0.22 terminating
+1766046550: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1766046574: mosquitto version 2.0.22 starting
+1766046574: Config loaded from /mosquitto/config/mosquitto.conf.
+1766046574: Warning: File /mosquitto/config/passwd has world readable permissions. Future versions will refuse to load this file.
+To fix this, use `chmod 0700 /mosquitto/config/passwd`.
+1766046574: Warning: File /mosquitto/config/passwd has world readable permissions. Future versions will refuse to load this file.
+To fix this, use `chmod 0700 /mosquitto/config/passwd`.
+1766046574: Warning: File /mosquitto/config/acl has world readable permissions. Future versions will refuse to load this file.
+To fix this, use `chmod 0700 /mosquitto/config/acl`.
+1766046574: Warning: File /mosquitto/config/acl has world readable permissions. Future versions will refuse to load this file.
+To fix this, use `chmod 0700 /mosquitto/config/acl`.
+1766046574: Opening ipv4 listen socket on port 1883.
+1766046574: Opening ipv6 listen socket on port 1883.
+1766046574: Opening ipv4 listen socket on port 8883.
+1766046574: Opening ipv6 listen socket on port 8883.
+1766046574: mosquitto version 2.0.22 running
+1766046580: New connection from 172.18.0.5:37437 on port 1883.
+1766046580: New client connected from 172.18.0.5:37437 as worker_1766046580 (p2, c1, k60, u'worker').
+1766046581: New connection from 172.18.0.1:61282 on port 1883.
+1766046581: New connection from 172.18.0.1:61294 on port 1883.
+1766046581: New connection from 172.18.0.1:61298 on port 1883.
+1766046581: New connection from 172.18.0.1:61304 on port 1883.
+1766046581: New client connected from 172.18.0.1:61282 as GAS004 (p2, c1, k60, u'zhizinan').
+1766046581: New client connected from 172.18.0.1:61294 as DEV023 (p2, c1, k60, u'zhizinan').
+1766046581: New client connected from 172.18.0.1:61298 as CO2012 (p2, c1, k60, u'zhizinan').
+1766046581: New client connected from 172.18.0.1:61304 as CO2015 (p2, c1, k60, u'zhizinan').
+1766046581: New connection from 172.18.0.1:61316 on port 1883.
+1766046581: New client connected from 172.18.0.1:61316 as GAS008 (p2, c1, k60, u'zhizinan').
+1766046581: New connection from 172.18.0.1:61324 on port 1883.
+1766046581: New connection from 172.18.0.1:61334 on port 1883.
+1766046581: New connection from 172.18.0.1:61354 on port 1883.
+1766046581: New connection from 172.18.0.1:61350 on port 1883.
+1766046581: New connection from 172.18.0.1:61370 on port 1883.
+1766046581: New connection from 172.18.0.1:61380 on port 1883.
+1766046581: New connection from 172.18.0.1:61396 on port 1883.
+1766046581: New connection from 172.18.0.1:61404 on port 1883.
+1766046581: New connection from 172.18.0.1:61408 on port 1883.
+1766046581: New connection from 172.18.0.1:61426 on port 1883.
+1766046581: New connection from 172.18.0.1:61424 on port 1883.
+1766046581: New client connected from 172.18.0.1:61324 as DEV022 (p2, c1, k60, u'zhizinan').
+1766046581: New client connected from 172.18.0.1:61334 as DEV021 (p2, c1, k60, u'zhizinan').
+1766046581: New client connected from 172.18.0.1:61354 as CO2014 (p2, c1, k60, u'zhizinan').
+1766046581: New client connected from 172.18.0.1:61350 as GAS002 (p2, c1, k60, u'zhizinan').
+1766046581: New client connected from 172.18.0.1:61370 as NH3019 (p2, c1, k60, u'zhizinan').
+1766046581: New client connected from 172.18.0.1:61380 as NH3017 (p2, c1, k60, u'zhizinan').
+1766046581: New client connected from 172.18.0.1:61396 as NH3020 (p2, c1, k60, u'zhizinan').
+1766046581: New client connected from 172.18.0.1:61404 as GAS005 (p2, c1, k60, u'zhizinan').
+1766046581: New client connected from 172.18.0.1:61426 as GAS001 (p2, c1, k60, u'zhizinan').
+1766046581: New client connected from 172.18.0.1:61408 as CO2011 (p2, c1, k60, u'zhizinan').
+1766046581: New client connected from 172.18.0.1:61424 as GAS007 (p2, c1, k60, u'zhizinan').
+1766046581: New connection from 172.18.0.1:61442 on port 1883.
+1766046581: New connection from 172.18.0.1:61450 on port 1883.
+1766046581: New connection from 172.18.0.1:61456 on port 1883.
+1766046581: New connection from 172.18.0.1:61464 on port 1883.
+1766046581: New connection from 172.18.0.1:61468 on port 1883.
+1766046581: New client connected from 172.18.0.1:61442 as GAS003 (p2, c1, k60, u'zhizinan').
+1766046581: New client connected from 172.18.0.1:61450 as CO2013 (p2, c1, k60, u'zhizinan').
+1766046581: New client connected from 172.18.0.1:61456 as DEV024 (p2, c1, k60, u'zhizinan').
+1766046581: New client connected from 172.18.0.1:61464 as NH3018 (p2, c1, k60, u'zhizinan').
+1766046581: New client connected from 172.18.0.1:61468 as GAS009 (p2, c1, k60, u'zhizinan').
+1766046581: New connection from 172.18.0.1:61476 on port 1883.
+1766046581: New connection from 172.18.0.1:61492 on port 1883.
+1766046581: New client connected from 172.18.0.1:61476 as GAS010 (p2, c1, k60, u'zhizinan').
+1766046581: New client connected from 172.18.0.1:61492 as NH3016 (p2, c1, k60, u'zhizinan').
+1766046581: New connection from 172.18.0.1:61508 on port 1883.
+1766046581: New client connected from 172.18.0.1:61508 as GAS006 (p2, c1, k60, u'zhizinan').

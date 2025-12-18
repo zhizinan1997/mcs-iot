@@ -267,10 +267,12 @@
               <div class="header-sub">DEVICE STATUS</div>
             </div>
             <div class="device-list">
-              <div class="device-item" v-for="d in devices" :key="d.sn">
-                <span class="status-dot" :class="d.status"></span>
-                <span class="d-name">{{ d.name || d.sn }}</span>
-                <span class="d-val" :class="{ alarm: (d.ppm||0) > 1000 }">{{ d.ppm?.toFixed(0) }} <small>{{ d.unit }}</small></span>
+              <div class="scroll-wrapper" :style="{ animationDuration: devices.length * 2 + 's' }">
+                <div class="device-item" v-for="(d, i) in [...devices, ...devices]" :key="i">
+                  <span class="status-dot" :class="d.status"></span>
+                  <span class="d-name">{{ d.name || d.sn }}</span>
+                  <span class="d-val" :class="{ alarm: (d.ppm||0) > 1000 }">{{ d.ppm?.toFixed(0) }} <small>{{ d.unit }}</small></span>
+                </div>
               </div>
             </div>
           </div>
@@ -282,10 +284,12 @@
               <div class="header-sub">LATEST ALARMS</div>
             </div>
             <div class="alarm-list">
-              <div class="alarm-item" v-for="a in alarms" :key="a.id">
-                <span class="a-time">{{ fmtTime(a.time) }}</span>
-                <span class="a-sn">{{ a.sn }}</span>
-                <span class="a-val">{{ a.value.toFixed(1) }}</span>
+              <div class="scroll-wrapper" :style="{ animationDuration: alarms.length * 2 + 's' }">
+                <div class="alarm-item" v-for="(a, i) in [...alarms, ...alarms]" :key="i">
+                  <span class="a-time">{{ fmtTime(a.time) }}</span>
+                  <span class="a-sn">{{ a.sn }}</span>
+                  <span class="a-val">{{ a.value.toFixed(1) }}</span>
+                </div>
               </div>
               <div v-if="!alarms.length" class="empty">暂无报警</div>
             </div>
@@ -1915,7 +1919,7 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 
 /* ========== RIGHT: Device List ========== */
 .device-panel { flex: 2; min-height: 0; }
-.device-list { flex: 1; overflow-y: auto; padding: 6px; }
+.device-list { flex: 1; overflow: hidden; padding: 6px; position: relative; }
 .device-item {
   display: flex; align-items: center; padding: 8px 10px;
   border-radius: 6px; margin-bottom: 4px; gap: 8px;
@@ -1937,7 +1941,7 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 
 /* ========== RIGHT: Alarm List ========== */
 .alarm-panel { flex: 1; min-height: 0; }
-.alarm-list { flex: 1; overflow-y: auto; padding: 6px; }
+.alarm-list { flex: 1; overflow: hidden; padding: 6px; position: relative; }
 .alarm-item {
   display: flex; justify-content: space-between; align-items: center;
   padding: 8px 10px; border-radius: 6px; margin-bottom: 4px;
@@ -1984,6 +1988,7 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
   font-size: 28px;
   line-height: 1;
   filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.2));
+  animation: float-weather 3s ease-in-out infinite;
 }
 
 .w-temp {
@@ -2024,6 +2029,29 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
   right: 15px;
   font-size: 12px;
   color: #64748b;
+}
+
+/* ========== ANIMATIONS ========== */
+@keyframes float-weather {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.scroll-wrapper {
+  display: flex;
+  flex-direction: column;
+  animation: scrollVertical linear infinite;
+  will-change: transform;
+}
+
+.device-list:hover .scroll-wrapper,
+.alarm-list:hover .scroll-wrapper {
+  animation-play-state: paused;
+}
+
+@keyframes scrollVertical {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
 }
 
 /* ========== SCROLLBAR ========== */
