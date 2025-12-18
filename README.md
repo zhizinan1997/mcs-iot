@@ -12,6 +12,8 @@
 ### 🐧 Linux (Ubuntu / Debian / CentOS)
 适用于云服务器或本地 Linux 虚拟机。
 
+#### 方式一：公网一键部署 (推荐)
+仅适用于 **公开仓库 (Public Repo)**。
 ```bash
 # 下载部署脚本
 curl -O https://raw.githubusercontent.com/zhizinan1997/mcs-iot/main/scripts/deploy.sh
@@ -19,6 +21,18 @@ curl -O https://raw.githubusercontent.com/zhizinan1997/mcs-iot/main/scripts/depl
 # 授权并运行 (需 root 权限)
 chmod +x deploy.sh
 sudo ./deploy.sh
+```
+
+#### 方式二：私有仓库/手动部署
+适用于 **私有仓库** 或无法访问 Raw GitHub 的环境。
+```bash
+# 克隆仓库 (需输入 GitHub 账号密码或 Token)
+git clone https://github.com/zhizinan1997/mcs-iot.git
+cd mcs-iot
+
+# 运行部署脚本
+chmod +x scripts/deploy.sh
+sudo ./scripts/deploy.sh
 ```
 
 **脚本亮点：**

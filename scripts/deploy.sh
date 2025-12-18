@@ -112,6 +112,18 @@ install_docker() {
 
 # 克隆代码库
 clone_repo() {
+    # 检查是否在项目根目录下运行 (本地部署模式)
+    if [ -f "docker-compose.yml" ] && [ -d ".git" ]; then
+        log_info "检测到当前目录似乎是项目根目录。"
+        read -p "是否直接在当前目录 ($(pwd)) 进行部署? (y/n) [y]: " USE_CURRENT
+        USE_CURRENT=${USE_CURRENT:-y}
+        if [[ "$USE_CURRENT" == "y" ]]; then
+            INSTALL_DIR=$(pwd)
+            log_info "已选择本地部署模式，跳过代码克隆。"
+            return
+        fi
+    fi
+
     log_info "准备代码库..."
     
     if [ -d "$INSTALL_DIR" ]; then
