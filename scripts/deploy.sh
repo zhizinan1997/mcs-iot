@@ -186,13 +186,21 @@ check_ports() {
     REQUIRED_PORTS=(80 443 1883 8883 5432 6379)
     PORTS_IN_USE=()
     
+    log_info "检测以下端口: ${REQUIRED_PORTS[*]}"
+    
     for port in "${REQUIRED_PORTS[@]}"; do
-        if ss -tuln | grep -q ":$port "; then
-            PORTS_IN_USE+=($port)
+        # 使用更精确的模式匹配，支持 IPv4 和 IPv6
+        if ss -tuln 2>/dev/null | grep -E "(:${port}\s|:${port}$)" > /dev/null 2>&1; then
+            # 二次验证：确保端口确实在监听
+            if ss -tuln 2>/dev/null | awk -v p="$port" '$5 ~ ":"p"$" || $5 ~ ":"p"[^0-9]" {found=1} END {exit !found}'; then
+                PORTS_IN_USE+=($port)
+                log_warn "端口 $port 已被占用"
+            fi
         fi
     done
     
     if [[ ${#PORTS_IN_USE[@]} -gt 0 ]]; then
+        echo ""
         log_warn "以下端口已被占用: ${PORTS_IN_USE[*]}"
         log_info "端口说明:"
         log_info "  - 80/443: Web 服务 (HTTP/HTTPS)"
@@ -200,7 +208,9 @@ check_ports() {
         log_info "  - 5432: PostgreSQL 数据库"
         log_info "  - 6379: Redis 缓存"
         echo ""
-        if ! confirm "是否继续? 占用的端口服务可能需要停止"; then
+        log_info "提示: 您可以手动检查端口占用: ss -tuln | grep -E ':(80|443|1883|8883|5432|6379)'"
+        echo ""
+        if ! confirm "是否继续? (部署后 Docker 将使用这些端口)"; then
             exit 1
         fi
     else
