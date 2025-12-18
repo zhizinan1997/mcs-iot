@@ -24,7 +24,7 @@ services:
     environment:
       POSTGRES_DB: mcs_iot
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: ${DB_PASS:-password}
     ports:
       - "5432:5432" # Exposed for local dev tools (DBeaver etc.)
     volumes:
@@ -66,11 +66,13 @@ services:
       - DB_HOST=timescaledb
       - DB_PORT=5432
       - DB_USER=postgres
-      - DB_PASS=password
+      - DB_PASS=${DB_PASS:-password}
       - DB_NAME=mcs_iot
       - REDIS_HOST=redis
       - MQTT_HOST=mosquitto
       - MQTT_PORT=1883 # Internal via TCP
+      - MQTT_USER=admin
+      - MQTT_PASS=${MQTT_PASSWORD:-admin123}
       - DEV_MODE=true # Bypass license check for dev
     volumes:
       - ./worker/src:/app/src # Hot reload
@@ -101,10 +103,15 @@ services:
       - DB_HOST=timescaledb
       - DB_PORT=5432
       - DB_USER=postgres
-      - DB_PASS=password
+      - DB_PASS=${DB_PASS:-password}
       - DB_NAME=mcs_iot
       - REDIS_HOST=redis
-      - JWT_SECRET=dev-secret-key-change-in-production
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-key-change-in-production}
+      - ADMIN_INITIAL_PASSWORD=${ADMIN_INITIAL_PASSWORD:-admin123}
+      - MQTT_HOST=mosquitto
+      - MQTT_PORT=1883
+      - MQTT_USER=admin
+      - MQTT_PASS=${MQTT_PASSWORD:-admin123}
     volumes:
       - ./backend/src:/app/src
       - ./mosquitto/config:/app/mosquitto # MQTT 配置管理
@@ -127,6 +134,12 @@ services:
     container_name: mcs_frontend
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    environment:
+      - TZ=Asia/Shanghai
     depends_on:
       - backend
     networks:
@@ -137,7 +150,6 @@ volumes:
   pg_data:
   redis_data:
   uploads_data:
-
 
 networks:
   mcs-net:
