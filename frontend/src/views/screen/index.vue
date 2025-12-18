@@ -1594,14 +1594,14 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
   justify-content: center; overflow-y: auto;
 }
 .ai-summary {
-  font-size: 12px; line-height: 1.6; color: #94a3b8;
+  font-size: 15px; line-height: 1.7; color: #e2e8f0;
 }
 .ai-summary p { margin: 0; }
 .ai-thinking {
   color: #22d3ee; font-style: italic;
   animation: pulse-text 1.5s ease-in-out infinite;
 }
-.ai-error { color: #64748b; }
+.ai-error { color: #94a3b8; }
 @keyframes pulse-text { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
 /* ========== Safety Supervision Panel ========== */
@@ -1871,7 +1871,7 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
   min-height: 24px;
 }
 .inst-name {
-  font-size: 13px; font-weight: 700; color: #fff;
+  font-size: 14px; font-weight: 700; color: #fff;
   text-shadow: 0 0 10px rgba(255,255,255,0.3);
   letter-spacing: 0.5px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -1886,9 +1886,9 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 @keyframes pulse-dot { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
 .inst-desc {
-  font-size: 10px; color: #94a3b8;
+  font-size: 11px; color: #cbd5e1;
   margin-bottom: auto; /* Push footer to bottom */
-  line-height: 1.2;
+  line-height: 1.3;
   overflow: hidden; text-overflow: ellipsis; 
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
 }
@@ -1905,7 +1905,7 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
   text-shadow: 0 0 15px rgba(34, 211, 238, 0.4);
 }
 .sensor-types {
-  font-size: 10px; color: #64748b;
+  font-size: 11px; color: #94a3b8;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -1927,7 +1927,7 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
   color: #22d3ee;
   text-shadow: 0 0 20px rgba(34,211,238,0.6), 0 0 40px rgba(34,211,238,0.3);
 }
-.donut-label .txt { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 2px; font-family: 'Rajdhani', sans-serif; font-weight: 600; }
+.donut-label .txt { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: 2px; font-family: 'Rajdhani', sans-serif; font-weight: 600; }
 
 /* ========== CENTER: Alert Bar ========== */
 .col-center { display: flex; flex-direction: column; gap: 10px; }
@@ -2050,8 +2050,8 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 }
 
 .mc-label {
-  font-size: 10px;
-  color: #94a3b8;
+  font-size: 13px;
+  color: #e2e8f0;
   font-weight: 600;
   letter-spacing: 0.5px;
   text-transform: uppercase;
@@ -2069,16 +2069,16 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 }
 
 .mc-value {
-  font-size: 16px;
+  font-size: 22px;
   font-weight: 700;
   color: #fff;
   font-family: 'Chakra Petch', monospace;
-  text-shadow: 0 0 10px rgba(34, 211, 238, 0.4);
+  text-shadow: 0 0 15px rgba(34, 211, 238, 0.5);
 }
 
 .mc-unit {
-  font-size: 9px;
-  color: #64748b;
+  font-size: 12px;
+  color: #94a3b8;
   font-weight: 500;
 }
 
@@ -2104,10 +2104,10 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
   text-shadow: 0 0 15px rgba(34,211,238,0.5);
 }
 .weather-main .temp small { font-size: 16px; color: #64748b; }
-.weather-details { display: flex; justify-content: space-around; padding: 10px; border-top: 1px solid rgba(34,211,238,0.1); font-size: 11px; }
+.weather-details { display: flex; justify-content: space-around; padding: 10px; border-top: 1px solid rgba(34,211,238,0.1); font-size: 14px; }
 .weather-details div { text-align: center; padding: 6px 10px; background: rgba(34,211,238,0.05); border-radius: 6px; }
-.weather-details span { display: block; color: #64748b; font-size: 10px; margin-bottom: 3px; }
-.weather-details b { color: #cbd5e1; font-weight: 600; font-family: 'Courier New', monospace; }
+.weather-details span { display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 3px; }
+.weather-details b { color: #f1f5f9; font-weight: 600; font-family: 'Courier New', monospace; font-size: 14px; }
 .weather-details .good { color: #22c55e; text-shadow: 0 0 8px rgba(34,197,94,0.4); }
 
 /* ========== RIGHT: Device List ========== */
@@ -2122,7 +2122,7 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 .device-item:hover { background: rgba(34,211,238,0.08); border-color: rgba(34,211,238,0.2); }
 .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #475569; }
 .status-dot.online { background: #22c55e; box-shadow: 0 0 8px rgba(34,197,94,0.6); }
-.d-name { flex: 1; font-size: 12px; font-weight: 500; color: #94a3b8; }
+.d-name { flex: 1; font-size: 13px; font-weight: 500; color: #e2e8f0; }
 .d-val {
   font-size: 14px; font-weight: 700;
   font-family: 'Courier New', monospace;
@@ -2130,7 +2130,7 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
   text-shadow: 0 0 8px rgba(34,211,238,0.4);
 }
 .d-val.alarm { color: #f87171; text-shadow: 0 0 8px rgba(248,113,113,0.4); }
-.d-val small { font-size: 10px; color: #64748b; font-weight: 400; }
+.d-val small { font-size: 11px; color: #94a3b8; font-weight: 400; }
 
 /* Signal Type & Bars */
 .d-signal {
@@ -2140,11 +2140,11 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
   margin-right: 8px;
 }
 .signal-type {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
-  color: #64748b;
-  background: rgba(100, 116, 139, 0.2);
-  padding: 1px 4px;
+  color: #94a3b8;
+  background: rgba(100, 116, 139, 0.25);
+  padding: 2px 5px;
   border-radius: 3px;
 }
 .wifi-signal {
@@ -2244,7 +2244,7 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
   margin-bottom: 4px;
   background: rgba(239,68,68,0.06); 
   border-left: 3px solid #f87171;
-  font-size: 11px;
+  font-size: 12px;
   transition: all 0.2s;
 }
 .alarm-item:hover {
@@ -2252,9 +2252,9 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 }
 .a-time { 
   flex-shrink: 0;
-  color: #94a3b8; 
+  color: #cbd5e1; 
   font-family: 'Courier New', monospace;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
 }
 .a-info {
@@ -2263,8 +2263,9 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
   overflow: hidden;
 }
 .a-name { 
-  color: #cbd5e1;
+  color: #f1f5f9;
   font-weight: 500;
+  font-size: 13px;
   display: block;
   white-space: nowrap;
   overflow: hidden;
@@ -2325,9 +2326,9 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 }
 
 .day-title {
-  font-size: 14px;
-  color: #94a3b8;
-  font-weight: 500;
+  font-size: 18px;
+  color: #e2e8f0;
+  font-weight: 600;
 }
 
 .day-main {
@@ -2338,26 +2339,27 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 }
 
 .w-icon {
-  font-size: 28px;
+  font-size: 36px;
   line-height: 1;
-  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.2));
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
   animation: float-weather 3s ease-in-out infinite;
 }
 
 .w-temp {
-  font-size: 16px;
+  font-size: 24px;
   font-weight: 700;
   color: #fff;
   font-family: 'Orbitron', sans-serif;
+  text-shadow: 0 0 10px rgba(34, 211, 238, 0.4);
 }
 
 .day-detail {
   display: flex;
   flex-direction: column;
   align-items: center;
-  font-size: 12px;
-  color: #64748b;
-  gap: 2px;
+  font-size: 15px;
+  color: #cbd5e1;
+  gap: 3px;
 }
 
 .weather-divider {
