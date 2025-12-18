@@ -574,12 +574,13 @@ setup_ssl_certificates() {
     elapsed=0
     
     while kill -0 $CERTBOT_PID 2>/dev/null; do
-        printf "\r${CYAN}[%s]${NC} 正在验证域名... (%d 秒)" "${SPINNER:i++%SPINNER_LEN:1}" "$elapsed"
+        printf "\r${CYAN}[%s]${NC} 正在验证域名... (%d 秒)" "${SPINNER:i:1}" "$elapsed"
         sleep 1
-        ((elapsed++))
+        elapsed=$((elapsed + 1))
+        i=$(( (i + 1) % SPINNER_LEN ))
         
         # 每 30 秒显示一次提示
-        if [[ $((elapsed % 30)) -eq 0 ]]; then
+        if [[ $elapsed -gt 0 && $((elapsed % 30)) -eq 0 ]]; then
             echo ""
             log_info "仍在处理中，请继续等待..."
         fi
