@@ -401,6 +401,8 @@ configure_credentials() {
     echo ""
     
     # 数据库密码
+    echo -e "${YELLOW}提示: 输入密码时不会显示任何字符，这是正常的安全特性，请放心输入${NC}"
+    echo ""
     while true; do
         read -r -s -p "请设置数据库密码 (至少8位): " DB_PASSWORD
         echo ""
