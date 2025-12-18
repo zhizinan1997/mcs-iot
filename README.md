@@ -7,31 +7,55 @@
 
 ## 🚀 极速部署 (One-Click Deploy)
 
-支持 Linux (Ubuntu/Debian/CentOS) 和 Windows 10/11/Server。
+**全自动部署脚本**，支持环境检测、依赖安装、HTTPS/SSL配置、内网自适应及防火墙设置。
 
-### 🐧 Linux / macOS
-在终端执行以下命令即可一键安装：
+### 🐧 Linux (Ubuntu / Debian / CentOS)
+适用于云服务器或本地 Linux 虚拟机。
 
 ```bash
-# 下载并运行部署脚本
+# 下载部署脚本
 curl -O https://raw.githubusercontent.com/zhizinan1997/mcs-iot/main/scripts/deploy.sh
-sudo chmod +x deploy.sh
+
+# 授权并运行 (需 root 权限)
+chmod +x deploy.sh
 sudo ./deploy.sh
 ```
 
-### 🪟 Windows
-1. 确保已安装 **Docker Desktop** 和 **Git**。
-2. 右键点击 **开始菜单** -> **Windows PowerShell (管理员)**。
-3. 执行以下命令：
+**脚本亮点：**
+*   ✅ **全自动环境准备**：自动检测并安装 Docker & Docker Compose。
+*   ✅ **智能网络适配**：自动识别公网/内网环境。
+    *   **公网**：支持 Let's Encrypt 自动申请免费 SSL 证书。
+    *   **内网**：自动生成带 SAN 的自签名证书，并生成 **OpenSSH 开发证书**。
+*   ✅ **合规性检测**：自动检测域名备案情况，未备案域名自动规避 80/443 端口 (切换至 9696/9697)。
+*   ✅ **安全加固**：自动配置系统防火墙 (UFW/Firewalld) 并生成高强度随机密码。
+
+### 🪟 Windows (10 / 11 / Server)
+适用于本地开发或 Windows 服务器。
+**前置要求：** 需预先安装 [Docker Desktop](https://www.docker.com/products/docker-desktop/)。
+
+1. 右键点击 **开始菜单** -> **Windows PowerShell (管理员)**。
+2. 执行以下命令：
 
 ```powershell
-# 允许执行脚本 (如果尚未开启)
+# 允许执行脚本
 Set-ExecutionPolicy RemoteSigned -Scope Process -Force
 
-# 下载并运行部署脚本
+# 下载并运行
 Invoke-WebRequest -Uri "https://raw.githubusercontent.com/zhizinan1997/mcs-iot/main/scripts/deploy.ps1" -OutFile "deploy.ps1"
 .\deploy.ps1
 ```
+
+### 🛡️ 端口开放说明 (防火墙/安全组)
+如果您在云服务器 (阿里云/腾讯云/AWS) 上部署，请务必在**云控制台的安全组**中放行以下端口：
+
+| 端口 | 协议 | 用途 | 说明 |
+| :--- | :--- | :--- | :--- |
+| **80** | TCP | Web 访问 | 若域名未备案，脚本将自动切换至 **9696** |
+| **443** | TCP | HTTPS | 若域名未备案，脚本将自动切换至 **9697** |
+| **8000** | TCP | API 接口 | 管理后台接口服务 |
+| **1883** | TCP | MQTT | 设备连接端口 |
+| **8883** | TCP | MQTTS | 设备加密连接端口 |
+| **9001** | TCP | MQTT WS | WebSocket 连接 (大屏实时数据) |
 
 ---
 

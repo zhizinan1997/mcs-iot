@@ -115,8 +115,30 @@ function Step-Configure {
     Log-Info "=== 开始配置向导 ==="
 
     # 1. 域名
-    $domain = Read-Host "请输入服务器域名或 IP (默认: localhost)"
-    if ([string]::IsNullOrWhiteSpace($domain)) { $domain = "localhost" }
+    # 尝试自动获取内网 IP
+    $localIP = $null
+    try {
+        $localIP = (Get-NetIPAddress -AddressFamily IPv4 -Type Unicast | Where-Object { 
+            $_.InterfaceAlias -notlike "*Loopback*" -and 
+            $_.InterfaceAlias -notlike "*vEthernet*" -and 
+            $_.InterfaceAlias -notlike "*Docker*" 
+        } | Select-Object -First 1).IPAddress
+    } catch {
+        # 忽略错误
+    }
+    if (-not $localIP) { $localIP = "localhost" }
+
+    $domain = Read-Host "请输入服务器域名或 IP (默认: $localIP)"
+    if ([string]::IsNullOrWhiteSpace($domain)) { $domain = $localIP }
+
+    # 检测是否为内网/本地 IP
+    $isLocal = $false
+    if ($domain -eq "localhost" -or $domain -eq "127.0.0.1" -or 
+        $domain.StartsWith("192.168.") -or 
+        $domain.StartsWith("10.") -or 
+        ($domain.StartsWith("172.") -and [int]$domain.Split('.')[1] -ge 16 -and [int]$domain.Split('.')[1] -le 31)) {
+        $isLocal = $true
+    }
 
     # 2. 密码生成
     Log-Info "正在生成安全密码..."
@@ -125,12 +147,49 @@ function Step-Configure {
     $adminPass = Generate-Password 12
     $jwtSecret = Generate-Password 32
 
-    # 3. SSL 配置 (Windows 下简化处理，默认自签名，如果需要 Let's Encrypt 建议手动或使用 Docker 里的 Certbot)
-    # 为了简化 Windows 脚本，这里统一使用 Docker 生成自签名证书
+    # 3. SSL 配置
     $useSSL = "false"
-    $enableSSL = Read-Host "是否启用 SSL (y/n) [n] (Windows 下推荐 n，除非您熟悉证书配置)"
-    
+    $enableSSL = "n"
+    $httpPort = "80"
+    $httpsPort = "443"
+
     New-Item -ItemType Directory -Force -Path "nginx/ssl" | Out-Null
+
+    if ($isLocal) {
+        Log-Warn "检测到本地局域网或回环地址 ($domain)。"
+        Log-Info "已自动选择自签名证书模式。"
+        
+        # 3.1 生成 OpenSSH 开发证书
+        Log-Info "正在生成 OpenSSH 开发证书 (仅用于内网开发测试)..."
+        New-Item -ItemType Directory -Force -Path "mosquitto/config/ssh" | Out-Null
+        
+        if (Get-Command ssh-keygen -ErrorAction SilentlyContinue) {
+            Remove-Item "mosquitto/config/ssh/id_rsa*" -ErrorAction SilentlyContinue
+            ssh-keygen -t rsa -b 4096 -f "mosquitto/config/ssh/id_rsa" -N "" -C "mcs-iot-dev"
+            Log-Success "OpenSSH 开发证书 (密钥对) 已生成: mosquitto/config/ssh/id_rsa"
+        } else {
+            Log-Warn "未找到 ssh-keygen，跳过 SSH 证书生成。"
+        }
+        
+        $enableSSL = "n"
+    } else {
+        # ICP 备案检测
+        Write-Host ""
+        $isICP = Read-Host "您的域名是否已在中国大陆备案? (y/n) [y]"
+        if ($isICP -eq 'n') {
+            Log-Warn "检测到域名未备案，将使用自定义端口 9696 部署。"
+            $httpPort = "9696"
+            $httpsPort = "9697"
+            Log-Info "HTTP 端口已设置为: $httpPort"
+            Log-Info "HTTPS 端口已设置为: $httpsPort"
+            
+            Log-Warn "由于 80 端口不可用，无法自动申请 Let's Encrypt 证书。"
+            Log-Info "将自动切换为自签名证书模式。"
+            $enableSSL = "n"
+        } else {
+            $enableSSL = Read-Host "是否启用 SSL (y/n) [n] (Windows 下推荐 n，除非您熟悉证书配置)"
+        }
+    }
 
     if ($enableSSL -eq 'y') {
         Log-Info "Windows 脚本暂不支持自动申请 Let's Encrypt (需 80 端口映射等复杂操作)。"
@@ -143,10 +202,43 @@ function Step-Configure {
         $useSSL = "true"
         Log-Success "自签名证书已生成"
     } else {
-        # 即使不启用 SSL，也生成一个空的或自签名的以免 nginx 报错? 
-        # Nginx 配置中 443 监听需要证书。我们还是生成一个自签名的备用，但不强制 HTTPS 跳转
-        Log-Info "生成默认自签名证书以支持 HTTPS..."
-        docker run --rm -v "${PWD}/nginx/ssl:/certs" alpine/openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout /certs/server.key -out /certs/server.crt -subj "/C=CN/ST=State/L=City/O=MCS-IoT/CN=localhost"
+        Log-Info "生成自签名 SSL 证书 (支持 SAN)..."
+        
+        # 创建 OpenSSL 配置文件
+        $sanConfig = @"
+[req]
+default_bits = 2048
+prompt = no
+default_md = sha256
+req_extensions = req_ext
+distinguished_name = dn
+
+[dn]
+C = CN
+ST = State
+L = City
+O = MCS-IoT
+CN = $domain
+
+[req_ext]
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = localhost
+DNS.2 = $domain
+IP.1 = 127.0.0.1
+"@
+        if ($domain -match "^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$") {
+            $sanConfig += "`nIP.2 = $domain"
+        }
+
+        Set-Content "nginx/ssl/openssl_san.cnf" $sanConfig -Encoding UTF8
+        
+        # 使用 Docker 运行 OpenSSL
+        docker run --rm -v "${PWD}/nginx/ssl:/certs" alpine/openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout /certs/server.key -out /certs/server.crt -config /certs/openssl_san.cnf
+        
+        Remove-Item "nginx/ssl/openssl_san.cnf" -ErrorAction SilentlyContinue
+
         Copy-Item "nginx/ssl/server.crt" "nginx/ssl/ca.crt"
         $useSSL = "false"
     }
@@ -173,6 +265,8 @@ ADMIN_INITIAL_PASSWORD=$adminPass
 
 # SSL Config
 USE_SSL=$useSSL
+HTTP_PORT=$httpPort
+HTTPS_PORT=$httpsPort
 "@
     Set-Content .env $envContent -Encoding UTF8
     Log-Success "配置文件 .env 已生成"
@@ -196,6 +290,32 @@ USE_SSL=$useSSL
     $Global:FinalMqttPass = $mqttPass
     $Global:FinalAdminPass = $adminPass
     $Global:FinalDomain = $domain
+    $Global:IsLocal = $isLocal
+    $Global:HttpPort = $httpPort
+    $Global:HttpsPort = $httpsPort
+}
+
+function Step-Firewall {
+    Write-Host ""
+    Log-Info "=== 配置系统防火墙 ==="
+    
+    $ports = @(22, $Global:HttpPort, $Global:HttpsPort, 8000, 1883, 8883, 9001)
+    
+    foreach ($port in $ports) {
+        try {
+            $ruleName = "MCS-IoT-Port-$port"
+            # 检查是否已存在
+            if (-not (Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue)) {
+                New-NetFirewallRule -DisplayName $ruleName -Direction Inbound -LocalPort $port -Protocol TCP -Action Allow | Out-Null
+                Log-Info "  - 已放行端口: $port/tcp"
+            } else {
+                Log-Info "  - 端口已放行: $port/tcp"
+            }
+        } catch {
+            Log-Warn "无法自动添加防火墙规则 (端口 $port)，请手动添加。"
+        }
+    }
+    Log-Success "Windows 防火墙规则配置完成"
 }
 
 function Step-StartServices {
@@ -244,17 +364,31 @@ function Show-Summary {
     Write-Host "================================================================"
     Write-Host ""
     Write-Host "访问地址:"
-    Write-Host "  - 管理后台: http://$($Global:FinalDomain):8000" -ForegroundColor Cyan
-    Write-Host "  - 数据大屏: http://$($Global:FinalDomain)" -ForegroundColor Cyan
+    if ($Global:HttpPort -eq "80") {
+        Write-Host "  - 管理后台: http://$($Global:FinalDomain):8000" -ForegroundColor Cyan
+        Write-Host "  - 数据大屏: http://$($Global:FinalDomain)" -ForegroundColor Cyan
+    } else {
+        Write-Host "  - 管理后台: http://$($Global:FinalDomain):8000" -ForegroundColor Cyan
+        Write-Host "  - 数据大屏: http://$($Global:FinalDomain):$($Global:HttpPort)" -ForegroundColor Cyan
+    }
     Write-Host ""
     Write-Host "账号信息 (请截图保存):"
     Write-Host "  - 管理员账号: admin" -ForegroundColor Yellow
     Write-Host "  - 管理员密码: $($Global:FinalAdminPass)" -ForegroundColor Yellow
     Write-Host "  - 数据库密码: $($Global:FinalDbPass)" -ForegroundColor Yellow
     Write-Host "  - MQTT 密码 : $($Global:FinalMqttPass)" -ForegroundColor Yellow
+    if ($Global:IsLocal) {
+        Write-Host "  - OpenSSH 证书: mosquitto/config/ssh/id_rsa (仅开发用)" -ForegroundColor Yellow
+    }
     Write-Host ""
     Write-Host "安装目录: $Global:InstallDir"
     Write-Host "================================================================"
+    Write-Host "提醒: 请务必在云服务器提供商 (阿里云/腾讯云/AWS等) 的安全组/防火墙中放行以下端口:" -ForegroundColor Yellow
+    Write-Host "      TCP: $($Global:HttpPort), $($Global:HttpsPort), 8000, 1883, 8883, 9001" -ForegroundColor Yellow
+    if ($Global:IsLocal) {
+        Write-Host "提醒: 已为您生成 OpenSSH 开发证书及自签名 SSL 证书。" -ForegroundColor Yellow
+        Write-Host "      由于使用自签名证书，浏览器可能会提示不安全，请手动信任或忽略。" -ForegroundColor Yellow
+    }
     pause
 }
 
@@ -271,6 +405,7 @@ Check-Admin
 Step-CheckSystem
 Step-PrepareCode
 Step-Configure
+Step-Firewall
 Step-StartServices
 Step-RunSimulation
 Show-Summary

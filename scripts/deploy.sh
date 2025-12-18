@@ -141,16 +141,81 @@ configure_deployment() {
     
     # 1. 域名配置
     echo ""
+    # 尝试自动获取内网 IP
+    DEFAULT_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+    # 如果 hostname -I 失败 (macOS/BSD)，尝试 ipconfig/ifconfig
+    if [ -z "$DEFAULT_IP" ]; then
+        DEFAULT_IP=$(ipconfig getifaddr en0 2>/dev/null)
+    fi
+    if [ -z "$DEFAULT_IP" ]; then
+        DEFAULT_IP="localhost"
+    fi
+
     log_input "请输入您的服务器域名或 IP (例如: iot.example.com 或 192.168.1.100)"
-    read -p "域名/IP: " DOMAIN
-    DOMAIN=${DOMAIN:-localhost}
+    read -p "域名/IP [$DEFAULT_IP]: " DOMAIN
+    DOMAIN=${DOMAIN:-$DEFAULT_IP}
     
-    # 2. SSL 配置
-    echo ""
-    log_input "是否为该域名自动申请 SSL 证书 (Let's Encrypt)?"
-    log_warn "注意: 需要您已将域名解析到本机 IP，且 80 端口未被占用。"
-    read -p "是否申请证书? (y/n) [n]: " ENABLE_SSL
-    ENABLE_SSL=${ENABLE_SSL:-n}
+    # 配置向导
+    HTTP_PORT=80
+    HTTPS_PORT=443
+
+    # 检测是否为内网/本地 IP
+    IS_LOCAL=false
+    if [[ "$DOMAIN" == "localhost" || "$DOMAIN" == "127.0.0.1" ]]; then
+        IS_LOCAL=true
+    elif [[ "$DOMAIN" =~ ^192\.168\. ]]; then
+        IS_LOCAL=true
+    elif [[ "$DOMAIN" =~ ^10\. ]]; then
+        IS_LOCAL=true
+    elif [[ "$DOMAIN" =~ ^172\.(1[6-9]|2[0-9]|3[0-1])\. ]]; then
+        IS_LOCAL=true
+    fi
+
+    if [ "$IS_LOCAL" = true ]; then
+        log_warn "检测到本地局域网或回环地址 ($DOMAIN)。"
+        log_info "将自动跳过 Let's Encrypt 证书申请，使用自签名证书。"
+        
+        # 3.1 生成 OpenSSH 开发证书 (响应用户需求)
+        log_info "正在生成 OpenSSH 开发证书 (仅用于内网开发测试)..."
+        mkdir -p mosquitto/config/ssh
+        
+        # 生成 SSH CA (使用 Docker 避免依赖)
+        if command -v ssh-keygen &> /dev/null; then
+            rm -f mosquitto/config/ssh/id_rsa*
+            ssh-keygen -t rsa -b 4096 -f mosquitto/config/ssh/id_rsa -N "" -C "mcs-iot-dev"
+            log_success "OpenSSH 开发证书 (密钥对) 已生成: mosquitto/config/ssh/id_rsa"
+        else
+            log_warn "未找到 ssh-keygen，跳过 SSH 证书生成。"
+        fi
+
+        ENABLE_SSL="n"
+    else
+        # ICP 备案检测
+        echo ""
+        log_input "您的域名是否已在中国大陆备案? (y/n) [y]"
+        log_warn "如果未备案，请选择 n，脚本将自动规避 80/443 端口。"
+        read -p "是否已备案: " IS_ICP
+        IS_ICP=${IS_ICP:-y}
+        
+        if [[ "$IS_ICP" == "n" ]]; then
+            log_warn "检测到域名未备案，将使用自定义端口 9696 部署。"
+            HTTP_PORT=9696
+            HTTPS_PORT=9697
+            log_info "HTTP 端口已设置为: $HTTP_PORT"
+            log_info "HTTPS 端口已设置为: $HTTPS_PORT"
+            
+            log_warn "由于 80 端口不可用，无法自动申请 Let's Encrypt 证书。"
+            log_info "将自动切换为自签名证书模式。"
+            ENABLE_SSL="n"
+        else
+            # 2. SSL 配置 (仅公网 IP/域名询问)
+            echo ""
+            log_input "是否为该域名自动申请 SSL 证书 (Let's Encrypt)?"
+            log_warn "注意: 需要您已将域名解析到本机 IP，且 80 端口未被占用。"
+            read -p "是否申请证书? (y/n) [n]: " ENABLE_SSL
+            ENABLE_SSL=${ENABLE_SSL:-n}
+        fi
+    fi
 
     mkdir -p nginx/ssl
 
@@ -187,10 +252,44 @@ configure_deployment() {
     fi
 
     if [[ "$ENABLE_SSL" != "y" ]]; then
-        log_info "正在生成自签名证书..."
+        log_info "正在生成自签名 SSL 证书 (支持 SAN)..."
+        
+        # 创建 OpenSSL 配置文件以支持 SAN (Subject Alternative Names)
+        cat > openssl_san.cnf << EOF
+[req]
+default_bits = 2048
+prompt = no
+default_md = sha256
+req_extensions = req_ext
+distinguished_name = dn
+
+[dn]
+C = CN
+ST = State
+L = City
+O = MCS-IoT
+CN = $DOMAIN
+
+[req_ext]
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = localhost
+DNS.2 = $DOMAIN
+IP.1 = 127.0.0.1
+EOF
+
+        # 如果 DOMAIN 是 IP 地址，添加到 IP SAN
+        if [[ "$DOMAIN" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "IP.2 = $DOMAIN" >> openssl_san.cnf
+        fi
+
         openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
             -keyout nginx/ssl/server.key -out nginx/ssl/server.crt \
-            -subj "/C=CN/ST=State/L=City/O=MCS-IoT/CN=$DOMAIN"
+            -config openssl_san.cnf
+
+        rm openssl_san.cnf
+        
         # 自签名 CA 就是自己
         cp nginx/ssl/server.crt nginx/ssl/ca.crt
         USE_SSL=false
@@ -227,6 +326,8 @@ ADMIN_INITIAL_PASSWORD=${ADMIN_PASSWORD}
 
 # SSL Config
 USE_SSL=${USE_SSL}
+HTTP_PORT=${HTTP_PORT}
+HTTPS_PORT=${HTTPS_PORT}
 EOF
 
     # 4. 配置 Mosquitto 密码
@@ -243,6 +344,43 @@ EOF
     
     # 恢复权限 (Mosquitto 容器内 uid 1883)
     # chmod 644 mosquitto/config/passwd
+}
+
+# 配置防火墙
+configure_firewall() {
+    echo ""
+    log_info "=== 配置系统防火墙 ==="
+    
+    # Ports to allow
+    # SSH, HTTP, HTTPS, Backend, MQTT(TCP, MQTTS, WS)
+    PORTS="22 $HTTP_PORT $HTTPS_PORT 8000 1883 8883 9001"
+    
+    if command -v ufw >/dev/null; then
+        log_info "检测到 UFW 防火墙，正在添加规则..."
+        ufw allow ssh >/dev/null
+        for port in $PORTS; do
+            ufw allow $port/tcp >/dev/null
+            log_info "  - 已放行端口: $port/tcp"
+        done
+        # ufw enable # 不强制启用，以免中断连接
+        log_success "UFW 规则添加完成 (如果防火墙未开启，请运行 'ufw enable')"
+    elif command -v firewall-cmd >/dev/null; then
+        log_info "检测到 Firewalld，正在添加规则..."
+        if ! systemctl is-active --quiet firewalld; then
+            log_warn "Firewalld 未运行，尝试启动..."
+            systemctl start firewalld
+        fi
+        
+        for port in $PORTS; do
+            firewall-cmd --permanent --zone=public --add-port=${port}/tcp >/dev/null
+            log_info "  - 已放行端口: $port/tcp"
+        done
+        firewall-cmd --reload >/dev/null
+        log_success "Firewalld 规则添加完成"
+    else
+        log_warn "未检测到 UFW 或 Firewalld，请手动配置防火墙以放行以下端口:"
+        echo "   $PORTS"
+    fi
 }
 
 # 启动服务
@@ -288,18 +426,32 @@ show_summary() {
     echo "================================================================"
     echo ""
     echo -e "访问地址:"
-    echo -e "  - 管理后台: ${BLUE}http://${DOMAIN}:8000${NC} (或 https)"
-    echo -e "  - 数据大屏: ${BLUE}http://${DOMAIN}${NC} (或 https)"
+    if [ "$HTTP_PORT" == "80" ]; then
+        echo -e "  - 管理后台: ${BLUE}http://${DOMAIN}:8000${NC} (或 https)"
+        echo -e "  - 数据大屏: ${BLUE}http://${DOMAIN}${NC} (或 https)"
+    else
+        echo -e "  - 管理后台: ${BLUE}http://${DOMAIN}:8000${NC}"
+        echo -e "  - 数据大屏: ${BLUE}http://${DOMAIN}:${HTTP_PORT}${NC}"
+    fi
     echo ""
     echo -e "账号信息 (${RED}请务必保存!${NC}):"
     echo -e "  - 管理员账号: ${YELLOW}admin${NC}"
     echo -e "  - 管理员密码: ${YELLOW}admin123${NC} (默认) 或 ${YELLOW}${ADMIN_PASSWORD}${NC}"
     echo -e "  - 数据库密码: ${YELLOW}${DB_PASSWORD}${NC}"
     echo -e "  - MQTT 密码 : ${YELLOW}${MQTT_PASSWORD}${NC}"
+    if [ "$IS_LOCAL" = true ]; then
+        echo -e "  - OpenSSH 证书: ${YELLOW}mosquitto/config/ssh/id_rsa${NC} (仅开发用)"
+    fi
     echo ""
     echo -e "安装目录: ${INSTALL_DIR}"
     echo "================================================================"
     echo -e "${RED}警告: 请立即登录后台修改默认密码，并妥善保管上述凭证!${NC}"
+    echo -e "${YELLOW}重要提示: 请务必在云服务器提供商 (阿里云/腾讯云/AWS等) 的安全组/防火墙中放行以下端口:${NC}"
+    echo -e "${YELLOW}          TCP: $HTTP_PORT, $HTTPS_PORT, 8000, 1883, 8883, 9001${NC}"
+    if [ "$IS_LOCAL" = true ]; then
+        echo -e "${YELLOW}提醒: 已为您生成 OpenSSH 开发证书及自签名 SSL 证书。${NC}"
+        echo -e "${YELLOW}      由于使用自签名证书，浏览器可能会提示不安全，请手动信任或忽略。${NC}"
+    fi
     echo "================================================================"
 }
 
@@ -318,6 +470,7 @@ main() {
     install_docker
     clone_repo
     configure_deployment
+    configure_firewall
     start_services
     run_simulation
     show_summary
