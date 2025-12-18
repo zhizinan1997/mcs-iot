@@ -34,6 +34,11 @@ const routes: RouteRecordRaw[] = [
                 component: () => import('../views/alarms/index.vue')
             },
             {
+                path: 'ai-config',
+                name: 'AIConfig',
+                component: () => import('../views/config/AIConfig.vue')
+            },
+            {
                 path: 'config',
                 name: 'Config',
                 component: () => import('../views/config/index.vue')

@@ -59,9 +59,39 @@ class WeatherConfig(BaseModel):
     api_key: str = ""
     enabled: bool = True
 
+class AIConfig(BaseModel):
+    """AI 接口配置"""
+    api_url: str = "https://api.openai.com/v1"
+    api_key: str = ""
+    model: str = "gpt-3.5-turbo"
+
 async def get_redis():
     from .main import redis_pool
     return redis_pool
+
+# AI Config
+@router.get("/ai", response_model=AIConfig)
+async def get_ai_config(redis = Depends(get_redis)):
+    data = await redis.get("config:ai")
+    if data:
+        return AIConfig(**json.loads(data))
+    return AIConfig()
+
+@router.put("/ai")
+async def update_ai_config(config: AIConfig, redis = Depends(get_redis)):
+    await redis.set("config:ai", config.json())
+    return {"message": "AI config updated"}
+
+@router.post("/ai/test")
+async def test_ai_config(config: AIConfig):
+    """Test AI configuration by sending a simple request"""
+    try:
+        from .ai import call_openai
+        # Use a very simple prompt to save tokens and time
+        response = await call_openai(config.dict(), "Hello, please reply with 'OK' only.")
+        return {"success": True, "message": response}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 # Email Config
 @router.get("/alarm/email", response_model=EmailConfig)

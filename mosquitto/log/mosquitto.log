@@ -587,3 +587,13 @@ To fix this, use `chmod 0700 /mosquitto/config/acl`.
 1766042922: New connection from 172.18.0.6:51729 on port 1883.
 1766042922: New client connected from 172.18.0.6:51729 as worker_1766042922 (p2, c1, k60, u'worker').
 1766043514: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1766045315: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1766045355: Client worker_1766042922 disconnected.
+1766045357: New connection from 172.18.0.5:40815 on port 1883.
+1766045357: New client connected from 172.18.0.5:40815 as worker_1766045357 (p2, c1, k60, u'worker').
+1766045832: Client worker_1766045357 disconnected.
+1766045834: New connection from 172.18.0.6:57185 on port 1883.
+1766045834: New client connected from 172.18.0.6:57185 as worker_1766045834 (p2, c1, k60, u'worker').
+1766046026: Client worker_1766045834 disconnected.
+1766046027: New connection from 172.18.0.5:35471 on port 1883.
+1766046027: New client connected from 172.18.0.5:35471 as worker_1766046027 (p2, c1, k60, u'worker').

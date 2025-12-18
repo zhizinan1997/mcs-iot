@@ -18,6 +18,7 @@ from .mqtt import router as mqtt_router
 
 from .instruments import router as instruments_router
 from .uploads import router as uploads_router
+from .ai import router as ai_router
 
 # Setup Logging
 logging.basicConfig(level=logging.INFO)
@@ -87,6 +88,7 @@ app.include_router(mqtt_router, prefix="/api/config", tags=["MQTT"])
 
 app.include_router(instruments_router, prefix="/api/instruments", tags=["Instruments"])
 app.include_router(uploads_router, prefix="/api/uploads", tags=["Uploads"])
+app.include_router(ai_router, prefix="/api/ai", tags=["AI"])
 
 @app.get("/api/health")
 async def health_check():

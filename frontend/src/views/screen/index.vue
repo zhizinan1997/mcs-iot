@@ -742,7 +742,6 @@ const scoreColor = computed(() => {
   }
 })
 
-const todayAlarmCount = computed(() => alarmStats.today)
 
 const gaugeOption = computed(() => ({
   backgroundColor: 'transparent',
@@ -827,11 +826,7 @@ const gaugeOption = computed(() => ({
   ]
 }))
 
-const topPollutant = computed(() => {
-  const sorted = [...devices.value].sort((a, b) => (b.ppm || 0) - (a.ppm || 0))
-  const top = sorted[0]
-  return { name: top?.name || '-', value: top?.ppm?.toFixed(1) || '-', unit: top?.unit || 'ppm' }
-})
+
 
 
 const DEFAULT_UNITS: Record<string, string> = {
@@ -988,45 +983,18 @@ async function fetchWeather() {
 async function fetchAI() {
   if (aiLoading.value) return
   aiLoading.value = true
-  aiThinking.value = '正在分析数据...'
+  aiThinking.value = '正在获取智能分析报告...'
   
   try {
-    // TODO: Configure OpenAI API endpoint and key in environment
-    const apiUrl = '/api/ai/chat'
-    const prompt = `作为IoT智能分析师，请简要总结以下数据（50字以内）：
-设备总数: ${stats.devices_total}
-在线设备: ${stats.devices_online}
-离线设备: ${stats.devices_total - stats.devices_online}
-安全率: ${safetyPercent.value}%
-今日报警: ${todayAlarmCount.value}次
-最高污染物: ${topPollutant.value.name} (${topPollutant.value.value} ${topPollutant.value.unit})`
-
-    const res = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 100
-      })
-    })
-    
-    if (res.ok) {
-      const data = await res.json()
-      aiSummary.value = data.choices?.[0]?.message?.content || '分析完成，系统运行正常。'
+    const res = await dashboardApi.getAISummary()
+    if (res.data) {
+      aiSummary.value = res.data.content
     } else {
-      // Fallback to local summary
-      const onlineRate = safetyPercent.value
-      if (onlineRate >= 90) {
-        aiSummary.value = `系统运行良好，${stats.devices_online}/${stats.devices_total}设备在线，安全率${onlineRate}%。`
-      } else if (onlineRate >= 70) {
-        aiSummary.value = `注意：${stats.devices_total - stats.devices_online}台设备离线，建议检查网络连接。`
-      } else {
-        aiSummary.value = `警告：大量设备离线，安全率仅${onlineRate}%，请立即排查！`
-      }
+      aiSummary.value = '暂无分析数据'
     }
-  } catch {
-    aiSummary.value = `当前${stats.devices_online}台设备在线，今日报警${todayAlarmCount.value}次。`
+  } catch (e) {
+    console.error('AI Fetch Error:', e)
+    aiSummary.value = '获取分析报告失败，请检查配置'
   } finally {
     aiLoading.value = false
   }

@@ -30,6 +30,10 @@
           <el-icon><Bell /></el-icon>
           <span>报警记录</span>
         </el-menu-item>
+        <el-menu-item index="/ai-config">
+          <el-icon><Cpu /></el-icon>
+          <span>AI 接口</span>
+        </el-menu-item>
         <el-menu-item index="/config">
           <el-icon><Setting /></el-icon>
           <span>系统配置</span>

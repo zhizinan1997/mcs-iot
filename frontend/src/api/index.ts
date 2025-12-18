@@ -83,7 +83,11 @@ export const configApi = {
     updateScreenBg: (data: any) => api.put('/config/screen_bg', data),
     // 天气配置
     getWeather: () => api.get('/config/weather'),
-    updateWeather: (data: any) => api.put('/config/weather', data)
+    updateWeather: (data: any) => api.put('/config/weather', data),
+    // AI 配置
+    getAI: () => api.get('/config/ai'),
+    updateAI: (data: any) => api.put('/config/ai', data),
+    testAI: (data: any) => api.post('/config/ai/test', data)
 }
 
 // Upload API
@@ -100,7 +104,8 @@ export const uploadApi = {
 // Dashboard API
 export const dashboardApi = {
     stats: () => api.get('/dashboard/stats'),
-    realtime: () => api.get('/dashboard/realtime')
+    realtime: () => api.get('/dashboard/realtime'),
+    getAISummary: () => api.get('/ai/summary')
 }
 
 
