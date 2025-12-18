@@ -482,3 +482,108 @@ To fix this, use `chmod 0700 /mosquitto/config/acl`.
 1766023826: New connection from 172.18.0.1:63094 on port 1883.
 1766023826: New client connected from 172.18.0.1:63094 as NH3020 (p2, c1, k60, u'zhizinan').
 1766025504: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1766027305: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1766029106: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1766030907: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1766032708: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1766034509: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1766036310: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1766037922: Client worker_1766023709 disconnected.
+1766037925: New connection from 172.18.0.5:33765 on port 1883.
+1766037925: New client connected from 172.18.0.5:33765 as worker_1766037925 (p2, c1, k60, u'worker').
+1766038111: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1766038235: Client worker_1766037925 disconnected.
+1766038238: New connection from 172.18.0.6:48017 on port 1883.
+1766038238: New client connected from 172.18.0.6:48017 as worker_1766038238 (p2, c1, k60, u'worker').
+1766038487: Client worker_1766038238 disconnected.
+1766038488: New connection from 172.18.0.6:59313 on port 1883.
+1766038488: New client connected from 172.18.0.6:59313 as worker_1766038488 (p2, c1, k60, u'worker').
+1766038800: Client GAS001 disconnected.
+1766038801: Client GAS002 disconnected.
+1766038801: Client GAS003 disconnected.
+1766038801: Client GAS004 disconnected.
+1766038802: Client GAS005 disconnected.
+1766038802: Client GAS006 disconnected.
+1766038803: Client GAS007 disconnected.
+1766038803: Client GAS008 disconnected.
+1766038804: Client GAS009 disconnected.
+1766038804: Client GAS010 disconnected.
+1766038804: Client CO2011 disconnected.
+1766038805: Client CO2012 disconnected.
+1766038806: Client CO2013 disconnected.
+1766038807: Client CO2014 disconnected.
+1766038807: Client NH3016 closed its connection.
+1766038807: Client NH3018 closed its connection.
+1766038807: Client NH3020 closed its connection.
+1766038807: Client NH3017 closed its connection.
+1766038807: Client NH3019 closed its connection.
+1766038807: Client CO2015 closed its connection.
+1766038812: New connection from 172.18.0.1:57062 on port 1883.
+1766038812: New client connected from 172.18.0.1:57062 as GAS001 (p2, c1, k60, u'zhizinan').
+1766038812: New connection from 172.18.0.1:57074 on port 1883.
+1766038812: New client connected from 172.18.0.1:57074 as GAS002 (p2, c1, k60, u'zhizinan').
+1766038812: New connection from 172.18.0.1:57084 on port 1883.
+1766038812: New client connected from 172.18.0.1:57084 as GAS003 (p2, c1, k60, u'zhizinan').
+1766038812: New connection from 172.18.0.1:57100 on port 1883.
+1766038812: New client connected from 172.18.0.1:57100 as GAS004 (p2, c1, k60, u'zhizinan').
+1766038812: New connection from 172.18.0.1:57110 on port 1883.
+1766038812: New client connected from 172.18.0.1:57110 as GAS005 (p2, c1, k60, u'zhizinan').
+1766038812: New connection from 172.18.0.1:57126 on port 1883.
+1766038812: New client connected from 172.18.0.1:57126 as GAS006 (p2, c1, k60, u'zhizinan').
+1766038812: New connection from 172.18.0.1:57142 on port 1883.
+1766038812: New client connected from 172.18.0.1:57142 as GAS007 (p2, c1, k60, u'zhizinan').
+1766038812: New connection from 172.18.0.1:57152 on port 1883.
+1766038812: New client connected from 172.18.0.1:57152 as GAS008 (p2, c1, k60, u'zhizinan').
+1766038812: New connection from 172.18.0.1:57156 on port 1883.
+1766038812: New client connected from 172.18.0.1:57156 as GAS009 (p2, c1, k60, u'zhizinan').
+1766038813: New connection from 172.18.0.1:57172 on port 1883.
+1766038813: New client connected from 172.18.0.1:57172 as GAS010 (p2, c1, k60, u'zhizinan').
+1766038813: New connection from 172.18.0.1:57184 on port 1883.
+1766038813: New client connected from 172.18.0.1:57184 as CO2011 (p2, c1, k60, u'zhizinan').
+1766038813: New connection from 172.18.0.1:57188 on port 1883.
+1766038813: New client connected from 172.18.0.1:57188 as CO2012 (p2, c1, k60, u'zhizinan').
+1766038813: New connection from 172.18.0.1:57192 on port 1883.
+1766038813: New client connected from 172.18.0.1:57192 as CO2013 (p2, c1, k60, u'zhizinan').
+1766038813: New connection from 172.18.0.1:57206 on port 1883.
+1766038813: New client connected from 172.18.0.1:57206 as CO2014 (p2, c1, k60, u'zhizinan').
+1766038813: New connection from 172.18.0.1:57210 on port 1883.
+1766038813: New client connected from 172.18.0.1:57210 as CO2015 (p2, c1, k60, u'zhizinan').
+1766038813: New connection from 172.18.0.1:57224 on port 1883.
+1766038813: New client connected from 172.18.0.1:57224 as NH3016 (p2, c1, k60, u'zhizinan').
+1766038813: New connection from 172.18.0.1:57226 on port 1883.
+1766038813: New client connected from 172.18.0.1:57226 as NH3017 (p2, c1, k60, u'zhizinan').
+1766038813: New connection from 172.18.0.1:57232 on port 1883.
+1766038813: New client connected from 172.18.0.1:57232 as NH3018 (p2, c1, k60, u'zhizinan').
+1766038814: New connection from 172.18.0.1:58036 on port 1883.
+1766038814: New client connected from 172.18.0.1:58036 as NH3019 (p2, c1, k60, u'zhizinan').
+1766038814: New connection from 172.18.0.1:58048 on port 1883.
+1766038814: New client connected from 172.18.0.1:58048 as NH3020 (p2, c1, k60, u'zhizinan').
+1766038814: New connection from 172.18.0.1:58058 on port 1883.
+1766038814: New client connected from 172.18.0.1:58058 as DEV021 (p2, c1, k60, u'zhizinan').
+1766038814: New connection from 172.18.0.1:58066 on port 1883.
+1766038814: New client connected from 172.18.0.1:58066 as DEV022 (p2, c1, k60, u'zhizinan').
+1766038814: New connection from 172.18.0.1:58076 on port 1883.
+1766038814: New client connected from 172.18.0.1:58076 as DEV023 (p2, c1, k60, u'zhizinan').
+1766038814: New connection from 172.18.0.1:58088 on port 1883.
+1766038814: New client connected from 172.18.0.1:58088 as DEV024 (p2, c1, k60, u'zhizinan').
+1766039173: Client worker_1766038488 disconnected.
+1766039175: New connection from 172.18.0.5:39647 on port 1883.
+1766039175: New client connected from 172.18.0.5:39647 as worker_1766039175 (p2, c1, k60, u'worker').
+1766039626: Client worker_1766039175 disconnected.
+1766039628: New connection from 172.18.0.5:38759 on port 1883.
+1766039628: New client connected from 172.18.0.5:38759 as worker_1766039628 (p2, c1, k60, u'worker').
+1766039912: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1766039930: Client worker_1766039628 disconnected.
+1766039932: New connection from 172.18.0.5:39663 on port 1883.
+1766039932: New client connected from 172.18.0.5:39663 as worker_1766039932 (p2, c1, k60, u'worker').
+1766041713: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1766041961: Client worker_1766039932 disconnected.
+1766041963: New connection from 172.18.0.6:60407 on port 1883.
+1766041963: New client connected from 172.18.0.6:60407 as worker_1766041963 (p2, c1, k60, u'worker').
+1766042035: Client worker_1766041963 disconnected.
+1766042037: New connection from 172.18.0.6:43267 on port 1883.
+1766042037: New client connected from 172.18.0.6:43267 as worker_1766042037 (p2, c1, k60, u'worker').
+1766042922: Client worker_1766042037 disconnected.
+1766042922: New connection from 172.18.0.6:51729 on port 1883.
+1766042922: New client connected from 172.18.0.6:51729 as worker_1766042922 (p2, c1, k60, u'worker').
+1766043514: Saving in-memory database to /mosquitto/data//mosquitto.db.

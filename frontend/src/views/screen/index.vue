@@ -2,14 +2,28 @@
   <div class="dashboard">
     <!-- Header Bar -->
     <header class="header">
+      <div class="header-bg-deco"></div>
       <div class="header-left"></div>
       <div class="header-center">
-        <h1>元芯物联网智慧云平台</h1>
+        <div class="title-deco-left">
+          <div class="deco-line-1"></div>
+          <div class="deco-line-2"></div>
+          <div class="deco-block"></div>
+        </div>
+        <div class="title-box">
+          <div class="chip-lines"></div>
+          <h1>元芯物联网智慧云平台</h1>
+          <div class="chip-light"></div>
+        </div>
+        <div class="title-deco-right">
+          <div class="deco-block"></div>
+          <div class="deco-line-1"></div>
+          <div class="deco-line-2"></div>
+        </div>
       </div>
       <div class="header-right">
         <span class="loc">📍 {{ weather.location || '定位中...' }}</span>
         <span class="date">{{ currentDate }}</span>
-        <span class="weather">{{ weather.desc }} {{ weather.temp }}°C</span>
       </div>
     </header>
 
@@ -24,110 +38,118 @@
             <Splitpanes @resized="onLeftCenterResize">
               <!-- LEFT COLUMN -->
               <Pane :size="panelSizes.leftInner || 35" min-size="20" max-size="50">
-                <section class="col col-left">
-        <!-- Panel: 仪表概览 -->
-        <div class="panel panel-sm">
-          <div class="safety-header">
-            <div class="header-deco"><div class="deco-dot"></div><div class="deco-ring"></div></div>
-            <div class="header-text">仪表概览</div>
-            <div class="header-sub">INSTRUMENT OVERVIEW</div>
-          </div>
-          <div class="instruments-grid">
-            <div class="instrument-card" v-for="inst in displayedInstruments" :key="inst.id" :style="{ '--card-color': inst.color || '#22d3ee' }">
-              <div class="inst-header">
-                <span class="inst-name">{{ inst.name }}</span>
-                <span class="inst-color" :style="{ background: inst.color || '#22d3ee' }"></span>
-              </div>
-              <div class="inst-desc">{{ inst.description || '监控仪表' }}</div>
-              <div class="inst-footer">
-                <span class="sensor-count">{{ inst.sensor_count || 0 }}</span>
-                <span class="sensor-types">传感器</span>
-              </div>
-            </div>
-            <div v-if="!displayedInstruments.length" class="empty-instruments">
-              暂无显示的仪表<br/><small>请在管理界面→大屏显示管理中设置</small>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Panel: 安全监管 -->
-        <div class="panel panel-safety">
-          <div class="safety-header">
-            <div class="header-deco">
-              <div class="deco-dot"></div>
-              <div class="deco-ring"></div>
-            </div>
-            <div class="header-text">安全监管</div>
-            <div class="header-sub">SAFETY SUPERVISION</div>
-          </div>
-          <div class="safety-body">
-            <!-- Left: Gauge -->
-            <div class="safety-left">
-              <div class="gauge-container">
-                <!-- Rotating Tech Ring -->
-                <div class="tech-ring"></div>
-                <v-chart class="gauge-chart" :option="gaugeOption" autoresize />
-                <div class="gauge-overlay">
-                  <span class="g-val" :style="{ color: scoreColor.end }">{{ overallScore }}<small>分</small></span>
-                  <span class="g-label">综合评分</span>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Right: Progress Bars -->
-            <div class="safety-right">
-              <!-- Bar 1: Online Rate -->
-              <div class="progress-item">
-                <div class="p-header">
-                  <span class="p-label">在线率</span>
-                  <span class="p-val">{{ safetyPercent }}%</span>
-                </div>
-                <div class="p-track">
-                  <div class="p-bar bar-blue" :style="{ width: safetyPercent + '%' }"></div>
-                </div>
-              </div>
+                <section class="col col-left" style="padding: 0; display: block; overflow: hidden;">
+                  <Splitpanes horizontal @resized="onLeftColumnResize">
+                    <!-- Panel: 仪表概览 -->
+                    <Pane :size="panelSizes.leftPanel1 || 35" min-size="10">
+                      <div class="panel panel-sm" style="height: 100%; border-radius: 0;">
+                        <div class="safety-header">
+                          <div class="header-deco"><div class="deco-dot"></div><div class="deco-ring"></div></div>
+                          <div class="header-text">仪表概览</div>
+                          <div class="header-sub">INSTRUMENT OVERVIEW</div>
+                        </div>
+                        <div class="instruments-grid">
+                          <div class="instrument-card" v-for="inst in displayedInstruments" :key="inst.id" :style="{ '--card-color': inst.color || '#22d3ee' }">
+                            <div class="inst-header">
+                              <span class="inst-name">{{ inst.name }}</span>
+                              <span class="inst-color" :style="{ background: inst.color || '#22d3ee' }"></span>
+                            </div>
+                            <div class="inst-desc">{{ inst.description || '监控仪表' }}</div>
+                            <div class="inst-footer">
+                              <span class="sensor-count">{{ inst.sensor_count || 0 }}</span>
+                              <span class="sensor-types">传感器</span>
+                            </div>
+                          </div>
+                          <div v-if="!displayedInstruments.length" class="empty-instruments">
+                            暂无显示的仪表<br/><small>请在管理界面→大屏显示管理中设置</small>
+                          </div>
+                        </div>
+                      </div>
+                    </Pane>
+                    
+                    <!-- Panel: 安全监管 -->
+                    <Pane :size="panelSizes.leftPanel2 || 45" min-size="10">
+                      <div class="panel panel-safety" style="height: 100%; border-radius: 0;">
+                        <div class="safety-header">
+                          <div class="header-deco">
+                            <div class="deco-dot"></div>
+                            <div class="deco-ring"></div>
+                          </div>
+                          <div class="header-text">安全监管</div>
+                          <div class="header-sub">SAFETY SUPERVISION</div>
+                        </div>
+                        <div class="safety-body">
+                          <!-- Left: Gauge -->
+                          <div class="safety-left">
+                            <div class="gauge-container" :style="{ '--score-color': scoreColor.end, '--score-shadow': scoreColor.shadow }">
+                              <!-- Rotating Tech Ring -->
+                              <div class="tech-ring"></div>
+                              <v-chart class="gauge-chart" :option="gaugeOption" autoresize />
+                              <div class="gauge-overlay">
+                                <span class="g-val" :style="{ color: scoreColor.end }">{{ overallScore }}<small>分</small></span>
+                                <span class="g-label">综合评分</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <!-- Right: Progress Bars -->
+                          <div class="safety-right">
+                            <!-- Bar 1: Online Rate -->
+                            <div class="progress-item">
+                              <div class="p-header">
+                                <span class="p-label">在线率</span>
+                                <span class="p-val">{{ safetyPercent }}%</span>
+                              </div>
+                              <div class="p-track">
+                                <div class="p-bar bar-blue" :style="{ width: safetyPercent + '%' }"></div>
+                              </div>
+                            </div>
 
-              <!-- Bar 2: Alarm Handling Rate -->
-              <div class="progress-item">
-                <div class="p-header">
-                  <span class="p-label">报警处理率</span>
-                  <span class="p-val">{{ alarmHandlingPercent }}%</span>
-                </div>
-                <div class="p-track">
-                  <div class="p-bar bar-orange" :style="{ width: alarmHandlingPercent + '%' }"></div>
-                </div>
-              </div>
+                            <!-- Bar 2: Alarm Handling Rate -->
+                            <div class="progress-item">
+                              <div class="p-header">
+                                <span class="p-label">报警处理率</span>
+                                <span class="p-val">{{ alarmHandlingPercent }}%</span>
+                              </div>
+                              <div class="p-track">
+                                <div class="p-bar bar-orange" :style="{ width: alarmHandlingPercent + '%' }"></div>
+                              </div>
+                            </div>
 
-              <!-- Bar 3: Device Health Rate -->
-              <div class="progress-item">
-                <div class="p-header">
-                  <span class="p-label">设备健康率</span>
-                  <span class="p-val">{{ healthPercent }}%</span>
-                </div>
-                <div class="p-track">
-                  <div class="p-bar bar-green" :style="{ width: healthPercent + '%' }"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Panel: AI 智能总结 -->
-        <div class="panel panel-ai">
-          <div class="safety-header">
-            <div class="header-deco"><div class="deco-dot"></div><div class="deco-ring"></div></div>
-            <div class="header-text">AI 智能分析</div>
-            <div class="header-sub">AI ANALYSIS</div>
-          </div>
-          <div class="ai-content">
-            <div class="ai-summary">
-              <p v-if="aiLoading" class="ai-thinking">{{ aiThinking }}</p>
-              <p v-else-if="aiSummary">{{ aiSummary }}</p>
-              <p v-else class="ai-error">暂无分析数据</p>
-            </div>
-          </div>
-        </div>
-      </section>
+                            <!-- Bar 3: Device Health Rate -->
+                            <div class="progress-item">
+                              <div class="p-header">
+                                <span class="p-label">设备健康率</span>
+                                <span class="p-val">{{ healthPercent }}%</span>
+                              </div>
+                              <div class="p-track">
+                                <div class="p-bar bar-green" :style="{ width: healthPercent + '%' }"></div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </Pane>
+                    
+                    <!-- Panel: AI 智能总结 -->
+                    <Pane :size="panelSizes.leftPanel3 || 20" min-size="5">
+                      <div class="panel panel-ai" style="height: 100%; border-radius: 0;">
+                        <div class="safety-header">
+                          <div class="header-deco"><div class="deco-dot"></div><div class="deco-ring"></div></div>
+                          <div class="header-text">AI 智能分析</div>
+                          <div class="header-sub">AI ANALYSIS</div>
+                        </div>
+                        <div class="ai-content">
+                          <div class="ai-summary">
+                            <p v-if="aiLoading" class="ai-thinking">{{ aiThinking }}</p>
+                            <p v-else-if="aiSummary">{{ aiSummary }}</p>
+                            <p v-else class="ai-error">暂无分析数据</p>
+                          </div>
+                        </div>
+                      </div>
+                    </Pane>
+                  </Splitpanes>
+                </section>
               </Pane>
 
               <!-- CENTER COLUMN -->
@@ -141,29 +163,27 @@
                 v-for="inst in displayedInstruments"
                 :key="inst.id"
                 class="marker"
-                :class="{ alarm: instrumentHasAlarm(inst.id) }"
+                :class="{ alarm: instrumentHasAlarm(inst.id), 'z-top': selectedInstrument === inst.id }"
                 :style="{ left: instrumentPos(inst.id, 'x') + '%', top: instrumentPos(inst.id, 'y') + '%' }"
-                @click="selectedInstrument = selectedInstrument === inst.id ? null : inst.id"
+                @click="toggleInstrument($event, inst.id)"
               >
                 <span class="dot"></span>
                 <span class="name">{{ inst.name }}</span>
-                <div class="tooltip" v-if="selectedInstrument === inst.id">
-                  <p><b>{{ inst.name }}</b></p>
-                  <p v-if="inst.description">{{ inst.description }}</p>
-                  <p>传感器数量: {{ getInstrumentDevices(inst.id).length }}</p>
-                  <p :class="{ 'alarm-text': instrumentHasAlarm(inst.id) }">
-                    状态: {{ instrumentHasAlarm(inst.id) ? '⚠️ 告警中' : '✅ 正常' }}
-                  </p>
-                </div>
               </div>
             </div>
           </div>
         </div>
         <!-- Bottom: Metrics row -->
-        <div class="metrics-row">
-          <div class="metric" v-for="m in metrics" :key="m.label">
-            <div class="m-label">{{ m.label }}</div>
-            <div class="m-value">{{ m.value }}<small>{{ m.unit }}</small></div>
+        <div class="metrics-grid">
+          <div class="metric-card" v-for="m in metrics" :key="m.label">
+            <div class="mc-header">
+              <div class="mc-dot"></div>
+              <div class="mc-label">{{ m.label }}</div>
+            </div>
+            <div class="mc-body">
+              <div class="mc-value">{{ m.value }}</div>
+              <div class="mc-unit">{{ m.unit }}</div>
+            </div>
           </div>
         </div>
       </section>
@@ -180,8 +200,15 @@
                   <div class="header-text">污染物趋势图</div>
                   <div class="header-sub">POLLUTANT TRENDS</div>
                   <span class="tabs" style="margin-left: auto;">
-                    <button class="tab active">今日</button>
-                    <button class="tab">昨日</button>
+                    <button 
+                      v-for="inst in instruments" 
+                      :key="inst.id"
+                      class="tab"
+                      :class="{ active: activeChartInstrumentId === inst.id }"
+                      @click="selectChartInstrument(inst.id)"
+                    >
+                      {{ inst.name }}
+                    </button>
                   </span>
                 </div>
                 <v-chart class="trend-chart" :option="trendOption" autoresize />
@@ -201,14 +228,35 @@
               <div class="header-text">天气概况</div>
               <div class="header-sub">WEATHER OVERVIEW</div>
             </div>
-            <div class="weather-main">
-              <span class="icon">{{ weather.icon }}</span>
-              <span class="temp">{{ weather.temp }}<small>°C</small></span>
+            <div class="weather-content" v-if="weather.today && weather.tomorrow">
+              <!-- Today -->
+              <div class="weather-day">
+                <div class="day-title">今日</div>
+                <div class="day-main">
+                  <span class="w-icon">{{ getWeatherIcon(weather.today.code_day) }}</span>
+                  <span class="w-temp">{{ weather.today.low }}~{{ weather.today.high }}°C</span>
+                </div>
+                <div class="day-detail">
+                  <span>{{ weather.today.text_day }}</span>
+                  <span>降水 {{ (Number(weather.today.precip) * 100).toFixed(0) }}%</span>
+                </div>
+              </div>
+              <div class="weather-divider"></div>
+              <!-- Tomorrow -->
+              <div class="weather-day">
+                <div class="day-title">明日</div>
+                <div class="day-main">
+                  <span class="w-icon">{{ getWeatherIcon(weather.tomorrow.code_day) }}</span>
+                  <span class="w-temp">{{ weather.tomorrow.low }}~{{ weather.tomorrow.high }}°C</span>
+                </div>
+                <div class="day-detail">
+                  <span>{{ weather.tomorrow.text_day }}</span>
+                  <span>降水 {{ (Number(weather.tomorrow.precip) * 100).toFixed(0) }}%</span>
+                </div>
+              </div>
             </div>
-            <div class="weather-details">
-              <div><span>湿度</span><b>{{ weather.humidity }}%</b></div>
-              <div><span>风速</span><b>{{ weather.wind }}</b></div>
-              <div><span>空气质量</span><b class="good">优</b></div>
+            <div class="weather-loading" v-else>
+              {{ weather.error || '加载中...' }}
             </div>
           </div>
           <!-- Panel: 设备状态 -->
@@ -245,6 +293,41 @@
         </section>
       </Pane>
     </Splitpanes>
+    <!-- Global Tooltip via Teleport -->
+    <Teleport to="body">
+      <div 
+        v-if="selectedInstData" 
+        class="tooltip global-tooltip"
+        :class="tooltipPos.placement"
+        :style="{ left: tooltipPos.x + 'px', top: tooltipPos.y + 'px' }"
+      >
+        <div class="tt-header">
+          <p class="tt-title">{{ selectedInstData.name }}</p>
+          <p class="tt-status" :class="{ 'alarm-text': instrumentHasAlarm(selectedInstData.id) }">
+            {{ instrumentHasAlarm(selectedInstData.id) ? '⚠️ 告警中' : '✅ 正常' }}
+          </p>
+        </div>
+        <div class="tt-stats">
+          <div class="tt-stat-item">
+            <span>传感器</span><b>{{ getInstrumentDevices(selectedInstData.id).length }}</b>
+          </div>
+          <div class="tt-stat-item">
+            <span>今日报警</span><b>{{ selectedInstData.alarms_today || 0 }}</b>
+          </div>
+          <div class="tt-stat-item">
+            <span>未处理</span><b class="warn-val">{{ selectedInstData.alarms_unhandled || 0 }}</b>
+          </div>
+        </div>
+        <div class="tt-sensors" v-if="getInstrumentDevices(selectedInstData.id).length">
+          <div class="tt-sensor-row" v-for="d in getInstrumentDevices(selectedInstData.id)" :key="d.sn">
+            <span class="s-name">{{ d.name || d.sn }}</span>
+            <span class="s-val" :class="{ 'alarm-val': (d.ppm || 0) > (d.high_limit || 1000) }">
+              {{ d.ppm?.toFixed(1) }} <small>{{ d.unit }}</small>
+            </span>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -272,7 +355,10 @@ const defaultSizes = {
   mainHeight: 70, // main content area (vertical inner split)
   trendHeight: 30, // trend chart (vertical inner split)
   leftInner: 35, // left column within left+center (horizontal inner split)
-  centerInner: 65 // center column within left+center (horizontal inner split)
+  centerInner: 65, // center column within left+center (horizontal inner split)
+  leftPanel1: 35, // instrument overview
+  leftPanel2: 45, // safety supervision
+  leftPanel3: 20 // ai analysis
 }
 const panelSizes = reactive({ ...defaultSizes })
 
@@ -283,8 +369,15 @@ function loadLayoutSizes() {
       const parsed = JSON.parse(saved)
       // Merge with defaults, allowing new keys
       for (const key of Object.keys(defaultSizes)) {
+        // Use type assertion to allow dynamic key access
         if (parsed[key] !== undefined) {
           (panelSizes as Record<string, number>)[key] = parsed[key]
+        }
+      }
+      // Ensure new keys are present if missing in saved data
+      for (const key of Object.keys(defaultSizes)) {
+        if ((panelSizes as Record<string, number>)[key] === undefined) {
+          (panelSizes as Record<string, number>)[key] = (defaultSizes as Record<string, number>)[key] || 0
         }
       }
     }
@@ -328,9 +421,19 @@ function onLeftCenterResize(panes: Array<{ size: number }>) {
   }
 }
 
-interface Device { sn: string; name: string | null; ppm: number | null; temp: number | null; status: string; unit: string; instrument_id?: number | null; high_limit?: number }
+// Left column vertical split resize
+function onLeftColumnResize(panes: Array<{ size: number }>) {
+  if (panes && panes.length >= 3) {
+    panelSizes.leftPanel1 = panes[0]?.size ?? panelSizes.leftPanel1
+    panelSizes.leftPanel2 = panes[1]?.size ?? panelSizes.leftPanel2
+    panelSizes.leftPanel3 = panes[2]?.size ?? panelSizes.leftPanel3
+    saveLayoutSizes()
+  }
+}
+
+interface Device { sn: string; name: string | null; ppm: number | null; temp: number | null; status: string; unit: string; instrument_id?: number | null; high_limit?: number; sensor_type?: string }
 interface Alarm { id: number; time: string; sn: string; value: number }
-interface Instrument { id: number; name: string; description: string | null; color: string | null; is_displayed?: boolean; sensor_count?: number; sensor_types?: string; pos_x?: number; pos_y?: number }
+interface Instrument { id: number; name: string; description: string | null; color: string | null; is_displayed?: boolean; sensor_count?: number; sensor_types?: string; pos_x?: number; pos_y?: number; alarms_today?: number; alarms_unhandled?: number }
 interface ScreenStats {
   devices_total: number
   devices_online: number
@@ -344,11 +447,184 @@ const devices = ref<Device[]>([])
 const alarms = ref<Alarm[]>([])
 const instruments = ref<Instrument[]>([])
 const selectedInstrument = ref<number | null>(null)
+const tooltipPos = reactive({ x: 0, y: 0, placement: 'top' })
+
+const selectedInstData = computed(() => {
+  return instruments.value.find((i: Instrument) => i.id === selectedInstrument.value)
+})
+
+function toggleInstrument(event: MouseEvent, instId: number) {
+  if (selectedInstrument.value === instId) {
+    selectedInstrument.value = null
+  } else {
+    selectedInstrument.value = instId
+    // Calculate position
+    const target = event.currentTarget as HTMLElement
+    const rect = target.getBoundingClientRect()
+    
+    // Check available space above
+    const tooltipHeightEstimate = 320 // Estimate max height including padding
+    const spaceAbove = rect.top
+    
+    if (spaceAbove < tooltipHeightEstimate) {
+      // Not enough space above, show below
+      tooltipPos.placement = 'bottom'
+      tooltipPos.x = rect.left + rect.width / 2
+      tooltipPos.y = rect.bottom + 15
+    } else {
+      // Show above (default)
+      tooltipPos.placement = 'top'
+      tooltipPos.x = rect.left + rect.width / 2
+      tooltipPos.y = rect.top - 15 
+    }
+  }
+}
+
 const trend = ref<number[]>([])
 const trendLabels = ref<string[]>([])
 const stats = reactive<ScreenStats>({ devices_total: 0, devices_online: 0, devices_alarm: 0, alarms_today: 0, alarms_confirmed_today: 0 })
 const alarmStats = reactive({ today: 0, total: 0 })
-const weather = reactive({ temp: '--', humidity: '--', wind: '--', desc: '--', location: '', icon: '🌤️' })
+
+// Instrument History Chart State
+const activeChartInstrumentId = ref<number | null>(null)
+const instrumentHistory = ref<any>(null)
+const historyLoading = ref(false)
+
+// Tech colors for chart series
+const CHART_COLORS = ['#22d3ee', '#a855f7', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899', '#6366f1']
+
+async function fetchInstrumentHistory(id: number) {
+  if (!id) return
+  // historyLoading.value = true // Don't show loading on periodic refresh to avoid flickering
+  try {
+    const res = await instrumentsApi.history(id, 1) // 1 hour
+    instrumentHistory.value = res.data
+  } catch (e) {
+    console.error('Failed to fetch instrument history', e)
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+function selectChartInstrument(id: number) {
+  activeChartInstrumentId.value = id
+  fetchInstrumentHistory(id)
+}
+
+const trendOption = computed(() => {
+  // Default empty option
+  const baseOption = {
+    grid: { top: 30, right: 20, bottom: 20, left: 40, containLabel: true },
+    tooltip: { 
+      trigger: 'axis',
+      backgroundColor: 'rgba(15, 23, 42, 0.9)',
+      borderColor: '#22d3ee',
+      textStyle: { color: '#fff' }
+    },
+    legend: {
+      top: 0,
+      textStyle: { color: '#94a3b8' },
+      data: [] as string[]
+    },
+    xAxis: { 
+      type: 'time', 
+      axisLine: { show: false }, 
+      axisTick: { show: false }, 
+      axisLabel: { 
+        color: '#64748b', 
+        fontSize: 11,
+        formatter: (val: number) => new Date(val).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+      }, 
+      splitLine: { show: false } 
+    },
+    yAxis: { 
+      type: 'value', 
+      axisLine: { show: false }, 
+      axisTick: { show: false }, 
+      splitLine: { lineStyle: { color: 'rgba(100,116,139,0.15)', type: 'dashed' } }, 
+      axisLabel: { color: '#64748b', fontSize: 11 } 
+    },
+    series: [] as any[]
+  }
+
+  if (!instrumentHistory.value || !instrumentHistory.value.series) {
+    return baseOption
+  }
+
+  const series = instrumentHistory.value.series.map((s: any, idx: number) => {
+    const color = CHART_COLORS[idx % CHART_COLORS.length]
+    return {
+      name: s.sensor_type || s.name || s.sn,
+      type: 'line',
+      smooth: true,
+      symbol: 'none',
+      data: s.data,
+      lineStyle: { color, width: 2 },
+      areaStyle: {
+        color: {
+          type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+          colorStops: [
+            { offset: 0, color: color + '66' }, // 0.4 alpha
+            { offset: 1, color: color + '00' }  // 0 alpha
+          ]
+        }
+      }
+    }
+  })
+
+  // Enforce time range on x-axis if start/end are provided
+  let xAxisRange = {}
+  if (instrumentHistory.value.start && instrumentHistory.value.end) {
+    xAxisRange = {
+      min: new Date(instrumentHistory.value.start).getTime(),
+      max: new Date(instrumentHistory.value.end).getTime()
+    }
+  }
+
+  return {
+    ...baseOption,
+    xAxis: {
+      ...baseOption.xAxis,
+      ...xAxisRange
+    },
+    legend: {
+      ...baseOption.legend,
+      data: series.map((s: any) => s.name)
+    },
+    series
+  }
+})
+interface DailyWeather {
+  date: string
+  text_day: string
+  code_day: string
+  text_night: string
+  code_night: string
+  high: string
+  low: string
+  rainfall: string
+  precip: string
+  wind_direction: string
+  wind_speed: string
+  humidity: string
+}
+
+interface WeatherState {
+  location: string
+  today: DailyWeather | null
+  tomorrow: DailyWeather | null
+  error: string
+  loading: boolean
+}
+
+const weather = reactive<WeatherState>({
+  location: '',
+  today: null,
+  tomorrow: null,
+  error: '',
+  loading: false
+})
+
 const aiSummary = ref('')
 const aiLoading = ref(false)
 const aiThinking = ref('正在分析数据...')
@@ -412,11 +688,58 @@ const overallScore = computed(() => {
   return Math.round((s * 0.3) + (h * 0.4) + (a * 0.3))
 })
 
+// Helper to interpolate colors
+const getSmoothColor = (percentage: number) => {
+  // Stops: 0% (Red) -> 25% (Orange) -> 50% (Yellow) -> 75% (Lime) -> 100% (Green)
+  const stops = [
+    { pct: 0, r: 239, g: 68, b: 68 },     // #ef4444 Red
+    { pct: 25, r: 249, g: 115, b: 22 },   // #f97316 Orange
+    { pct: 50, r: 234, g: 179, b: 8 },    // #eab308 Yellow
+    { pct: 75, r: 132, g: 204, b: 22 },   // #84cc16 Lime
+    { pct: 100, r: 34, g: 197, b: 94 }    // #22c55e Green
+  ]
+  
+  const p = Math.max(0, Math.min(100, percentage))
+  
+  let start = stops[0] || { pct: 0, r: 239, g: 68, b: 68 }
+  let end = stops[stops.length - 1] || { pct: 100, r: 34, g: 197, b: 94 }
+  
+  for (let i = 0; i < stops.length - 1; i++) {
+    const s1 = stops[i]
+    const s2 = stops[i+1]
+    if (s1 && s2 && p >= s1.pct && p <= s2.pct) {
+      start = s1
+      end = s2
+      break
+    }
+  }
+  
+  const range = end.pct - start.pct
+  const factor = (p - start.pct) / (range || 1)
+  
+  const r = Math.round(start.r + factor * (end.r - start.r))
+  const g = Math.round(start.g + factor * (end.g - start.g))
+  const b = Math.round(start.b + factor * (end.b - start.b))
+  
+  return { r, g, b, rgb: `rgb(${r},${g},${b})`, hex: `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}` }
+}
+
 const scoreColor = computed(() => {
   const s = overallScore.value
-  if (s >= 90) return { start: '#34d399', end: '#10b981', shadow: 'rgba(52,211,153,0.8)', stop1: 'rgba(16,185,129,0.8)', stop2: 'rgba(16,185,129,0.2)' } 
-  if (s >= 70) return { start: '#fbbf24', end: '#f59e0b', shadow: 'rgba(251,191,36,0.8)', stop1: 'rgba(251,191,36,0.8)', stop2: 'rgba(251,191,36,0.2)' }
-  return { start: '#f87171', end: '#ef4444', shadow: 'rgba(248,113,113,0.8)', stop1: 'rgba(248,113,113,0.8)', stop2: 'rgba(248,113,113,0.2)' }
+  const c = getSmoothColor(s)
+  const cStart = getSmoothColor(s - 20) // Create a trailing gradient effect
+  
+  // To create a gradient effect on the bar itself, we can shift the color slightly
+  // or just use the same base color for a solid but smooth look.
+  // Let's make 'start' slightly brighter/lighter and 'end' the pure color for depth.
+  
+  return { 
+    start: cStart.hex, 
+    end: c.hex, 
+    shadow: `rgba(${c.r},${c.g},${c.b},0.6)`, 
+    stop1: `rgba(${c.r},${c.g},${c.b},0.8)`, 
+    stop2: `rgba(${c.r},${c.g},${c.b},0.2)` 
+  }
 })
 
 const todayAlarmCount = computed(() => alarmStats.today)
@@ -510,29 +833,63 @@ const topPollutant = computed(() => {
   return { name: top?.name || '-', value: top?.ppm?.toFixed(1) || '-', unit: top?.unit || 'ppm' }
 })
 
+
+const DEFAULT_UNITS: Record<string, string> = {
+  'H2': 'ppm',
+  '氢气（H2）': 'ppm',
+  'CH4': '%LEL',
+  '甲烷（CH4）': '%LEL',
+  'CO': 'ppm',
+  'CO2': 'ppm',
+  'O2': '%VOL',
+  'H2S': 'ppm',
+  'VOC': 'ppm',
+  'VOCs': 'ppm',
+  'PM2.5': 'ug/m³',
+  'PM10': 'ug/m³',
+  'TEMP': '°C',
+  'Temperature': '°C',
+  'HUM': '%RH',
+  'Humidity': '%RH',
+  'EX': '%LEL'
+}
+
+const METRIC_CARDS = [
+  { key: 'H2', label: '氢气浓度', sources: ['H2', '氢气', '氢气（H2）'] },
+  { key: 'CH4', label: '甲烷浓度', sources: ['CH4', '甲烷', '甲烷（CH4）'] },
+  { key: 'TEMP', label: '环境温度', sources: ['Temperature', 'TEMP', '温度'] },
+  { key: 'HUM', label: '环境湿度', sources: ['Humidity', 'HUM', '湿度'] },
+  { key: 'PM2.5', label: 'PM2.5', sources: ['PM2.5'] },
+  { key: 'VOCs', label: 'VOC浓度', sources: ['VOCs', 'VOC'] }
+]
+
 const metrics = computed(() => {
-  const online = devices.value.filter(d => d.status === 'online')
-  const avgT = online.length ? online.reduce((s, d) => s + (d.temp || 0), 0) / online.length : 0
-  return [
-    { label: 'PM2.5', value: '25', unit: 'ug/m³' },
-    { label: 'H2', value: '0.05', unit: 'ppm' },
-    { label: 'CH4', value: '0.12', unit: 'ppm' },
-    { label: 'VOCs', value: '0.40', unit: 'ppm' },
-    { label: 'Temp', value: avgT.toFixed(1), unit: '°C' },
-    { label: 'Humi', value: '50', unit: '%' }
-  ]
+  return METRIC_CARDS.map(card => {
+    let maxVal = 0
+    let unit = ''
+    let hasData = false
+    
+    devices.value.forEach(d => {
+      const type = d.sensor_type ? d.sensor_type.trim() : ''
+      // Case-insensitive check
+      if (card.sources.some(s => s.toLowerCase() === type.toLowerCase())) {
+        const val = d.ppm !== null && d.ppm !== undefined ? d.ppm : 0
+        if (!hasData || val > maxVal) {
+          maxVal = val
+          unit = d.unit || DEFAULT_UNITS[card.key] || ''
+          hasData = true
+        }
+      }
+    })
+    
+    return {
+      label: card.label,
+      value: hasData ? maxVal.toFixed(maxVal < 10 ? 2 : 1) : '0.0',
+      unit: unit || (DEFAULT_UNITS[card.key] || '')
+    }
+  })
 })
 
-const trendOption = computed(() => ({
-  grid: { top: 20, right: 15, bottom: 30, left: 45 },
-  xAxis: { type: 'category', data: trendLabels.value, axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: '#64748b', fontSize: 11 }, splitLine: { show: false } },
-  yAxis: { type: 'value', axisLine: { show: false }, axisTick: { show: false }, splitLine: { lineStyle: { color: 'rgba(100,116,139,0.15)', type: 'dashed' } }, axisLabel: { color: '#64748b', fontSize: 11 } },
-  series: [{
-    type: 'line', data: trend.value, smooth: true, symbol: 'none',
-    lineStyle: { color: '#22d3ee', width: 3, shadowColor: 'rgba(34,211,238,0.5)', shadowBlur: 10 },
-    areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(34,211,238,0.4)' }, { offset: 0.5, color: 'rgba(34,211,238,0.15)' }, { offset: 1, color: 'rgba(34,211,238,0)' }] } }
-  }]
-}))
 
 function fmtTime(t: string) { return new Date(t).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) }
 
@@ -558,13 +915,23 @@ async function fetchData() {
     // Process instruments with sensor aggregation
     // API returns { total, data: [...] } so access .data.data
     const instList = instRes.data?.data || instRes.data || []
-    console.log('Loaded instruments:', instList.length, instList)
     // Use backend sensor_count directly - it's calculated from instrument_id relation
     instruments.value = instList.map((inst: Instrument) => ({
       ...inst,
       sensor_count: inst.sensor_count || 0,
       sensor_types: '传感器设备'
     }))
+
+    // Select first instrument for chart by default if none selected
+    const firstInst = instruments.value[0]
+    if (firstInst && !activeChartInstrumentId.value) {
+      selectChartInstrument(firstInst.id)
+    }
+    
+    // Refresh chart data if instrument is selected
+    if (activeChartInstrumentId.value) {
+        fetchInstrumentHistory(activeChartInstrumentId.value)
+    }
     
     const avg = devices.value.reduce((s: number, d: Device) => s + (d.ppm || 0), 0) / (devices.value.length || 1)
     trend.value.push(avg); if (trend.value.length > 20) trend.value.shift()
@@ -572,18 +939,50 @@ async function fetchData() {
   } catch (e) { console.error(e) }
 }
 
+function getWeatherIcon(code: string) {
+  const c = parseInt(code)
+  if (c <= 3) return '☀️' // Sunny
+  if (c <= 9) return '☁️' // Cloudy
+  if (c <= 19) return '🌧️' // Rain
+  if (c <= 29) return '❄️' // Snow
+  if (c <= 38) return '🌫️' // Fog/Dust
+  return '🌥️'
+}
+
 async function fetchWeather() {
-  if (!navigator.geolocation) return
-  navigator.geolocation.getCurrentPosition(async p => {
-    try {
-      const r = await fetch(`https://wttr.in/${p.coords.latitude},${p.coords.longitude}?format=j1`)
-      const j = await r.json(); const c = j.current_condition[0]
-      weather.temp = c.temp_C; weather.humidity = c.humidity
-      weather.wind = c.winddir16Point + ' ' + c.windspeedKmph + 'km/h'
-      weather.desc = c.weatherDesc[0].value; weather.location = j.nearest_area[0].areaName[0].value
-      weather.icon = ['113'].includes(c.weatherCode) ? '☀️' : ['116','119','122'].includes(c.weatherCode) ? '⛅' : '🌥️'
-    } catch {}
-  })
+  weather.loading = true
+  weather.error = ''
+  try {
+    // 1. Get Config
+    const configRes = await configApi.getWeather()
+    const config = configRes.data
+    
+    if (!config.enabled || !config.api_key || !config.city_pinyin) {
+      weather.error = '未配置或未启用'
+      return
+    }
+
+    // 2. Call Seniverse API
+    const url = `https://api.seniverse.com/v3/weather/daily.json?key=${config.api_key}&location=${config.city_pinyin}&language=zh-Hans&unit=c&start=0&days=2`
+    const res = await fetch(url)
+    const data = await res.json()
+    
+    if (data.results && data.results.length > 0) {
+      const result = data.results[0]
+      weather.location = result.location.name
+      if (result.daily && result.daily.length >= 2) {
+        weather.today = result.daily[0]
+        weather.tomorrow = result.daily[1]
+      }
+    } else {
+      weather.error = '数据获取失败'
+    }
+  } catch (e) {
+    console.error('Weather fetch error:', e)
+    weather.error = '连接失败'
+  } finally {
+    weather.loading = false
+  }
 }
 
 async function fetchAI() {
@@ -689,27 +1088,190 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 
 /* ========== HEADER ========== */
 .header {
-  height: 60px; display: flex; align-items: center; justify-content: space-between;
+  height: 80px; /* Increased height for decorations */
+  display: flex; align-items: center; justify-content: space-between;
   padding: 0 30px;
-  background: linear-gradient(90deg, rgba(15,23,42,0.9), rgba(30,41,59,0.7), rgba(15,23,42,0.9));
-  border-bottom: 1px solid rgba(34,211,238,0.2);
+  background: transparent;
   position: relative;
+  z-index: 100;
+  overflow: hidden;
 }
+
+/* Background Decoration */
+.header-bg-deco {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: 
+    linear-gradient(to bottom, rgba(15,23,42,1) 0%, rgba(15,23,42,0.8) 60%, transparent 100%),
+    repeating-linear-gradient(90deg, transparent, transparent 49px, rgba(34,211,238,0.05) 49px, rgba(34,211,238,0.05) 50px);
+  z-index: -1;
+  pointer-events: none;
+}
+.header-bg-deco::after {
+  content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(34,211,238,0.3) 20%, rgba(34,211,238,0.3) 80%, transparent 100%);
+}
+
 .header-center {
   position: absolute;
-  left: 50%;
+  left: 50%; top: 0;
   transform: translateX(-50%);
-  text-align: center;
+  height: 100%;
+  display: flex; align-items: center; justify-content: center;
 }
-.header h1 {
-  margin: 0; font-size: 28px; font-weight: 700; letter-spacing: 4px;
-  color: #22d3ee;
-  text-shadow: 0 0 20px rgba(34,211,238,0.5), 0 0 40px rgba(34,211,238,0.3);
+
+/* Center Title Box */
+.title-box {
+  position: relative;
+  padding: 0 40px;
+  height: 50px;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(to bottom, rgba(30,41,59,0.8), rgba(15,23,42,0.9));
+  transform: skewX(-15deg); /* Tech slant */
+  border: 1px solid rgba(34,211,238,0.3);
+  box-shadow: 0 0 20px rgba(15,23,42,0.8);
+}
+.title-box h1 {
+  transform: skewX(15deg); /* Counter slant for text */
+  margin: 0; font-size: 32px; font-weight: 700; letter-spacing: 6px;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(34,211,238,0.8), 0 0 20px rgba(34,211,238,0.4);
   font-family: 'Orbitron', sans-serif;
   text-transform: uppercase;
+  z-index: 2;
+  background: linear-gradient(to bottom, #ffffff, #94a3b8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
+
+/* Chip/PCB Decorations */
+.title-deco-left, .title-deco-right {
+  height: 100%; width: 200px;
+  position: relative;
+  display: flex; flex-direction: column;
+  justify-content: center;
+  pointer-events: none;
+}
+.title-deco-left {
+  align-items: flex-end;
+  margin-right: -25px;
+  padding-right: 25px;
+}
+.title-deco-right {
+  align-items: flex-start;
+  margin-left: -25px;
+  padding-left: 25px;
+}
+
+/* Deco Block (The "Wings") */
+.deco-block {
+  width: 60px; height: 24px;
+  background: linear-gradient(180deg, rgba(34,211,238,0.05) 0%, rgba(34,211,238,0.15) 100%);
+  border-top: 1px solid rgba(34,211,238,0.4);
+  border-bottom: 1px solid rgba(34,211,238,0.4);
+  position: relative;
+  margin-bottom: 4px;
+  backdrop-filter: blur(2px);
+}
+.title-deco-left .deco-block {
+  transform: skewX(-20deg);
+  border-left: 1px solid rgba(34,211,238,0.2);
+  margin-right: 5px;
+}
+.title-deco-right .deco-block {
+  transform: skewX(20deg);
+  border-right: 1px solid rgba(34,211,238,0.2);
+  margin-left: 5px;
+}
+
+/* Deco Block Accents */
+.deco-block::after {
+  content: ''; position: absolute; top: 50%; transform: translateY(-50%);
+  width: 4px; height: 12px;
+  background: #22d3ee;
+  box-shadow: 0 0 8px #22d3ee;
+}
+.title-deco-left .deco-block::after { right: 6px; }
+.title-deco-right .deco-block::after { left: 6px; }
+
+/* Lines */
+.deco-line-1, .deco-line-2 {
+  height: 2px;
+  background: #22d3ee;
+  position: relative;
+  margin: 3px 0;
+}
+
+/* Top Line (Long) */
+.deco-line-1 {
+  width: 100%;
+  opacity: 0.6;
+}
+.title-deco-left .deco-line-1 {
+  background: linear-gradient(90deg, transparent 0%, rgba(34,211,238,0.5) 50%, #22d3ee 100%);
+}
+.title-deco-right .deco-line-1 {
+  background: linear-gradient(270deg, transparent 0%, rgba(34,211,238,0.5) 50%, #22d3ee 100%);
+}
+
+/* Bottom Line (Short) */
+.deco-line-2 {
+  width: 60%;
+  opacity: 0.3;
+}
+.title-deco-left .deco-line-2 {
+  background: linear-gradient(90deg, transparent, #22d3ee);
+}
+.title-deco-right .deco-line-2 {
+  background: linear-gradient(270deg, transparent, #22d3ee);
+}
+
+/* Add some floating particles/dots */
+.title-deco-left::before, .title-deco-right::before {
+  content: ''; position: absolute;
+  width: 120px; height: 1px;
+  bottom: 25px;
+  background-image: repeating-linear-gradient(90deg, #22d3ee, #22d3ee 2px, transparent 2px, transparent 10px);
+  opacity: 0.3;
+}
+.title-deco-left::before { right: 70px; }
+.title-deco-right::before { left: 70px; }
+
+/* Chip Lines inside Title Box */
+.chip-lines {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+}
+.chip-lines::before, .chip-lines::after {
+  content: ''; position: absolute; width: 20px; height: 100%;
+  border-left: 2px dashed rgba(34,211,238,0.2);
+  border-right: 2px dashed rgba(34,211,238,0.2);
+}
+.chip-lines::before { left: 10px; }
+.chip-lines::after { right: 10px; }
+
+/* Glowing Light Effect */
+.chip-light {
+  position: absolute; bottom: -2px; left: 50%;
+  transform: translateX(-50%);
+  width: 60%; height: 4px;
+  background: #22d3ee;
+  box-shadow: 0 0 20px #22d3ee, 0 0 40px #22d3ee;
+  border-radius: 50%;
+  opacity: 0.8;
+  animation: pulse-light 3s infinite ease-in-out;
+}
+@keyframes pulse-light {
+  0%, 100% { opacity: 0.5; width: 50%; }
+  50% { opacity: 1; width: 70%; }
+}
+
 .header p { display: none; }
-.header-right { display: flex; gap: 20px; font-size: 15px; color: #94a3b8; font-family: 'Chakra Petch', monospace; font-weight: 500; }
+.header-right { 
+  display: flex; gap: 20px; font-size: 15px; color: #94a3b8; 
+  font-family: 'Chakra Petch', monospace; font-weight: 500; 
+  position: absolute; right: 30px; bottom: 15px; /* Adjust position */
+}
 .header-right .loc { color: #22d3ee; text-shadow: 0 0 8px rgba(34,211,238,0.4); }
 .header-right .date { color: #64748b; }
 .header-right .weather { color: #22d3ee; text-shadow: 0 0 8px rgba(34,211,238,0.4); }
@@ -724,24 +1286,25 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 
 .col { display: flex; flex-direction: column; gap: 12px; min-height: 0; padding: 8px; height: 100%; overflow-y: auto; }
 /* Left column panels should be more compact */
-.col-left { gap: 8px; }
-.col-left .panel { flex: 0 0 auto; }
+.col-left { gap: 8px; overflow: hidden; }
+.col-left .panel { width: 100%; }
 
 /* Splitpanes splitter styling - make them more visible and on-theme */
 :deep(.splitpanes__splitter) {
-  background: linear-gradient(90deg, transparent 45%, rgba(34,211,238,0.3) 50%, transparent 55%);
   position: relative;
+  background: rgba(100,116,139,0.25);
 }
-:deep(.splitpanes__splitter:hover) {
-  background: linear-gradient(90deg, transparent 40%, rgba(34,211,238,0.6) 50%, transparent 60%);
+/* Remove default grip dots */
+:deep(.splitpanes__splitter::before),
+:deep(.splitpanes__splitter::after) {
+  display: none !important;
 }
-:deep(.splitpanes--horizontal > .splitpanes__splitter) {
-  height: 8px;
-  background: linear-gradient(180deg, transparent 45%, rgba(34,211,238,0.3) 50%, transparent 55%);
-}
-:deep(.splitpanes--horizontal > .splitpanes__splitter:hover) {
-  background: linear-gradient(180deg, transparent 40%, rgba(34,211,238,0.6) 50%, transparent 60%);
-}
+
+:deep(.splitpanes__splitter:hover) { background: rgba(100,116,139,0.35); }
+:deep(.splitpanes--horizontal > .splitpanes__splitter) { height: 2px; }
+:deep(.splitpanes--horizontal > .splitpanes__splitter:hover) { background: rgba(148,163,184,0.2); }
+:deep(.splitpanes--vertical > .splitpanes__splitter) { width: 2px; }
+:deep(.splitpanes--vertical > .splitpanes__splitter:hover) { background: rgba(148,163,184,0.2); }
 
 /* ========== TREND SECTION: spans left+center only ========== */
 .trend-section {
@@ -773,19 +1336,7 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
   overflow: hidden;
 }
 /* Four corner L-shaped decorations */
-.panel::before {
-  content: '';
-  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-  pointer-events: none;
-  background:
-    linear-gradient(135deg, #22d3ee 0%, #22d3ee 2px, transparent 2px, transparent 20px, transparent 20px),
-    linear-gradient(225deg, #22d3ee 0%, #22d3ee 2px, transparent 2px, transparent 20px, transparent 20px),
-    linear-gradient(315deg, #22d3ee 0%, #22d3ee 2px, transparent 2px, transparent 20px, transparent 20px),
-    linear-gradient(45deg, #22d3ee 0%, #22d3ee 2px, transparent 2px, transparent 20px, transparent 20px);
-  background-size: 20px 20px;
-  background-position: top left, top right, bottom right, bottom left;
-  background-repeat: no-repeat;
-}
+.panel::before { content: none; }
 .panel-title {
   position: relative;
   padding: 10px 14px; font-size: 13px; font-weight: 600; color: #22d3ee;
@@ -801,10 +1352,15 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 }
 
 /* Shrunk panels for left column */
-.panel-sm { flex: 0 0 auto; max-height: 35%; }
+.panel-sm { 
+  /* flex: 35; - Controlled by Splitpanes */
+  min-height: 0;
+  display: flex; 
+  flex-direction: column;
+}
 
 /* AI Panel styling */
-.panel-ai { flex: 1; min-height: 80px; }
+.panel-ai { min-height: 0; /* flex: 20; - Controlled by Splitpanes */ }
 .ai-content {
   flex: 1; padding: 12px; display: flex; flex-direction: column;
   justify-content: center; overflow-y: auto;
@@ -821,11 +1377,11 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 @keyframes pulse-text { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
 /* ========== Safety Supervision Panel ========== */
-/* ========== Safety Supervision Panel ========== */
 .panel-safety { 
+  /* flex: 45; - Controlled by Splitpanes */
   display: flex; flex-direction: column; overflow: hidden;
   background: transparent;
-  padding: 0; min-height: 240px;
+  padding: 0; min-height: 0;
 }
 .safety-header {
   height: 32px;
@@ -886,16 +1442,16 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
   top: 50%; left: 50%;
   width: 110%; height: 110%;
   transform: translate(-50%, -50%);
-  border: 1px dashed rgba(34,211,238,0.3);
+  border: 1px dashed var(--score-shadow, rgba(34,211,238,0.3));
   border-radius: 50%;
   animation: spin 10s linear infinite;
   pointer-events: none;
 }
 .tech-ring::before {
   content: ''; position: absolute; top: -2px; left: 50%;
-  width: 10px; height: 4px; background: #22d3ee;
+  width: 10px; height: 4px; background: var(--score-color, #22d3ee);
   transform: translateX(-50%);
-  box-shadow: 0 0 10px #22d3ee;
+  box-shadow: 0 0 10px var(--score-color, #22d3ee);
 }
 @keyframes spin { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
 
@@ -947,7 +1503,41 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
   border-radius: 3px;
   position: relative;
   transition: width 1s ease-out;
+  overflow: hidden;
 }
+
+/* Tech Stripes Pattern */
+.p-bar::before {
+  content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255,255,255,0.15) 0px,
+    rgba(255,255,255,0.15) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+  z-index: 1;
+}
+
+/* Shine/Scan Animation */
+.p-bar::after {
+  content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.6) 50%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: bar-shine 2.5s infinite ease-in-out;
+  z-index: 2;
+}
+
+@keyframes bar-shine {
+  0% { transform: translateX(-100%); }
+  60%, 100% { transform: translateX(100%); }
+}
+
 /* Bar Gradients */
 .bar-blue {
   background: linear-gradient(90deg, #3b82f6, #60a5fa);
@@ -971,18 +1561,47 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 
 /* Remove the old decorative rings - now using the gauge series instead */
 
+.tooltip {
+  background: rgba(15,23,42,0.95); backdrop-filter: blur(10px);
+  border: 1px solid #22d3ee; padding: 0; font-size: 11px; width: 220px;
+  border-radius: 8px;
+  box-shadow: 0 0 30px rgba(34,211,238,0.3);
+  overflow: hidden;
+}
+
+.global-tooltip {
+  position: fixed;
+  z-index: 9999 !important;
+  margin-bottom: 0;
+  pointer-events: none; /* Let clicks pass through if needed, or auto to allow interaction */
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.global-tooltip.top {
+  transform: translate(-50%, -100%);
+}
+
+.global-tooltip.bottom {
+  transform: translate(-50%, 0);
+}
+
 /* ========== LEFT COLUMN: Instruments Grid ========== */
 .instruments-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  padding: 12px;
+  grid-template-rows: repeat(2, minmax(0, 1fr)); /* Allow shrinking below content size */
+  gap: 8px; /* Slightly reduced gap */
+  padding: 8px; /* Slightly reduced padding */
   flex: 1;
-  overflow-y: auto;
-  align-content: start;
+  min-height: 0; /* Critical for flex child to shrink */
+  overflow: hidden;
 }
 .instrument-card {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* Critical for grid item to shrink */
+  overflow: hidden; /* Ensure content doesn't spill */
   background: rgba(15, 23, 42, 0.6);
   border: 1px solid rgba(34, 211, 238, 0.2);
   /* Tech shape with cut corners */
@@ -1018,48 +1637,51 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 
 .inst-header {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 8px;
-  padding-bottom: 8px;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
   border-bottom: 1px dashed rgba(255,255,255,0.1);
+  min-height: 24px;
 }
 .inst-name {
-  font-size: 14px; font-weight: 700; color: #fff;
+  font-size: 13px; font-weight: 700; color: #fff;
   text-shadow: 0 0 10px rgba(255,255,255,0.3);
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .inst-color {
-  width: 8px; height: 8px; border-radius: 50%;
+  width: 6px; height: 6px; border-radius: 50%;
   background-color: var(--card-color);
   box-shadow: 0 0 8px var(--card-color), 0 0 14px var(--card-color);
   animation: pulse-dot 2s infinite;
+  flex-shrink: 0; margin-left: 8px;
 }
 @keyframes pulse-dot { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
 .inst-desc {
   font-size: 10px; color: #94a3b8;
-  margin-bottom: 12px;
-  line-height: 1.4;
-  height: 2.8em; /* Force height for alignment */
+  margin-bottom: auto; /* Push footer to bottom */
+  line-height: 1.2;
   overflow: hidden; text-overflow: ellipsis; 
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
 }
 
 .inst-footer {
   display: flex; align-items: flex-end; justify-content: space-between;
+  margin-top: 4px;
 }
 .sensor-count {
-  font-size: 26px; font-weight: 700;
+  font-size: 20px; font-weight: 700;
   color: var(--card-color, #22d3ee);
   font-family: 'Chakra Petch', monospace;
   line-height: 1;
   text-shadow: 0 0 15px rgba(34, 211, 238, 0.4);
 }
 .sensor-types {
-  font-size: 11px; color: #64748b;
+  font-size: 10px; color: #64748b;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1px;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
   font-family: 'Rajdhani', sans-serif;
 }
 .empty-instruments {
@@ -1089,7 +1711,6 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
   background: radial-gradient(ellipse at center, rgba(30,41,59,0.8) 0%, rgba(15,23,42,0.95) 70%);
   border: 1px solid rgba(34,211,238,0.15);
   border-radius: 8px;
-  overflow: hidden;
 }
 /* Placeholder 3D Building Image */
 .map-bg-image {
@@ -1100,6 +1721,7 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 
 /* ========== Markers: Breathing Light Bubbles ========== */
 .marker { position: absolute; cursor: pointer; transform: translate(-50%, -50%); z-index: 10; }
+.marker.z-top { z-index: 2000; }
 .marker .dot {
   display: block; width: 19px; height: 19px;
   background: radial-gradient(circle, #4ade80 0%, #22c55e 40%, rgba(34,197,94,0.4) 80%);
@@ -1123,47 +1745,114 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
   color: #94a3b8; font-family: 'Courier New', monospace;
 }
 .marker .tooltip {
-  position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
-  background: rgba(15,23,42,0.95); backdrop-filter: blur(10px);
-  border: 1px solid #22d3ee; padding: 12px; font-size: 11px; width: 150px;
-  z-index: 100; border-radius: 8px;
-  box-shadow: 0 0 30px rgba(34,211,238,0.2);
+  display: none; /* Hide original tooltip styles just in case */
 }
-.marker .tooltip p { margin: 4px 0; color: #94a3b8; }
-.marker .tooltip .val {
-  color: #22d3ee; font-weight: 700; font-size: 18px; margin-top: 6px;
-  font-family: 'Courier New', monospace;
-  text-shadow: 0 0 10px rgba(34,211,238,0.5);
+.tt-header {
+  background: rgba(34,211,238,0.1); padding: 8px 12px;
+  border-bottom: 1px solid rgba(34,211,238,0.2);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.tt-title { font-weight: 700; color: #fff; margin: 0; font-size: 13px; }
+.tt-status { margin: 0; font-size: 10px; padding: 2px 6px; border-radius: 4px; background: rgba(34,211,238,0.2); color: #22d3ee; }
+.tt-status.alarm-text { background: rgba(239,68,68,0.2); color: #ef4444; }
+
+.tt-stats { display: flex; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); gap: 8px; }
+.tt-stat-item { flex: 1; display: flex; flex-direction: column; align-items: center; }
+.tt-stat-item span { font-size: 9px; color: #94a3b8; }
+.tt-stat-item b { font-size: 14px; color: #fff; font-family: 'Chakra Petch', sans-serif; }
+.tt-stat-item .warn-val { color: #fbbf24; }
+
+.tt-sensors { padding: 8px 12px; max-height: 150px; overflow-y: auto; }
+.tt-sensor-row { display: flex; justify-content: space-between; margin-bottom: 4px; padding-bottom: 4px; border-bottom: 1px dashed rgba(255,255,255,0.1); }
+.tt-sensor-row:last-child { border-bottom: none; margin-bottom: 0; }
+.tt-sensors .s-name { color: #cbd5e1; }
+.tt-sensors .s-val { color: #22d3ee; font-weight: 700; font-family: 'Courier New', monospace; }
+.tt-sensors .alarm-val { color: #ef4444; animation: blink 1s infinite; }
+
+
+/* ========== CENTER: Metrics Grid ========== */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  height: 65px;
 }
 
-/* ========== CENTER: Metrics Row ========== */
-.metrics-row { display: flex; gap: 8px; height: 65px; }
-.metric {
-  flex: 1; position: relative;
-  background: rgba(15,23,42,0.6); backdrop-filter: blur(4px);
-  border-radius: 6px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  transition: all 0.3s;
+.metric-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  /* Cut corners */
+  clip-path: polygon(
+    0 8px, 8px 0, 
+    100% 0, 100% calc(100% - 8px), 
+    calc(100% - 8px) 100%, 0 100%
+  );
+  padding: 6px 8px;
+  transition: all 0.3s ease;
+  box-shadow: inset 0 0 15px rgba(0,0,0,0.3);
 }
-/* Corner decorations for metrics */
-.metric::before {
-  content: '';
-  position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none;
-  background:
-    linear-gradient(135deg, rgba(34,211,238,0.5) 0%, rgba(34,211,238,0.5) 1px, transparent 1px, transparent 8px, transparent 8px),
-    linear-gradient(315deg, rgba(34,211,238,0.5) 0%, rgba(34,211,238,0.5) 1px, transparent 1px, transparent 8px, transparent 8px);
-  background-size: 8px 8px;
-  background-position: top left, bottom right;
-  background-repeat: no-repeat;
+
+.metric-card:hover {
+  background: rgba(34, 211, 238, 0.1);
+  border-color: rgba(34, 211, 238, 0.4);
+  transform: translateY(-2px);
+  box-shadow: inset 0 0 20px rgba(34, 211, 238, 0.1), 0 5px 15px rgba(0,0,0,0.3);
 }
-.m-label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
-.m-value {
-  font-size: 18px; font-weight: 700; margin-top: 2px;
-  font-family: 'Courier New', monospace;
-  color: #22d3ee;
-  text-shadow: 0 0 10px rgba(34,211,238,0.5);
+
+.mc-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px dashed rgba(255,255,255,0.1);
+  padding-bottom: 4px;
+  margin-bottom: 2px;
 }
-.m-value small { font-size: 10px; color: #64748b; margin-left: 2px; font-weight: 400; }
+
+.mc-dot {
+  width: 6px;
+  height: 6px;
+  background: #22d3ee;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #22d3ee;
+  animation: pulse-dot 2s infinite;
+}
+
+.mc-label {
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mc-body {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+  flex: 1;
+}
+
+.mc-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  font-family: 'Chakra Petch', monospace;
+  text-shadow: 0 0 10px rgba(34, 211, 238, 0.4);
+}
+
+.mc-unit {
+  font-size: 9px;
+  color: #64748b;
+  font-weight: 500;
+}
 
 /* ========== CENTER: Trend Chart ========== */
 .trend-panel { flex: 1; min-height: 110px; }
@@ -1177,7 +1866,7 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 .tab.active { background: rgba(34,211,238,0.2); border-color: #22d3ee; color: #22d3ee; }
 
 /* ========== RIGHT: Weather Panel ========== */
-.weather-panel { flex: 0 0 auto; }
+.weather-panel { flex: 1; min-height: 0; }
 .weather-main { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 12px; }
 .weather-main .icon { font-size: 40px; filter: drop-shadow(0 0 10px rgba(255,200,100,0.4)); }
 .weather-main .temp {
@@ -1229,9 +1918,100 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 .a-val { color: #f87171; font-weight: 700; font-size: 13px; font-family: 'Courier New', monospace; text-shadow: 0 0 8px rgba(248,113,113,0.4); }
 .empty { text-align: center; color: #475569; padding: 24px; font-size: 12px; }
 
+/* ========== WEATHER PANEL ========== */
+.weather-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+  padding: 10px 0;
+}
+
+.weather-day {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.day-title {
+  font-size: 14px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.day-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.w-icon {
+  font-size: 28px;
+  line-height: 1;
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.2));
+}
+
+.w-temp {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  font-family: 'Orbitron', sans-serif;
+}
+
+.day-detail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 12px;
+  color: #64748b;
+  gap: 2px;
+}
+
+.weather-divider {
+  width: 1px;
+  height: 60%;
+  background: linear-gradient(to bottom, transparent, rgba(34, 211, 238, 0.3), transparent);
+  margin: 0 10px;
+}
+
+.weather-loading, .weather-location {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.weather-location {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 12px;
+  color: #64748b;
+}
+
 /* ========== SCROLLBAR ========== */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: rgba(30,41,59,0.3); border-radius: 2px; }
 ::-webkit-scrollbar-thumb { background: rgba(34,211,238,0.3); border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(34,211,238,0.5); }
+</style>
+
+<!-- Global overrides for Splitpanes to ensure dots are removed -->
+<style>
+.splitpanes__splitter::before,
+.splitpanes__splitter::after,
+.default-theme.splitpanes .splitpanes__splitter::before,
+.default-theme.splitpanes .splitpanes__splitter::after {
+  display: none !important;
+  content: '' !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
 </style>

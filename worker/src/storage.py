@@ -43,7 +43,7 @@ class Storage:
         # 2. 保存传感器数据
         sql = """
             INSERT INTO sensor_data 
-            (time, sn, v_raw, ppm, temp, humi, bat, rssi, err_code, msg_seq)
+            (time, sn, v_raw, ppm, temp, humi, bat, rssi, err_code, seq)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         """
         

@@ -57,7 +57,9 @@ class DeviceRealtime(BaseModel):
     network: Optional[str] = None
     instrument_name: Optional[str] = None
     instrument_color: Optional[str] = None
+    instrument_id: Optional[int] = None
     unit: str = "ppm"
+    sensor_type: Optional[str] = None
 
 @router.get("/stats", response_model=DashboardStats)
 async def get_dashboard_stats(db = Depends(get_db), redis = Depends(get_redis)):
@@ -92,7 +94,7 @@ async def get_realtime_data(db = Depends(get_db), redis = Depends(get_redis)):
     devices = []
     
     async with db.acquire() as conn:
-        rows = await conn.fetch("SELECT sn, name FROM devices")
+        rows = await conn.fetch("SELECT sn, name, instrument_id, unit, sensor_type FROM devices")
     
     for row in rows:
         sn = row['sn']
@@ -110,7 +112,10 @@ async def get_realtime_data(db = Depends(get_db), redis = Depends(get_redis)):
             position_y=float(pos_data.get('y')) if pos_data.get('y') else None,
             battery=int(rt_data.get('bat')) if rt_data.get('bat') else None,
             rssi=int(rt_data.get('rssi')) if rt_data.get('rssi') else None,
-            network=rt_data.get('net') if rt_data.get('net') else None
+            network=rt_data.get('net') if rt_data.get('net') else None,
+            instrument_id=row['instrument_id'],
+            unit=row['unit'] or "ppm",
+            sensor_type=row['sensor_type']
         ))
     
     return devices
@@ -131,7 +136,7 @@ async def websocket_endpoint(websocket: WebSocket):
             # Get all device SNs (simplified)
             # In production, maintain a set of registered devices
             async with (await get_db()).acquire() as conn:
-                rows = await conn.fetch("SELECT sn, name, unit FROM devices")
+                rows = await conn.fetch("SELECT sn, name, unit, sensor_type, instrument_id FROM devices")
             
             for row in rows:
                 sn = row['sn']
@@ -144,7 +149,9 @@ async def websocket_endpoint(websocket: WebSocket):
                     "ppm": float(rt_data.get('ppm')) if rt_data.get('ppm') else None,
                     "temp": float(rt_data.get('temp')) if rt_data.get('temp') else None,
                     "status": "online" if is_online else "offline",
-                    "unit": row['unit']
+                    "unit": row['unit'],
+                    "sensor_type": row['sensor_type'],
+                    "instrument_id": row['instrument_id']
                 })
             
             await websocket.send_json({

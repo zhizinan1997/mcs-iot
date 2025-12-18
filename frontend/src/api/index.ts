@@ -80,7 +80,10 @@ export const configApi = {
     updateSite: (data: any) => api.put('/config/site', data),
     // 大屏背景配置
     getScreenBg: () => api.get('/config/screen_bg'),
-    updateScreenBg: (data: any) => api.put('/config/screen_bg', data)
+    updateScreenBg: (data: any) => api.put('/config/screen_bg', data),
+    // 天气配置
+    getWeather: () => api.get('/config/weather'),
+    updateWeather: (data: any) => api.put('/config/weather', data)
 }
 
 // Upload API
@@ -110,5 +113,6 @@ export const instrumentsApi = {
     update: (id: number, data: any) => api.put(`/instruments/${id}`, data),
     delete: (id: number) => api.delete(`/instruments/${id}`),
     updatePosition: (id: number, pos_x: number, pos_y: number) => 
-        api.patch(`/instruments/${id}/position`, { pos_x, pos_y })
+        api.patch(`/instruments/${id}/position`, { pos_x, pos_y }),
+    history: (id: number, hours = 1) => api.get(`/instruments/${id}/history`, { params: { hours } })
 }

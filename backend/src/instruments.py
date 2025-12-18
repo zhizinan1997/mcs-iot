@@ -17,6 +17,8 @@ class InstrumentBase(BaseModel):
 class InstrumentResponse(InstrumentBase):
     id: int
     sensor_count: int = 0
+    alarms_today: int = 0
+    alarms_unhandled: int = 0
     is_displayed: bool = True
     pos_x: float = 50.0
     pos_y: float = 50.0
@@ -37,7 +39,19 @@ async def list_instruments(db = Depends(get_db)):
     async with db.acquire() as conn:
         rows = await conn.fetch("""
             SELECT i.*, 
-                   COALESCE((SELECT COUNT(*) FROM devices d WHERE d.instrument_id = i.id), 0) as sensor_count
+                   COALESCE((SELECT COUNT(*) FROM devices d WHERE d.instrument_id = i.id), 0) as sensor_count,
+                   COALESCE((
+                       SELECT COUNT(*) 
+                       FROM alarm_logs a 
+                       JOIN devices d ON a.sn = d.sn 
+                       WHERE d.instrument_id = i.id AND a.triggered_at >= CURRENT_DATE
+                   ), 0) as alarms_today,
+                   COALESCE((
+                       SELECT COUNT(*) 
+                       FROM alarm_logs a 
+                       JOIN devices d ON a.sn = d.sn 
+                       WHERE d.instrument_id = i.id AND a.status != 'ack'
+                   ), 0) as alarms_unhandled
             FROM instruments i 
             ORDER BY i.sort_order, i.id
         """)
@@ -56,6 +70,8 @@ async def list_instruments(db = Depends(get_db)):
                 pos_x=row.get('pos_x', 50.0) or 50.0,
                 pos_y=row.get('pos_y', 50.0) or 50.0,
                 sensor_count=row['sensor_count'],
+                alarms_today=row['alarms_today'],
+                alarms_unhandled=row['alarms_unhandled'],
                 created_at=row['created_at']
             )
             for row in rows
@@ -68,7 +84,19 @@ async def get_instrument(instrument_id: int, db = Depends(get_db)):
     async with db.acquire() as conn:
         row = await conn.fetchrow("""
             SELECT i.*, 
-                   COALESCE((SELECT COUNT(*) FROM devices d WHERE d.instrument_id = i.id), 0) as sensor_count
+                   COALESCE((SELECT COUNT(*) FROM devices d WHERE d.instrument_id = i.id), 0) as sensor_count,
+                   COALESCE((
+                       SELECT COUNT(*) 
+                       FROM alarm_logs a 
+                       JOIN devices d ON a.sn = d.sn 
+                       WHERE d.instrument_id = i.id AND a.triggered_at >= CURRENT_DATE
+                   ), 0) as alarms_today,
+                   COALESCE((
+                       SELECT COUNT(*) 
+                       FROM alarm_logs a 
+                       JOIN devices d ON a.sn = d.sn 
+                       WHERE d.instrument_id = i.id AND a.status != 'ack'
+                   ), 0) as alarms_unhandled
             FROM instruments i 
             WHERE i.id = $1
         """, instrument_id)
@@ -86,6 +114,8 @@ async def get_instrument(instrument_id: int, db = Depends(get_db)):
         pos_x=row.get('pos_x', 50.0) or 50.0,
         pos_y=row.get('pos_y', 50.0) or 50.0,
         sensor_count=row['sensor_count'],
+        alarms_today=row['alarms_today'],
+        alarms_unhandled=row['alarms_unhandled'],
         created_at=row['created_at']
     )
 
@@ -177,3 +207,70 @@ async def update_instrument_position(instrument_id: int, position: PositionUpdat
             raise HTTPException(status_code=404, detail="Instrument not found")
     
     return {"message": "Position updated", "id": instrument_id, "pos_x": position.pos_x, "pos_y": position.pos_y}
+
+from datetime import datetime, timedelta
+
+@router.get("/{instrument_id}/history")
+async def get_instrument_history(
+    instrument_id: int,
+    hours: int = Query(1, ge=1, le=72),
+    db = Depends(get_db)
+):
+    """获取仪表下所有传感器的历史数据"""
+    end = datetime.now()
+    start = end - timedelta(hours=hours)
+    
+    # Choose interval based on time range
+    if hours <= 1:
+        interval = timedelta(minutes=1)
+    elif hours <= 3:
+        interval = timedelta(minutes=2)
+    elif hours <= 24:
+        interval = timedelta(minutes=10)
+    else:
+        interval = timedelta(minutes=30)
+        
+    async with db.acquire() as conn:
+        # 1. Get all devices for this instrument
+        devices = await conn.fetch("""
+            SELECT sn, name, sensor_type, unit 
+            FROM devices 
+            WHERE instrument_id = $1
+            ORDER BY sensor_order, sn
+        """, instrument_id)
+        
+        if not devices:
+            return {"instrument_id": instrument_id, "series": []}
+            
+        series = []
+        for dev in devices:
+            # 2. Get history for each device
+            rows = await conn.fetch(
+                """SELECT time_bucket($1, time) AS bucket, 
+                          AVG(ppm) as ppm
+                   FROM sensor_data 
+                   WHERE sn = $2 AND time BETWEEN $3 AND $4
+                   GROUP BY bucket ORDER BY bucket""",
+                interval, dev['sn'], start, end
+            )
+            
+            # Format data points: [timestamp_ms, value]
+            points = []
+            for r in rows:
+                if r['bucket']:
+                    points.append([r['bucket'].timestamp() * 1000, round(r['ppm'], 2)])
+            
+            series.append({
+                "sn": dev['sn'],
+                "name": dev['name'],
+                "sensor_type": dev['sensor_type'],
+                "unit": dev['unit'],
+                "data": points
+            })
+            
+    return {
+        "instrument_id": instrument_id,
+        "start": start.isoformat(),
+        "end": end.isoformat(),
+        "series": series
+    }

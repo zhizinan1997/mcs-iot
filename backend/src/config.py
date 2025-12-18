@@ -51,6 +51,14 @@ class ScreenBgConfig(BaseModel):
     """大屏背景配置"""
     image_url: str = ""
 
+class WeatherConfig(BaseModel):
+    """天气配置"""
+    city_pinyin: str = "beijing"
+    province: str = "北京"
+    city: str = "北京"
+    api_key: str = ""
+    enabled: bool = True
+
 async def get_redis():
     from .main import redis_pool
     return redis_pool
@@ -379,4 +387,17 @@ async def get_screen_bg_config(redis = Depends(get_redis)):
 @router.put("/screen_bg")
 async def update_screen_bg_config(config: ScreenBgConfig, redis = Depends(get_redis)):
     await redis.set("config:screen_bg", json.dumps(config.dict()))
+    return config
+
+# Weather Config
+@router.get("/weather", response_model=WeatherConfig)
+async def get_weather_config(redis = Depends(get_redis)):
+    data = await redis.get("config:weather")
+    if data:
+        return json.loads(data)
+    return WeatherConfig()
+
+@router.put("/weather")
+async def update_weather_config(config: WeatherConfig, redis = Depends(get_redis)):
+    await redis.set("config:weather", json.dumps(config.dict()))
     return config

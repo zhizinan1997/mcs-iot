@@ -22,13 +22,50 @@
           </template>
         </el-table-column>
         <el-table-column prop="sn" label="传感器编号" min-width="120" sortable="custom" />
-        <el-table-column prop="name" label="传感器名称" min-width="150" sortable="custom" />
-        <el-table-column prop="sensor_type" label="监测类型" width="100" align="center">
+        <el-table-column prop="name" label="传感器名称" min-width="150" sortable="custom">
           <template #default="{ row }">
-            {{ getSensorTypeName(row.sensor_type) }}
+            <el-input
+              v-model="row.name"
+              size="small"
+              @change="() => handleQuickNameChange(row)"
+              placeholder="输入名称"
+            />
           </template>
         </el-table-column>
-        <el-table-column prop="unit" label="单位" width="70" align="center" />
+        <el-table-column prop="sensor_type" label="监测类型" width="160" align="center">
+          <template #default="{ row }">
+            <el-select
+              v-model="row.sensor_type"
+              size="small"
+              @change="(val: string) => handleQuickTypeChange(row, val)"
+            >
+              <el-option
+                v-for="type in sensorTypes"
+                :key="type.value"
+                :label="type.label"
+                :value="type.value"
+              />
+            </el-select>
+          </template>
+        </el-table-column>
+        <el-table-column prop="unit" label="单位" width="120" align="center">
+          <template #default="{ row }">
+            <el-select
+              v-model="row.unit"
+              size="small"
+              filterable
+              allow-create
+              @change="() => handleQuickUnitChange(row)"
+            >
+              <el-option
+                v-for="unit in getUnitsForType(row.sensor_type)"
+                :key="unit"
+                :label="unit"
+                :value="unit"
+              />
+            </el-select>
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="80" align="center" sortable="custom">
           <template #default="{ row }">
             <el-tag
@@ -88,7 +125,19 @@
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="high_limit" label="报警阈值" width="90" align="right" sortable="custom" />
+        <el-table-column prop="high_limit" label="报警阈值" width="100" align="center" sortable="custom">
+          <template #default="{ row }">
+            <el-input-number
+              v-model="row.high_limit"
+              size="small"
+              :min="0"
+              :step="10"
+              controls-position="right"
+              @change="() => handleQuickLimitChange(row)"
+              style="width: 100%"
+            />
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="150" fixed="right" align="center">
           <template #default="{ row }">
             <el-button size="small" @click="editDevice(row)">编辑</el-button>
@@ -310,11 +359,6 @@ const sensorTypes = [
 
 const availableUnits = ref<string[]>([]);
 
-function getSensorTypeName(value: string) {
-  const type = sensorTypes.find(t => t.value === value);
-  return type ? type.label : value;
-}
-
 function handleTypeChange(val: string) {
   const type = sensorTypes.find(t => t.value === val);
   if (type) {
@@ -329,7 +373,57 @@ function handleTypeChange(val: string) {
   }
 }
 
+function getUnitsForType(typeVal: string) {
+  const type = sensorTypes.find(t => t.value === typeVal);
+  return type ? type.units : [];
+}
 
+async function handleQuickTypeChange(row: Device, newType: string) {
+  // Update unit default if possible
+  const typeDef = sensorTypes.find(t => t.value === newType);
+  if (typeDef && typeDef.units.length > 0) {
+    row.unit = typeDef.units[0] || '';
+  }
+  
+  await updateDeviceRow(row);
+}
+
+async function handleQuickUnitChange(row: Device) {
+  await updateDeviceRow(row);
+}
+
+async function handleQuickNameChange(row: Device) {
+  await updateDeviceRow(row);
+}
+
+async function handleQuickLimitChange(row: Device) {
+  await updateDeviceRow(row);
+}
+
+async function updateDeviceRow(row: Device) {
+  try {
+    const payload = {
+        sn: row.sn,
+        name: row.name,
+        model: row.model,
+        sensor_type: row.sensor_type,
+        unit: row.unit,
+        high_limit: row.high_limit,
+        low_limit: row.low_limit,
+        k_val: row.k_val,
+        b_val: row.b_val,
+        t_coef: row.t_coef,
+        instrument_id: row.instrument_id,
+        sensor_order: row.sensor_order
+    };
+    
+    await devicesApi.update(row.sn, payload);
+    ElMessage.success(`传感器 ${row.name || row.sn} 更新成功`);
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.detail || "更新失败");
+    fetchDevices(); // Refresh to restore state on error
+  }
+}
 
 async function loadInstruments() {
   try {
