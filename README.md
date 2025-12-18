@@ -5,6 +5,36 @@
 [![Python](https://img.shields.io/badge/Python-3.11-green.svg)](https://www.python.org/)
 [![Vue](https://img.shields.io/badge/Vue-3.x-brightgreen.svg)](https://vuejs.org/)
 
+## 🚀 极速部署 (One-Click Deploy)
+
+支持 Linux (Ubuntu/Debian/CentOS) 和 Windows 10/11/Server。
+
+### 🐧 Linux / macOS
+在终端执行以下命令即可一键安装：
+
+```bash
+# 下载并运行部署脚本
+curl -O https://raw.githubusercontent.com/zhizinan1997/mcs-iot/main/scripts/deploy.sh
+sudo chmod +x deploy.sh
+sudo ./deploy.sh
+```
+
+### 🪟 Windows
+1. 确保已安装 **Docker Desktop** 和 **Git**。
+2. 右键点击 **开始菜单** -> **Windows PowerShell (管理员)**。
+3. 执行以下命令：
+
+```powershell
+# 允许执行脚本 (如果尚未开启)
+Set-ExecutionPolicy RemoteSigned -Scope Process -Force
+
+# 下载并运行部署脚本
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/zhizinan1997/mcs-iot/main/scripts/deploy.ps1" -OutFile "deploy.ps1"
+.\deploy.ps1
+```
+
+---
+
 ## 📖 项目概述
 
 **MCS-IoT** (Metachip Cloud Sense) 是一套专为工业气体监测场景设计的物联网平台，具备以下核心优势：
