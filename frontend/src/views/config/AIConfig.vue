@@ -15,7 +15,7 @@
         <el-alert
           title="AI 助手说明"
           type="info"
-          description="配置 OpenAI 格式的 API 接口后，大屏将自动在每天 8:00、12:00、17:00、20:00 生成平台运行状况的智能总结。"
+          description="配置 OpenAI 兼容格式的 API 接口后，大屏将自动在每天 8:00、12:00、17:00、20:00 生成平台运行状况的智能总结。"
           show-icon
           :closable="false"
           style="margin-bottom: 20px"
@@ -23,8 +23,8 @@
 
         <el-form :model="form" label-width="120px">
           <el-form-item label="API 接口地址">
-            <el-input v-model="form.api_url" placeholder="例如: https://api.openai.com/v1" />
-            <div class="form-tip">支持 OpenAI 官方接口或兼容的第三方中转接口</div>
+            <el-input v-model="form.api_url" placeholder="例如: https://newapi2.zhizinan.top/v1" />
+            <div class="form-tip">支持 OpenAI 官方接口或兼容的第三方中转接口，详情请查阅 OpenAI 官方文档</div>
           </el-form-item>
           
           <el-form-item label="API Key">
@@ -38,8 +38,8 @@
           </el-form-item>
           
           <el-form-item label="模型名称">
-            <el-input v-model="form.model" placeholder="gpt-3.5-turbo" />
-            <div class="form-tip">例如: gpt-3.5-turbo, gpt-4, 或其它兼容模型</div>
+            <el-input v-model="form.model" placeholder="gemini-3-flash" />
+            <div class="form-tip">例如: gemini-3-flash, 或其它兼容模型</div>
           </el-form-item>
 
           <el-form-item>

@@ -278,7 +278,15 @@
                   <span class="d-name">{{ d.name || d.sn }}</span>
                   <span class="d-signal" v-if="d.network || d.rssi !== null">
                     <span class="signal-type">{{ getNetworkType(d.network) }}</span>
-                    <span class="signal-bars" :class="{ 'signal-critical': isSignalCritical(d.rssi, d.network) }">
+                    <!-- WiFi Icon: Concentric Arcs -->
+                    <span v-if="isWifi(d.network)" class="wifi-signal" :class="{ 'signal-critical': isSignalCritical(d.rssi, d.network) }">
+                      <span class="wifi-arc arc-1" :class="{ active: getSignalBars(d.rssi, d.network) >= 1 }"></span>
+                      <span class="wifi-arc arc-2" :class="{ active: getSignalBars(d.rssi, d.network) >= 2 }"></span>
+                      <span class="wifi-arc arc-3" :class="{ active: getSignalBars(d.rssi, d.network) >= 3 }"></span>
+                      <span class="wifi-arc arc-4" :class="{ active: getSignalBars(d.rssi, d.network) >= 4 }"></span>
+                    </span>
+                    <!-- Cellular/Other Icon: Vertical Bars -->
+                    <span v-else class="cell-signal" :class="{ 'signal-critical': isSignalCritical(d.rssi, d.network) }">
                       <span class="bar" :class="{ active: getSignalBars(d.rssi, d.network) >= 1 }"></span>
                       <span class="bar" :class="{ active: getSignalBars(d.rssi, d.network) >= 2 }"></span>
                       <span class="bar" :class="{ active: getSignalBars(d.rssi, d.network) >= 3 }"></span>
@@ -534,11 +542,18 @@ function getNetworkType(network: string | null | undefined): string {
   if (!network) return ''
   const n = network.toUpperCase()
   if (n.includes('5G')) return '5G'
-  if (n.includes('4G') || n.includes('LTE')) return '4G'
-  if (n.includes('3G')) return '3G'
   if (n.includes('WIFI') || n.includes('WI-FI')) return 'WiFi'
   if (n.includes('ETH') || n.includes('LAN')) return 'ETH'
-  return network.substring(0, 4)
+  if (n.includes('NB') || n.includes('IOT')) return 'NB-IoT'
+  if (n.includes('LORA')) return 'LoRa'
+  return n
+}
+
+// Check if network is WiFi
+function isWifi(network: string | null | undefined): boolean {
+  if (!network) return false
+  const n = network.toUpperCase()
+  return n.includes('WIFI') || n.includes('WI-FI')
 }
 const instruments = ref<Instrument[]>([])
 const selectedInstrument = ref<number | null>(null)
@@ -2132,27 +2147,62 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
   padding: 1px 4px;
   border-radius: 3px;
 }
-.signal-bars {
+.wifi-signal {
+  position: relative;
+  width: 16px;
+  height: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  margin-right: 2px;
+  overflow: hidden;
+}
+.wifi-arc {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid rgba(148, 163, 184, 0.3);
+  border-bottom-color: transparent !important;
+  border-left-color: transparent !important;
+  border-right-color: transparent !important;
+  opacity: 1; /* Always visible but dim */
+}
+/* Dot */
+.wifi-arc.arc-1 { width: 3px; height: 3px; background: rgba(148, 163, 184, 0.3); border: none; bottom: 0; left: 50%; transform: translateX(-50%); border-radius: 50%; }
+.wifi-arc.arc-1.active { background: #22d3ee; box-shadow: 0 0 5px rgba(34, 211, 238, 0.8); }
+
+/* Arcs */
+.wifi-arc.arc-2 { width: 10px; height: 10px; bottom: -3px; left: 50%; transform: translateX(-50%); }
+.wifi-arc.arc-3 { width: 16px; height: 16px; bottom: -6px; left: 50%; transform: translateX(-50%); }
+.wifi-arc.arc-4 { width: 22px; height: 22px; bottom: -9px; left: 50%; transform: translateX(-50%); }
+
+.wifi-arc.active { border-color: #22d3ee; box-shadow: 0 -1px 3px rgba(34, 211, 238, 0.3); }
+
+/* Cell Bars (Improved) */
+.cell-signal {
   display: flex;
   align-items: flex-end;
-  gap: 1px;
+  gap: 1.5px;
   height: 12px;
+  padding-bottom: 1px;
 }
-.signal-bars .bar {
+.cell-signal .bar {
   width: 3px;
   background: rgba(100, 116, 139, 0.3);
   border-radius: 1px;
 }
-.signal-bars .bar:nth-child(1) { height: 3px; }
-.signal-bars .bar:nth-child(2) { height: 6px; }
-.signal-bars .bar:nth-child(3) { height: 9px; }
-.signal-bars .bar:nth-child(4) { height: 12px; }
-.signal-bars .bar.active {
+.cell-signal .bar:nth-child(1) { height: 3px; }
+.cell-signal .bar:nth-child(2) { height: 6px; }
+.cell-signal .bar:nth-child(3) { height: 9px; }
+.cell-signal .bar:nth-child(4) { height: 12px; }
+.cell-signal .bar.active {
   background: #22d3ee;
   box-shadow: 0 0 4px rgba(34, 211, 238, 0.5);
 }
-/* Signal at critical edge level - show red/warning */
-.signal-bars.signal-critical .bar.active {
+
+/* Critical / Warning State */
+.wifi-signal.signal-critical .wifi-arc.active { border-color: #f87171; box-shadow: 0 -1px 3px rgba(248, 113, 113, 0.4); animation: signal-pulse 1.5s infinite; }
+.wifi-signal.signal-critical .wifi-arc.arc-1.active { background: #f87171; box-shadow: 0 0 5px rgba(248, 113, 113, 0.8); }
+.cell-signal.signal-critical .bar.active {
   background: #f87171;
   box-shadow: 0 0 4px rgba(248, 113, 113, 0.6);
   animation: signal-pulse 1.5s ease-in-out infinite;
