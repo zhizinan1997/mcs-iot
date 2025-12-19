@@ -73,11 +73,8 @@ def get_previous_checkpoint(dt: datetime.datetime):
     return start
 
 async def call_openai(config, prompt):
-    base_url = config.get("api_url", "https://api.openai.com/v1").rstrip('/')
-    if not base_url.endswith("/v1"):
-         # Some users might put base url without v1, try to handle
-         pass 
-         
+    # 固定使用元芯 AI API 地址
+    base_url = "https://newapi2.zhizinan.top/v1"
     url = f"{base_url}/chat/completions"
     headers = {
         "Authorization": f"Bearer {config['api_key']}",

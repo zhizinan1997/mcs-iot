@@ -508,15 +508,14 @@ configure_credentials() {
     
     echo ""
     
-    # AI API
+    # AI API (URL 已固定)
     echo -e "${CYAN}AI API 用于生成智能分析报告 (可选)${NC}"
-    echo -e "${CYAN}支持 OpenAI 兼容的 API 接口${NC}"
-    read -r -p "请输入 AI API URL (留空则跳过): " AI_API_URL
-    if [[ -n "$AI_API_URL" ]]; then
-        read -r -p "请输入 AI API Key: " AI_API_KEY
-        log_info "✓ AI API 已设置"
+    echo -e "${CYAN}API 接口已固定，仅需配置 Key，可在管理后台配置${NC}"
+    read -r -p "请输入 AI API Key (留空则跳过): " AI_API_KEY
+    if [[ -n "$AI_API_KEY" ]]; then
+        log_info "✓ AI API Key 已设置"
     else
-        log_warn "未设置 AI API，大屏将不显示 AI 分析"
+        log_warn "未设置 AI API，可稍后在管理后台配置"
     fi
     
     # Let's Encrypt 邮箱部分已移除，改由用户在宝塔面板申请证书
@@ -597,8 +596,7 @@ JWT_SECRET=${JWT_SECRET}
 # 天气 API (心知天气)
 WEATHER_API_KEY=${WEATHER_API_KEY}
 
-# AI API 配置
-AI_API_URL=${AI_API_URL}
+# AI API 配置 (URL 已固定为 https://newapi2.zhizinan.top/v1)
 AI_API_KEY=${AI_API_KEY}
 EOF
 

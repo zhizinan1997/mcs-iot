@@ -59,9 +59,11 @@ class WeatherConfig(BaseModel):
     api_key: str = ""
     enabled: bool = True
 
+# AI 接口配置
+AI_API_URL = "https://newapi2.zhizinan.top/v1"  # 固定 API 地址
+
 class AIConfig(BaseModel):
-    """AI 接口配置"""
-    api_url: str = "https://api.openai.com/v1"
+    """仅配置 API Key 和模型，URL 已锁定"""
     api_key: str = ""
     model: str = "gpt-3.5-turbo"
 

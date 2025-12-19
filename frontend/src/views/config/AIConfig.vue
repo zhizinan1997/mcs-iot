@@ -15,7 +15,7 @@
         <el-alert
           title="AI 助手说明"
           type="info"
-          description="配置 OpenAI 兼容格式的 API 接口后，大屏将自动在每天 8:00、12:00、17:00、20:00 生成平台运行状况的智能总结。"
+          description="配置 API Key 后，大屏将自动在每天 8:00、12:00、17:00、20:00 生成平台运行状况的智能总结。"
           show-icon
           :closable="false"
           style="margin-bottom: 20px"
@@ -23,8 +23,8 @@
 
         <el-form :model="form" label-width="120px">
           <el-form-item label="API 接口地址">
-            <el-input v-model="form.api_url" placeholder="例如: https://newapi2.zhizinan.top/v1" />
-            <div class="form-tip">支持 OpenAI 官方接口或兼容的第三方中转接口，详情请查阅 OpenAI 官方文档</div>
+            <el-input :value="fixedApiUrl" disabled />
+            <div class="form-tip">接口地址已固定，无需修改</div>
           </el-form-item>
           
           <el-form-item label="API Key">
@@ -35,15 +35,25 @@
               placeholder="sk-..." 
               autocomplete="new-password"
             />
+            <div class="form-tip">请前往下方链接购买或获取 API Key</div>
           </el-form-item>
           
           <el-form-item label="模型名称">
-            <el-input v-model="form.model" placeholder="gemini-3-flash" />
-            <div class="form-tip">例如: gemini-3-flash, 或其它兼容模型</div>
+            <el-select v-model="form.model" placeholder="选择模型" style="width: 100%">
+              <el-option label="GPT-3.5 Turbo (推荐)" value="gpt-3.5-turbo" />
+              <el-option label="GPT-4o Mini" value="gpt-4o-mini" />
+              <el-option label="GPT-4o" value="gpt-4o" />
+              <el-option label="Gemini 2.0 Flash" value="gemini-2.0-flash" />
+              <el-option label="Claude 3.5 Sonnet" value="claude-3-5-sonnet" />
+            </el-select>
+            <div class="form-tip">根据需求选择合适的模型，推荐使用 GPT-3.5 Turbo</div>
           </el-form-item>
 
           <el-form-item>
-            <el-button type="success" @click="goToPurchase">购买 AI API</el-button>
+            <el-button type="success" size="large" @click="goToPurchase">
+              <el-icon><ShoppingCart /></el-icon>
+              购买 AI API Key
+            </el-button>
             <span class="purchase-tip">推荐前往 Ryan AI 获取稳定高速的 API 服务</span>
           </el-form-item>
         </el-form>
@@ -56,16 +66,22 @@
 import { ref, reactive, onMounted } from 'vue'
 import { configApi } from '../../api'
 import { ElMessage } from 'element-plus'
+import { ShoppingCart } from '@element-plus/icons-vue'
 
 const loading = ref(false)
 const testing = ref(false)
+const fixedApiUrl = 'https://newapi2.zhizinan.top/v1'
+
 const form = reactive({
-  api_url: 'https://api.openai.com/v1',
   api_key: '',
   model: 'gpt-3.5-turbo'
 })
 
 async function testConnection() {
+  if (!form.api_key) {
+    ElMessage.warning('请先填写 API Key')
+    return
+  }
   testing.value = true
   try {
     const res = await configApi.testAI(form)
@@ -84,7 +100,6 @@ async function loadConfig() {
     const res = await configApi.getAI()
     if (res.data) {
       Object.assign(form, {
-        api_url: res.data.api_url || 'https://api.openai.com/v1',
         api_key: res.data.api_key || '',
         model: res.data.model || 'gpt-3.5-turbo'
       })
@@ -139,3 +154,4 @@ onMounted(() => {
   color: #67c23a;
 }
 </style>
+
