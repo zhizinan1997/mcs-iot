@@ -1037,13 +1037,17 @@ create_management_scripts() {
 # 启动演示数据生成器
 cd /opt/mcs-iot
 echo "正在启动 24 个模拟传感器..."
-echo "可选参数: -d 分钟数 (默认60)"
+echo "可选参数: -d 分钟数 (默认0=永久运行)"
 
-DURATION=${1:-60}
+DURATION=${1:-0}
 nohup python3 scripts/demo_generator.py -d "$DURATION" --skip-init > /var/log/mcs-simulator.log 2>&1 &
 echo $! > /var/run/mcs-simulator.pid
 echo "模拟器已启动，PID: $(cat /var/run/mcs-simulator.pid)"
-echo "运行时长: ${DURATION} 分钟"
+if [[ "$DURATION" -eq 0 ]]; then
+    echo "运行模式: 永久运行"
+else
+    echo "运行时长: ${DURATION} 分钟"
+fi
 echo "查看日志: tail -f /var/log/mcs-simulator.log"
 EOF
     chmod +x "$INSTALL_DIR/start-simulator.sh"
