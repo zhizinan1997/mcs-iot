@@ -540,34 +540,127 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.devices-page {
+  padding: 0;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
+.card-header span {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+/* Buttons */
+:deep(.el-button) {
+  border-radius: 14px;
+  font-weight: 500;
+}
+
+:deep(.el-button--primary) {
+  background-color: #0071e3;
+  border-color: #0071e3;
+}
+
+/* Table styling */
+:deep(.el-table) {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+:deep(.el-table th.el-table__cell) {
+  background-color: #f5f5f7;
+  color: #86868b;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+:deep(.el-tag) {
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+/* Inline inputs */
+:deep(.el-input__wrapper) {
+  border-radius: 8px;
+}
+
+:deep(.el-input-number) {
+  border-radius: 8px;
+}
+
+:deep(.el-select .el-select__wrapper) {
+  border-radius: 8px;
+}
+
 .pagination {
-  margin-top: 20px;
+  margin-top: 24px;
   justify-content: flex-end;
 }
 
-
+:deep(.el-pagination button),
+:deep(.el-pager li) {
+  border-radius: 8px !important;
+}
 
 .alarm-value {
-  color: #f56c6c;
-  font-weight: bold;
+  color: #ff3b30;
+  font-weight: 700;
 }
 
 .instrument-cell {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  font-weight: 500;
 }
 
 .color-dot {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Dialog styling */
+:deep(.el-dialog) {
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+:deep(.el-dialog__header) {
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  margin-right: 0;
+}
+
+:deep(.el-dialog__title) {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+:deep(.el-dialog__body) {
+  padding: 24px;
+}
+
+:deep(.el-dialog__footer) {
+  padding: 16px 24px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+:deep(.el-divider__text) {
+  color: #0071e3;
+  font-weight: 500;
+}
+
+:deep(.el-alert) {
+  border-radius: 12px;
 }
 </style>

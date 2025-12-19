@@ -213,10 +213,20 @@ onMounted(fetchAlarms)
 </script>
 
 <style scoped>
+.alarms-page {
+  padding: 0; /* Layout provides padding */
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.card-header span {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1d1d1f;
 }
 
 .filter-area {
@@ -224,21 +234,57 @@ onMounted(fetchAlarms)
   gap: 12px;
 }
 
+/* Global rounded button for filter area */
+:deep(.el-button) {
+  border-radius: 14px;
+  font-weight: 500;
+}
+
+:deep(.el-select .el-select__wrapper) {
+  border-radius: 10px;
+}
+
+/* Table styling */
+:deep(.el-table) {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+:deep(.el-table th.el-table__cell) {
+  background-color: #f5f5f7;
+  color: #86868b;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* Tags rounded */
+:deep(.el-tag) {
+  border-radius: 6px;
+  font-weight: 500;
+}
+
 .pagination {
-  margin-top: 20px;
+  margin-top: 24px;
   justify-content: flex-end;
+}
+
+:deep(.el-pagination button),
+:deep(.el-pager li) {
+  border-radius: 8px !important;
 }
 
 .instrument-cell {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  font-weight: 500;
 }
 
 .color-dot {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 </style>
