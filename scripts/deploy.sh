@@ -294,28 +294,8 @@ install_docker_compose() {
     log_info "✓ Docker Compose 安装完成"
 }
 
-install_certbot() {
-    log_step "第六步：安装 Certbot (Let's Encrypt)"
-    
-    if command -v certbot &> /dev/null; then
-        log_info "Certbot 已安装"
-        return 0
-    fi
-    
-    log_info "正在安装 Certbot..."
-    
-    case $PKG_MANAGER in
-        apt)
-            $PKG_INSTALL certbot
-            ;;
-        yum|dnf)
-            $PKG_INSTALL epel-release || true
-            $PKG_INSTALL certbot
-            ;;
-    esac
-    
-    log_info "✓ Certbot 安装完成"
-}
+# install_certbot() 函数已移除
+# SSL 证书改由用户在宝塔面板中申请和管理
 
 install_dependencies() {
     log_step "安装其他依赖"
@@ -452,16 +432,7 @@ configure_credentials() {
         log_warn "未设置 AI API，大屏将不显示 AI 分析"
     fi
     
-    echo ""
-    
-    # Let's Encrypt 邮箱
-    echo -e "${CYAN}Let's Encrypt 需要一个邮箱地址用于证书通知${NC}"
-    read -r -p "请输入您的邮箱地址: " EMAIL
-    if [[ -z "$EMAIL" ]]; then
-        log_error "邮箱地址是必填项 (用于 SSL 证书)"
-        exit 1
-    fi
-    log_info "✓ 邮箱已设置: $EMAIL"
+    # Let's Encrypt 邮箱部分已移除，改由用户在宝塔面板申请证书
 }
 
 # =============================================================================
@@ -531,215 +502,11 @@ EOF
     log_info "✓ 配置文件已生成: $INSTALL_DIR/.env"
 }
 
-setup_ssl_certificates() {
-    log_step "第十一步：申请 SSL 证书"
-    
-    log_info "正在为以下域名申请 Let's Encrypt SSL 证书..."
-    log_info "  - $DOMAIN_MAIN"
-    log_info "  - $DOMAIN_API"
-    log_info "  - $DOMAIN_MQTT"
-    log_info "  - $DOMAIN_SCREEN"
-    echo ""
-    
-    echo -e "${YELLOW}提示: 证书申请过程可能需要 1-3 分钟，请耐心等待...${NC}"
-    echo -e "${YELLOW}      Let's Encrypt 需要验证您的域名解析是否正确${NC}"
-    echo ""
-    
-    # 确保 80 端口可用
-    log_info "正在释放 80 端口..."
-    systemctl stop nginx 2>/dev/null || true
-    docker stop mcs_frontend 2>/dev/null || true
-    sleep 2
-    
-    # 创建临时文件存储 certbot 输出
-    CERTBOT_LOG=$(mktemp)
-    
-    # 后台运行 certbot
-    log_info "正在与 Let's Encrypt 服务器通信..."
-    certbot certonly --standalone \
-        --non-interactive \
-        --agree-tos \
-        --email "$EMAIL" \
-        -d "$DOMAIN_MAIN" \
-        -d "$DOMAIN_API" \
-        -d "$DOMAIN_MQTT" \
-        -d "$DOMAIN_SCREEN" > "$CERTBOT_LOG" 2>&1 &
-    
-    CERTBOT_PID=$!
-    
-    # 显示动态进度
-    SPINNER='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
-    SPINNER_LEN=${#SPINNER}
-    i=0
-    elapsed=0
-    
-    while kill -0 $CERTBOT_PID 2>/dev/null; do
-        printf "\r${CYAN}[%s]${NC} 正在验证域名... (%d 秒)" "${SPINNER:i:1}" "$elapsed"
-        sleep 1
-        elapsed=$((elapsed + 1))
-        i=$(( (i + 1) % SPINNER_LEN ))
-        
-        # 每 30 秒显示一次提示
-        if [[ $elapsed -gt 0 && $((elapsed % 30)) -eq 0 ]]; then
-            echo ""
-            log_info "仍在处理中，请继续等待..."
-        fi
-    done
-    
-    # 清除进度行
-    printf "\r%-60s\r" " "
-    
-    # 等待进程结束并获取退出码
-    wait $CERTBOT_PID
-    CERTBOT_EXIT=$?
-    
-    if [[ $CERTBOT_EXIT -ne 0 ]]; then
-        echo ""
-        log_error "SSL 证书申请失败！"
-        echo ""
-        echo -e "${RED}错误详情:${NC}"
-        cat "$CERTBOT_LOG"
-        echo ""
-        log_info "常见原因:"
-        log_info "  1. 域名未正确解析到此服务器 IP"
-        log_info "  2. 80 端口被防火墙阻挡"
-        log_info "  3. Let's Encrypt 申请次数超限 (等待 1 小时后重试)"
-        echo ""
-        log_info "您可以稍后手动运行:"
-        echo "  certbot certonly --standalone -d $DOMAIN_MAIN -d $DOMAIN_API -d $DOMAIN_MQTT -d $DOMAIN_SCREEN"
-        rm -f "$CERTBOT_LOG"
-        exit 1
-    fi
-    
-    rm -f "$CERTBOT_LOG"
-    log_info "✓ SSL 证书申请成功！(耗时 ${elapsed} 秒)"
-    
-    # 复制证书到项目目录
-    log_info "正在复制证书到项目目录..."
-    mkdir -p "$INSTALL_DIR/nginx/ssl"
-    cp "/etc/letsencrypt/live/$DOMAIN_MAIN/fullchain.pem" "$INSTALL_DIR/nginx/ssl/server.crt"
-    cp "/etc/letsencrypt/live/$DOMAIN_MAIN/privkey.pem" "$INSTALL_DIR/nginx/ssl/server.key"
-    
-    # 设置自动续签
-    log_info "配置证书自动续签..."
-    
-    cat > /etc/cron.d/mcs-iot-ssl-renew << EOF
-# 每天凌晨 3 点检查并续签证书
-0 3 * * * root certbot renew --quiet --deploy-hook "cp /etc/letsencrypt/live/$DOMAIN_MAIN/fullchain.pem $INSTALL_DIR/nginx/ssl/server.crt && cp /etc/letsencrypt/live/$DOMAIN_MAIN/privkey.pem $INSTALL_DIR/nginx/ssl/server.key && docker restart mcs_frontend"
-EOF
-    
-    log_info "✓ 证书已配置自动续签"
-}
+# setup_ssl_certificates() 函数已移除
+# SSL 证书改由用户在宝塔面板中申请和管理
 
-generate_nginx_config() {
-    log_step "生成 Nginx 配置"
-    
-    cat > "$INSTALL_DIR/nginx/nginx.conf" << 'NGINX_EOF'
-events {
-    worker_connections 1024;
-}
-
-http {
-    include       /etc/nginx/mime.types;
-    default_type  application/octet-stream;
-    sendfile      on;
-    keepalive_timeout 65;
-    client_max_body_size 50M;
-
-    # 主站和管理后台
-    server {
-        listen 80;
-        listen 443 ssl http2;
-        server_name DOMAIN_MAIN_PLACEHOLDER;
-
-        ssl_certificate     /etc/nginx/ssl/server.crt;
-        ssl_certificate_key /etc/nginx/ssl/server.key;
-        ssl_protocols       TLSv1.2 TLSv1.3;
-
-        # HTTP 重定向到 HTTPS
-        if ($scheme != "https") {
-            return 301 https://$host$request_uri;
-        }
-
-        location / {
-            root   /usr/share/nginx/html;
-            index  index.html;
-            try_files $uri $uri/ /index.html;
-        }
-
-        location /api/ {
-            proxy_pass http://backend:8000/;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-        }
-
-        location /ws {
-            proxy_pass http://backend:8000/ws;
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection "upgrade";
-        }
-    }
-
-    # API 接口
-    server {
-        listen 80;
-        listen 443 ssl http2;
-        server_name DOMAIN_API_PLACEHOLDER;
-
-        ssl_certificate     /etc/nginx/ssl/server.crt;
-        ssl_certificate_key /etc/nginx/ssl/server.key;
-        ssl_protocols       TLSv1.2 TLSv1.3;
-
-        if ($scheme != "https") {
-            return 301 https://$host$request_uri;
-        }
-
-        location / {
-            proxy_pass http://backend:8000/;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-        }
-    }
-
-    # 大屏展示
-    server {
-        listen 80;
-        listen 443 ssl http2;
-        server_name DOMAIN_SCREEN_PLACEHOLDER;
-
-        ssl_certificate     /etc/nginx/ssl/server.crt;
-        ssl_certificate_key /etc/nginx/ssl/server.key;
-        ssl_protocols       TLSv1.2 TLSv1.3;
-
-        if ($scheme != "https") {
-            return 301 https://$host$request_uri;
-        }
-
-        location / {
-            root   /usr/share/nginx/html;
-            index  index.html;
-            try_files $uri $uri/ /index.html;
-            # 直接跳转到大屏页面
-            rewrite ^/$ /screen redirect;
-        }
-
-        location /api/ {
-            proxy_pass http://backend:8000/;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-        }
-    }
-}
-NGINX_EOF
-
-    # 替换域名占位符
-    sed -i "s/DOMAIN_MAIN_PLACEHOLDER/$DOMAIN_MAIN/g" "$INSTALL_DIR/nginx/nginx.conf"
-    sed -i "s/DOMAIN_API_PLACEHOLDER/$DOMAIN_API/g" "$INSTALL_DIR/nginx/nginx.conf"
-    sed -i "s/DOMAIN_SCREEN_PLACEHOLDER/$DOMAIN_SCREEN/g" "$INSTALL_DIR/nginx/nginx.conf"
-    
-    log_info "✓ Nginx 配置已生成"
-}
+# generate_nginx_config() 函数已移除
+# Nginx 配置改由宝塔面板管理，Docker 内使用 nginx-simple.conf
 
 deploy_containers() {
     log_step "第十二步：启动 Docker 容器"
@@ -901,20 +668,32 @@ EOF
 
 print_success() {
     echo ""
-    echo -e "${GREEN}╔═══════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}╭═══════════════════════════════════════════════════════════════════╮${NC}"
     echo -e "${GREEN}║                                                                   ║${NC}"
     echo -e "${GREEN}║              🎉 元芯物联网智慧云平台 部署成功！ 🎉                ║${NC}"
     echo -e "${GREEN}║                                                                   ║${NC}"
-    echo -e "${GREEN}╚═══════════════════════════════════════════════════════════════════╝${NC}"
+    echo -e "${GREEN}╰═══════════════════════════════════════════════════════════════════╯${NC}"
     echo ""
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${CYAN}                         访问地址                                   ${NC}"
+    echo -e "${CYAN}                   ❗ 完成宝塔配置后方可访问 ❗                      ${NC}"
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-    echo -e "  🖥️  管理后台:     ${GREEN}https://${DOMAIN_MAIN}${NC}"
-    echo -e "  📊  大屏展示:     ${GREEN}https://${DOMAIN_SCREEN}/screen${NC}"
-    echo -e "  🔌  API 接口:     ${GREEN}https://${DOMAIN_API}${NC}"
-    echo -e "  📡  MQTT 服务:    ${GREEN}mqtts://${DOMAIN_MQTT}:8883${NC}"
+    echo -e "${YELLOW}【第一步】在宝塔面板中为以下域名创建网站并申请 SSL 证书${NC}"
+    echo ""
+    echo -e "  域名用途                反向代理目标"
+    echo -e "  ───────────────────────────────────"
+    echo -e "  ${GREEN}${DOMAIN_MAIN}${NC}      →  127.0.0.1:3000  (主站/管理后台)"
+    echo -e "  ${GREEN}${DOMAIN_API}${NC}       →  127.0.0.1:8000  (API 接口)"
+    echo -e "  ${GREEN}${DOMAIN_SCREEN}${NC}    →  127.0.0.1:3000  (大屏展示，访问 /screen)"
+    echo ""
+    echo -e "${YELLOW}【第二步】配置 MQTT TLS 证书 (设备加密连接用)${NC}"
+    echo ""
+    echo -e "  将宝塔申请的 SSL 证书文件复制到 ${INSTALL_DIR}/nginx/ssl/ 目录"
+    echo -e "  证书文件通常位于: /www/server/panel/vhost/ssl/域名/"
+    echo ""
+    echo -e "  需要复制的文件:"
+    echo -e "    fullchain.pem 或 证书.pem   →  复制为  server.crt"
+    echo -e "    privkey.pem 或 私钥.pem     →  复制为  server.key"
     echo ""
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${CYAN}                         管理命令                                   ${NC}"
@@ -926,7 +705,6 @@ print_success() {
     echo -e "    ${YELLOW}mcs-iot restart${NC}        - 重启所有服务"
     echo -e "    ${YELLOW}mcs-iot status${NC}         - 查看服务状态"
     echo -e "    ${YELLOW}mcs-iot logs${NC}           - 查看日志"
-    echo -e "    ${YELLOW}mcs-iot rebuild${NC}        - 重新构建"
     echo ""
     echo -e "  模拟器:"
     echo -e "    ${YELLOW}mcs-simulator-start${NC}    - 启动 24 个模拟传感器"
@@ -938,8 +716,7 @@ print_success() {
     echo ""
     echo -e "  📁 安装目录:     ${INSTALL_DIR}"
     echo -e "  📄 配置文件:     ${INSTALL_DIR}/.env"
-    echo -e "  🔐 SSL 证书:     /etc/letsencrypt/live/${DOMAIN_MAIN}/"
-    echo -e "  📋 日志目录:     ${INSTALL_DIR}/logs/"
+    echo -e "  📄 MQTT 证书:  ${INSTALL_DIR}/nginx/ssl/"
     echo ""
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
@@ -965,9 +742,11 @@ main() {
     log_info "此脚本将自动完成以下任务:"
     echo "  1. 检测操作系统和服务器资源"
     echo "  2. 安装 Docker 和必要依赖"
-    echo "  3. 配置域名和 SSL 证书"
+    echo "  3. 配置域名和 API 密钥"
     echo "  4. 部署物联网平台"
     echo "  5. 可选导入演示数据"
+    echo ""
+    log_warn "注意: SSL 证书需要在宝塔面板中手动申请和配置"
     echo ""
     
     if ! confirm "是否继续安装?" "Y"; then
@@ -982,13 +761,10 @@ main() {
     install_dependencies
     install_docker
     install_docker_compose
-    install_certbot
     configure_domains
     configure_credentials
     clone_repository
     generate_env_file
-    setup_ssl_certificates
-    generate_nginx_config
     deploy_containers
     import_demo_data
     create_management_scripts

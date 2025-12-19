@@ -127,17 +127,16 @@ services:
     restart: unless-stopped
 
   # 🟠 Frontend (Vue + Nginx)
+  # 注意：80/443 端口由宝塔面板 nginx 处理，此容器仅监听 3000 端口
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: mcs_frontend
     ports:
-      - "${HTTP_PORT:-80}:80"
-      - "${HTTPS_PORT:-443}:443"
+      - "3000:80"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/nginx-simple.conf:/etc/nginx/nginx.conf:ro
     environment:
       - TZ=Asia/Shanghai
     depends_on:
@@ -150,6 +149,7 @@ volumes:
   pg_data:
   redis_data:
   uploads_data:
+
 
 networks:
   mcs-net:
