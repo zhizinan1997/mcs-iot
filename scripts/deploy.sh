@@ -161,13 +161,53 @@ run_update_mode() {
     esac
 }
 
+update_simulator_scripts() {
+    # 重新生成模拟器启动脚本
+    cat > "$INSTALL_DIR/start-simulator.sh" << 'EOF'
+#!/bin/bash
+cd /opt/mcs-iot
+echo "正在启动 24 个模拟传感器..."
+DURATION=${1:-0}
+nohup python3 scripts/demo_generator.py -d "$DURATION" --skip-init > /var/log/mcs-simulator.log 2>&1 &
+echo $! > /var/run/mcs-simulator.pid
+echo "模拟器已启动，PID: $(cat /var/run/mcs-simulator.pid)"
+if [[ "$DURATION" -eq 0 ]]; then
+    echo "运行模式: 永久运行"
+else
+    echo "运行时长: ${DURATION} 分钟"
+fi
+echo "查看日志: tail -f /var/log/mcs-simulator.log"
+EOF
+    chmod +x "$INSTALL_DIR/start-simulator.sh"
+    
+    # 重新生成模拟器停止脚本
+    cat > "$INSTALL_DIR/stop-simulator.sh" << 'EOF'
+#!/bin/bash
+stopped=false
+if [[ -f /var/run/mcs-simulator.pid ]]; then
+    PID=$(cat /var/run/mcs-simulator.pid)
+    if kill -0 $PID 2>/dev/null; then
+        kill $PID 2>/dev/null
+        rm -f /var/run/mcs-simulator.pid
+        echo "模拟器已停止 (PID: $PID)"
+        stopped=true
+    fi
+fi
+pkill -f demo_generator.py 2>/dev/null && stopped=true
+if ! $stopped; then
+    echo "模拟器未在运行"
+fi
+EOF
+    chmod +x "$INSTALL_DIR/stop-simulator.sh"
+}
+
 perform_update() {
     log_step "开始更新..."
     
     cd "$INSTALL_DIR"
     
     # 步骤1: 备份数据库
-    log_info "[1/5] 备份数据库..."
+    log_info "[1/6] 备份数据库..."
     BACKUP_FILE="backup_$(date +%Y%m%d_%H%M%S).sql"
     if docker exec mcs_db pg_dump -U postgres mcs_iot > "$BACKUP_FILE" 2>/dev/null; then
         log_info "✓ 数据库已备份到: $INSTALL_DIR/$BACKUP_FILE"
@@ -176,7 +216,7 @@ perform_update() {
     fi
     
     # 步骤2: 拉取最新代码
-    log_info "[2/5] 拉取最新代码..."
+    log_info "[2/6] 拉取最新代码..."
     if [[ -d ".git" ]]; then
         git fetch origin 2>/dev/null || true
         git pull origin main 2>/dev/null || git reset --hard origin/main 2>/dev/null || true
@@ -186,7 +226,7 @@ perform_update() {
     fi
     
     # 步骤3: 拉取最新镜像
-    log_info "[3/5] 拉取最新镜像..."
+    log_info "[3/6] 拉取最新镜像..."
     if [[ -f "docker-compose.ghcr.yml" ]]; then
         if docker compose -f docker-compose.ghcr.yml pull 2>&1; then
             log_info "✓ 镜像已更新"
@@ -201,11 +241,16 @@ perform_update() {
     fi
     
     # 步骤4: 重启服务
-    log_info "[4/5] 重启服务..."
+    log_info "[4/6] 重启服务..."
     docker compose -f "$COMPOSE_FILE" up -d 2>/dev/null || docker-compose -f "$COMPOSE_FILE" up -d 2>/dev/null
     
-    # 步骤5: 等待服务就绪
-    log_info "[5/5] 等待服务就绪..."
+    # 步骤5: 更新管理脚本
+    log_info "[5/6] 更新管理脚本..."
+    update_simulator_scripts
+    log_info "✓ 脚本已更新"
+    
+    # 步骤6: 等待服务就绪
+    log_info "[6/6] 等待服务就绪..."
     sleep 15
     
     # 显示状态
