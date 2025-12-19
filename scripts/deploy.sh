@@ -96,6 +96,136 @@ wait_for_enter() {
 }
 
 # =============================================================================
+# 升级检测
+# =============================================================================
+
+check_existing_deployment() {
+    # 检查是否已部署
+    if [[ -d "$INSTALL_DIR" ]] && [[ -f "$INSTALL_DIR/docker-compose.ghcr.yml" || -f "$INSTALL_DIR/docker-compose.yml" ]]; then
+        # 检查容器是否在运行
+        cd "$INSTALL_DIR"
+        if docker compose ps 2>/dev/null | grep -q "mcs_" || docker-compose ps 2>/dev/null | grep -q "mcs_"; then
+            return 0  # 已部署且运行中
+        elif docker ps -a 2>/dev/null | grep -q "mcs_"; then
+            return 0  # 已部署但停止
+        fi
+    fi
+    return 1  # 未部署
+}
+
+run_update_mode() {
+    log_step "检测到已有部署，进入更新模式"
+    
+    cd "$INSTALL_DIR"
+    
+    echo ""
+    echo -e "${CYAN}已检测到现有安装:${NC}"
+    echo -e "  📁 安装目录: $INSTALL_DIR"
+    
+    # 显示当前版本信息
+    if docker compose ps 2>/dev/null | head -5; then
+        :
+    else
+        docker-compose ps 2>/dev/null | head -5
+    fi
+    
+    echo ""
+    echo -e "${CYAN}请选择操作:${NC}"
+    echo "  1. 更新到最新版本 (保留数据)"
+    echo "  2. 完全重新安装 (会丢失数据)"
+    echo "  3. 退出"
+    read -r -p "请选择 [1/2/3]，默认 1: " update_choice
+    update_choice=${update_choice:-1}
+    
+    case $update_choice in
+        1)
+            perform_update
+            ;;
+        2)
+            log_warn "完全重新安装将删除所有数据!"
+            if confirm "确定要删除现有数据并重新安装?" "N"; then
+                log_info "停止现有服务..."
+                docker compose down 2>/dev/null || docker-compose down 2>/dev/null
+                log_info "清理数据..."
+                docker volume prune -f 2>/dev/null || true
+                return 1  # 继续全新安装
+            else
+                log_info "已取消"
+                exit 0
+            fi
+            ;;
+        *)
+            log_info "已退出"
+            exit 0
+            ;;
+    esac
+}
+
+perform_update() {
+    log_step "开始更新..."
+    
+    cd "$INSTALL_DIR"
+    
+    # 步骤1: 备份数据库
+    log_info "[1/5] 备份数据库..."
+    BACKUP_FILE="backup_$(date +%Y%m%d_%H%M%S).sql"
+    if docker exec mcs_db pg_dump -U postgres mcs_iot > "$BACKUP_FILE" 2>/dev/null; then
+        log_info "✓ 数据库已备份到: $INSTALL_DIR/$BACKUP_FILE"
+    else
+        log_warn "数据库备份失败，继续更新..."
+    fi
+    
+    # 步骤2: 拉取最新代码
+    log_info "[2/5] 拉取最新代码..."
+    if [[ -d ".git" ]]; then
+        git fetch origin 2>/dev/null || true
+        git pull origin main 2>/dev/null || git reset --hard origin/main 2>/dev/null || true
+        log_info "✓ 代码已更新"
+    else
+        log_warn "非 Git 仓库，跳过代码更新"
+    fi
+    
+    # 步骤3: 拉取最新镜像
+    log_info "[3/5] 拉取最新镜像..."
+    if [[ -f "docker-compose.ghcr.yml" ]]; then
+        if docker compose -f docker-compose.ghcr.yml pull 2>&1; then
+            log_info "✓ 镜像已更新"
+        else
+            log_warn "部分镜像拉取失败"
+        fi
+        COMPOSE_FILE="docker-compose.ghcr.yml"
+    else
+        log_info "使用本地构建模式"
+        docker compose build --no-cache 2>/dev/null || docker-compose build --no-cache 2>/dev/null
+        COMPOSE_FILE="docker-compose.yml"
+    fi
+    
+    # 步骤4: 重启服务
+    log_info "[4/5] 重启服务..."
+    docker compose -f "$COMPOSE_FILE" up -d 2>/dev/null || docker-compose -f "$COMPOSE_FILE" up -d 2>/dev/null
+    
+    # 步骤5: 等待服务就绪
+    log_info "[5/5] 等待服务就绪..."
+    sleep 15
+    
+    # 显示状态
+    echo ""
+    log_info "服务状态:"
+    docker compose -f "$COMPOSE_FILE" ps 2>/dev/null || docker-compose -f "$COMPOSE_FILE" ps 2>/dev/null
+    
+    echo ""
+    echo -e "${GREEN}╔═══════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║                    ✓ 更新完成!                                    ║${NC}"
+    echo -e "${GREEN}╚═══════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "  📁 备份文件: $INSTALL_DIR/$BACKUP_FILE"
+    echo -e "  🌐 访问地址: http://$(curl -s ifconfig.me 2>/dev/null || echo 'your-server-ip'):3000"
+    echo ""
+    
+    exit 0
+}
+
+# =============================================================================
 # 环境检测
 # =============================================================================
 
@@ -1085,6 +1215,12 @@ print_success() {
 
 main() {
     print_banner
+    
+    # 首先检查是否已有部署
+    if check_existing_deployment; then
+        run_update_mode
+        # 如果 run_update_mode 返回，说明用户选择了重新安装
+    fi
     
     log_info "欢迎使用元芯物联网智慧云平台一键部署脚本"
     log_info "此脚本将自动完成以下任务:"
