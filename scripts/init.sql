@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS sensor_data (
     err_code INT DEFAULT 0,
     
     -- Metadata
-    msg_seq INT
+    seq INT
 );
 
 -- Turn into Hypertable (Partition by time, 1 day chunks)

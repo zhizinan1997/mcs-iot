@@ -16,10 +16,12 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # 全局变量
-VERSION="v1.0.1"
+VERSION="v1.0.2"
 INSTALL_DIR="/opt/mcs-iot"
 REPO_URL="https://github.com/zhizinan1997/mcs-iot.git"
+REPO_URL_CN="https://ghproxy.com/https://github.com/zhizinan1997/mcs-iot.git"
 COMPOSE_VERSION="2.24.0"
+USE_CHINA_MIRROR=false
 
 # 用户配置变量
 DOMAIN_MAIN=""
@@ -27,10 +29,12 @@ DOMAIN_API=""
 DOMAIN_MQTT=""
 DOMAIN_SCREEN=""
 DB_PASSWORD=""
+ADMIN_PASSWORD=""
+MQTT_PASSWORD=""
+JWT_SECRET=""
 WEATHER_API_KEY=""
 AI_API_KEY=""
 AI_API_URL=""
-EMAIL=""
 
 # =============================================================================
 # 工具函数
@@ -46,6 +50,7 @@ print_banner() {
     echo "╚═══════════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
     echo -e "                        版本: ${GREEN}${VERSION}${NC}"
+    echo -e "           开发者: Ryan Zhi  邮箱: zinanzhi@gmail.com"
     echo ""
 }
 
@@ -180,6 +185,50 @@ check_resources() {
     log_info "CPU 核心数: $CPU_CORES"
     
     log_info "✓ 服务器资源检测通过"
+}
+
+configure_china_mirror() {
+    log_step "网络加速配置"
+    
+    echo ""
+    echo -e "${CYAN}如果您的服务器在中国大陆，建议使用国内镜像加速${NC}"
+    echo -e "${CYAN}这将加快 GitHub 代码拉取和 Docker 镜像下载速度${NC}"
+    echo ""
+    
+    if confirm "是否使用中国大陆镜像加速?"; then
+        USE_CHINA_MIRROR=true
+        log_info "已启用中国大陆镜像加速"
+        
+        # 配置 Docker 镜像加速
+        log_info "配置 Docker 镜像加速..."
+        mkdir -p /etc/docker
+        cat > /etc/docker/daemon.json << 'EOF'
+{
+    "registry-mirrors": [
+        "https://docker.m.daocloud.io",
+        "https://dockerhub.icu",
+        "https://docker.1panel.live"
+    ],
+    "log-driver": "json-file",
+    "log-opts": {
+        "max-size": "10m",
+        "max-file": "3"
+    }
+}
+EOF
+        
+        # 如果 Docker 已安装，重启服务
+        if command -v docker &> /dev/null && systemctl is-active --quiet docker; then
+            systemctl daemon-reload
+            systemctl restart docker
+            log_info "✓ Docker 镜像加速已配置并生效"
+        else
+            log_info "✓ Docker 镜像加速已配置 (Docker 安装后生效)"
+        fi
+    else
+        USE_CHINA_MIRROR=false
+        log_info "使用默认国际源"
+    fi
 }
 
 check_ports() {
@@ -413,6 +462,40 @@ configure_credentials() {
     
     echo ""
     
+    # 后台管理员密码
+    echo -e "${CYAN}后台管理员账号为 admin，请设置密码${NC}"
+    while true; do
+        read -r -s -p "请设置后台管理员密码 (至少6位): " ADMIN_PASSWORD
+        echo ""
+        if [[ ${#ADMIN_PASSWORD} -lt 6 ]]; then
+            log_warn "密码太短，请设置至少 6 位密码"
+            continue
+        fi
+        break
+    done
+    log_info "✓ 后台管理员密码已设置"
+    
+    echo ""
+    
+    # MQTT 密码
+    echo -e "${CYAN}MQTT 用于设备与平台通信，请设置访问密码${NC}"
+    while true; do
+        read -r -s -p "请设置 MQTT 密码 (至少6位): " MQTT_PASSWORD
+        echo ""
+        if [[ ${#MQTT_PASSWORD} -lt 6 ]]; then
+            log_warn "密码太短，请设置至少 6 位密码"
+            continue
+        fi
+        break
+    done
+    log_info "✓ MQTT 密码已设置"
+    
+    # 自动生成 JWT 密钥
+    JWT_SECRET=$(openssl rand -hex 32)
+    log_info "✓ JWT 密钥已自动生成"
+    
+    echo ""
+    
     # 天气 API
     echo -e "${CYAN}心知天气 API 用于获取天气数据显示在大屏上${NC}"
     echo -e "${CYAN}获取地址: https://www.seniverse.com/${NC}"
@@ -459,8 +542,17 @@ clone_repository() {
         fi
     fi
     
-    log_info "正在从 GitHub 克隆项目..."
-    git clone "$REPO_URL" "$INSTALL_DIR"
+    # 选择 GitHub 源
+    if [[ "$USE_CHINA_MIRROR" == "true" ]]; then
+        log_info "使用中国镜像加速下载..."
+        git clone "$REPO_URL_CN" "$INSTALL_DIR" || {
+            log_warn "镜像源失败，尝试直接访问 GitHub..."
+            git clone "$REPO_URL" "$INSTALL_DIR"
+        }
+    else
+        log_info "正在从 GitHub 克隆项目..."
+        git clone "$REPO_URL" "$INSTALL_DIR"
+    fi
     
     log_info "✓ 项目代码下载完成"
 }
@@ -494,6 +586,13 @@ REDIS_PORT=6379
 # MQTT 配置
 MQTT_HOST=mosquitto
 MQTT_PORT=1883
+MQTT_PASSWORD=${MQTT_PASSWORD}
+
+# 后台管理员密码
+ADMIN_INITIAL_PASSWORD=${ADMIN_PASSWORD}
+
+# JWT 密钥 (用于用户登录认证)
+JWT_SECRET=${JWT_SECRET}
 
 # 天气 API (心知天气)
 WEATHER_API_KEY=${WEATHER_API_KEY}
@@ -549,34 +648,59 @@ deploy_containers() {
 # =============================================================================
 
 import_demo_data() {
-    log_step "第十三步：导入演示数据 (可选)"
+    log_step "第十三步：生成演示数据 (可选)"
     
     echo ""
-    echo -e "${CYAN}演示数据包含:${NC}"
-    echo "  - 24 个模拟传感器设备"
-    echo "  - 4 个仪表/区域"
-    echo "  - 大屏背景图"
-    echo "  - 示例报警记录"
-    echo ""
-    log_warn "注意: 您设置的密码和 API 配置不会被覆盖"
+    echo -e "${CYAN}演示数据生成器将创建:${NC}"
+    echo "  - 4 个仪表 (总经理办公室/员工办公室/公共走廊/创新实验室)"
+    echo "  - 24 个传感器 (氢气/甲烷/VOCs/温度/湿度/PM2.5)"
+    echo "  - 实时模拟数据 (每10秒)"
+    echo "  - 偶尔触发报警 (每小时1-2次)"
     echo ""
     
-    if confirm "是否导入演示数据?"; then
-        log_info "正在导入演示数据..."
-        
-        # 等待数据库就绪
-        sleep 5
-        
-        # 导入演示数据
-        if [[ -f "$INSTALL_DIR/scripts/demo_data.sql" ]]; then
-            docker exec -i mcs_db psql -U postgres -d mcs_iot < "$INSTALL_DIR/scripts/demo_data.sql" 2>/dev/null || true
-            log_info "✓ 演示数据导入完成"
-        else
-            log_warn "未找到演示数据文件，跳过导入"
-        fi
-    else
-        log_info "跳过演示数据导入"
+    if ! confirm "是否生成演示数据?"; then
+        log_info "跳过演示数据生成"
+        return 0
     fi
+    
+    echo ""
+    echo -e "${CYAN}请选择数据生成时长:${NC}"
+    echo "  1. 10 分钟 (快速演示)"
+    echo "  2. 30 分钟 (推荐)"
+    echo "  3. 60 分钟 (完整数据)"
+    echo "  4. 仅创建设备，不生成数据"
+    echo ""
+    read -r -p "请输入选项 [1-4]: " duration_choice
+    
+    case $duration_choice in
+        1) duration=10 ;;
+        2) duration=30 ;;
+        3) duration=60 ;;
+        4) 
+            log_info "仅创建设备..."
+            cd "$INSTALL_DIR"
+            python3 scripts/demo_generator.py --init-only 2>&1 || true
+            log_info "✓ 设备创建完成"
+            return 0
+            ;;
+        *) duration=30 ;;
+    esac
+    
+    log_info "启动演示数据生成器 (${duration}分钟)..."
+    
+    # 后台运行演示生成器
+    cd "$INSTALL_DIR"
+    nohup python3 scripts/demo_generator.py -d "$duration" > /var/log/mcs-demo-generator.log 2>&1 &
+    DEMO_PID=$!
+    echo $DEMO_PID > /var/run/mcs-demo-generator.pid
+    
+    echo ""
+    log_info "✓ 演示数据生成器已在后台启动"
+    log_info "  PID: $DEMO_PID"
+    log_info "  时长: ${duration} 分钟"
+    log_info "  日志: tail -f /var/log/mcs-demo-generator.log"
+    log_info "  停止: kill $DEMO_PID"
+    echo ""
 }
 
 # =============================================================================
@@ -589,12 +713,16 @@ create_management_scripts() {
     # 模拟器启动脚本
     cat > "$INSTALL_DIR/start-simulator.sh" << 'EOF'
 #!/bin/bash
-# 启动 24 个模拟传感器
+# 启动演示数据生成器
 cd /opt/mcs-iot
 echo "正在启动 24 个模拟传感器..."
-nohup python3 scripts/simulator.py -n 24 > /var/log/mcs-simulator.log 2>&1 &
+echo "可选参数: -d 分钟数 (默认60)"
+
+DURATION=${1:-60}
+nohup python3 scripts/demo_generator.py -d "$DURATION" --skip-init > /var/log/mcs-simulator.log 2>&1 &
 echo $! > /var/run/mcs-simulator.pid
 echo "模拟器已启动，PID: $(cat /var/run/mcs-simulator.pid)"
+echo "运行时长: ${DURATION} 分钟"
 echo "查看日志: tail -f /var/log/mcs-simulator.log"
 EOF
     chmod +x "$INSTALL_DIR/start-simulator.sh"
@@ -603,20 +731,34 @@ EOF
     cat > "$INSTALL_DIR/stop-simulator.sh" << 'EOF'
 #!/bin/bash
 # 停止模拟传感器
+stopped=false
+
+# 停止演示生成器
+if [[ -f /var/run/mcs-demo-generator.pid ]]; then
+    PID=$(cat /var/run/mcs-demo-generator.pid)
+    if kill -0 $PID 2>/dev/null; then
+        kill $PID
+        echo "演示生成器已停止 (PID: $PID)"
+        stopped=true
+    fi
+    rm -f /var/run/mcs-demo-generator.pid
+fi
+
+# 停止模拟器
 if [[ -f /var/run/mcs-simulator.pid ]]; then
     PID=$(cat /var/run/mcs-simulator.pid)
     if kill -0 $PID 2>/dev/null; then
         kill $PID
         echo "模拟器已停止 (PID: $PID)"
-        rm -f /var/run/mcs-simulator.pid
-    else
-        echo "模拟器进程不存在"
-        rm -f /var/run/mcs-simulator.pid
+        stopped=true
     fi
-else
-    echo "未找到模拟器 PID 文件"
+    rm -f /var/run/mcs-simulator.pid
+fi
+
+if [[ "$stopped" == "false" ]]; then
     # 尝试查找并停止
-    pkill -f "simulator.py" && echo "已停止所有模拟器进程" || echo "无运行中的模拟器"
+    pkill -f "demo_generator.py" && echo "已停止演示生成器" || true
+    pkill -f "simulator.py" && echo "已停止模拟器" || echo "无运行中的模拟器"
 fi
 EOF
     chmod +x "$INSTALL_DIR/stop-simulator.sh"
@@ -695,12 +837,20 @@ print_success() {
     echo ""
     echo -e "${YELLOW}【第二步】配置 MQTT TLS 证书 (设备加密连接用)${NC}"
     echo ""
-    echo -e "  将宝塔申请的 SSL 证书文件复制到 ${INSTALL_DIR}/nginx/ssl/ 目录"
-    echo -e "  证书文件通常位于: /www/server/panel/vhost/ssl/域名/"
+    echo -e "  ${CYAN}操作步骤:${NC}"
+    echo -e "  1. 在宝塔面板中，进入主域名的 SSL 设置，点击「下载证书」"
+    echo -e "  2. 解压下载的证书压缩包，选择 ${GREEN}Nginx${NC} 文件夹"
+    echo -e "  3. 里面有两个文件，需要重命名后上传到服务器:"
+    echo -e "     ${GREEN}fullchain.pem${NC}  →  重命名为  ${YELLOW}server.crt${NC}"
+    echo -e "     ${GREEN}privkey.pem${NC}    →  重命名为  ${YELLOW}server.key${NC}"
+    echo -e "  4. 将这两个文件上传到: ${INSTALL_DIR}/nginx/ssl/"
     echo ""
-    echo -e "  需要复制的文件:"
-    echo -e "    fullchain.pem 或 证书.pem   →  复制为  server.crt"
-    echo -e "    privkey.pem 或 私钥.pem     →  复制为  server.key"
+    echo -e "  ${CYAN}或者使用命令直接复制 (如果证书在服务器上):${NC}"
+    echo -e "  cp /www/server/panel/vhost/ssl/${DOMAIN_MAIN}/fullchain.pem ${INSTALL_DIR}/nginx/ssl/server.crt"
+    echo -e "  cp /www/server/panel/vhost/ssl/${DOMAIN_MAIN}/privkey.pem ${INSTALL_DIR}/nginx/ssl/server.key"
+    echo ""
+    echo -e "  ${RED}⚠️ 上传/复制完成后，必须重启所有 Docker 容器:${NC}"
+    echo -e "  ${YELLOW}mcs-iot restart${NC}"
     echo ""
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${CYAN}                         管理命令                                   ${NC}"
@@ -764,6 +914,7 @@ main() {
     # 执行安装步骤
     detect_os
     check_resources
+    configure_china_mirror
     check_ports
     install_dependencies
     install_docker

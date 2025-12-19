@@ -1,5 +1,12 @@
 version: '3.8'
 
+# 全局日志配置：限制每个容器日志最大 10MB，保留 3 个文件
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   # 🟢 MQTT Broker
   mosquitto:
@@ -16,6 +23,7 @@ services:
       - ./mosquitto/data:/mosquitto/data
     networks:
       - mcs-net
+    logging: *default-logging
 
   # 🟡 Time-Series Database
   timescaledb:
@@ -37,6 +45,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    logging: *default-logging
 
   # ⚪ Cache
   redis:
@@ -54,6 +63,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    logging: *default-logging
 
   # 🔵 Core Worker (Python)
   worker:
@@ -89,6 +99,7 @@ services:
     networks:
       - mcs-net
     restart: unless-stopped
+    logging: *default-logging
 
   # 🟣 Backend API (FastAPI)
   backend:
@@ -122,9 +133,16 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/api/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - mcs-net
     restart: unless-stopped
+    logging: *default-logging
 
   # 🟠 Frontend (Vue + Nginx)
   # 注意：80/443 端口由宝塔面板 nginx 处理，此容器仅监听 3000 端口
@@ -140,10 +158,12 @@ services:
     environment:
       - TZ=Asia/Shanghai
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - mcs-net
     restart: unless-stopped
+    logging: *default-logging
 
 volumes:
   pg_data:
