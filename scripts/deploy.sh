@@ -684,32 +684,78 @@ deploy_containers() {
         log_info "这可能需要较长时间，请耐心等待..."
         echo ""
         
-        # 顺序构建：先拉取基础镜像，再逐个构建自定义镜像
-        log_info "[1/6] 拉取基础镜像..."
-        docker pull timescale/timescaledb:latest-pg15 2>&1 || true
-        docker pull redis:7-alpine 2>&1 || true
-        docker pull eclipse-mosquitto:2 2>&1 || true
+        # 带重试的 Docker 拉取函数
+        docker_pull_retry() {
+            local image=$1
+            local max_attempts=5
+            local attempt=1
+            
+            while [[ $attempt -le $max_attempts ]]; do
+                log_info "  拉取 $image (尝试 $attempt/$max_attempts)..."
+                if docker pull "$image" 2>&1; then
+                    log_info "  ✓ $image 拉取成功"
+                    return 0
+                fi
+                
+                if [[ $attempt -lt $max_attempts ]]; then
+                    local wait_time=$((attempt * 10))
+                    log_warn "  拉取失败，${wait_time}秒后重试..."
+                    sleep $wait_time
+                fi
+                ((attempt++))
+            done
+            
+            log_warn "  ✗ $image 拉取失败，将在构建时重试"
+            return 1
+        }
         
+        # 带重试的 Docker 构建函数
+        docker_build_retry() {
+            local service=$1
+            local max_attempts=3
+            local attempt=1
+            
+            while [[ $attempt -le $max_attempts ]]; do
+                log_info "  构建 $service (尝试 $attempt/$max_attempts)..."
+                if docker compose version &> /dev/null; then
+                    if docker compose build --no-cache "$service" 2>&1; then
+                        log_info "  ✓ $service 构建成功"
+                        return 0
+                    fi
+                else
+                    if docker-compose build --no-cache "$service" 2>&1; then
+                        log_info "  ✓ $service 构建成功"
+                        return 0
+                    fi
+                fi
+                
+                if [[ $attempt -lt $max_attempts ]]; then
+                    local wait_time=$((attempt * 15))
+                    log_warn "  构建失败，${wait_time}秒后重试..."
+                    sleep $wait_time
+                fi
+                ((attempt++))
+            done
+            
+            log_error "  ✗ $service 构建失败"
+            return 1
+        }
+        
+        # 顺序拉取基础镜像
+        log_info "[1/6] 拉取基础镜像..."
+        docker_pull_retry "timescale/timescaledb:latest-pg15"
+        docker_pull_retry "redis:7-alpine"
+        docker_pull_retry "eclipse-mosquitto:2"
+        
+        # 顺序构建自定义镜像
         log_info "[2/6] 构建 Worker 服务..."
-        if docker compose version &> /dev/null; then
-            docker compose build --no-cache worker 2>&1
-        else
-            docker-compose build --no-cache worker 2>&1
-        fi
+        docker_build_retry "worker"
         
         log_info "[3/6] 构建 Backend 服务..."
-        if docker compose version &> /dev/null; then
-            docker compose build --no-cache backend 2>&1
-        else
-            docker-compose build --no-cache backend 2>&1
-        fi
+        docker_build_retry "backend"
         
         log_info "[4/6] 构建 Frontend 服务..."
-        if docker compose version &> /dev/null; then
-            docker compose build --no-cache frontend 2>&1
-        else
-            docker-compose build --no-cache frontend 2>&1
-        fi
+        docker_build_retry "frontend"
         
         log_info "[5/6] 启动所有服务..."
         if docker compose version &> /dev/null; then
