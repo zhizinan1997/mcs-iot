@@ -1,6 +1,6 @@
 # MCS-IoT 工业级气体监测物联网平台
 
-专为工业气体监测场景设计的物联网云平台，支持实时数据采集、可视化大屏、智能报警和设备管理。
+专为工业气体监测场景设计的物联网云平台，支持实时数据采集、可视化大屏、智能报警、设备管理和 AI 分析。
 
 ---
 
@@ -13,23 +13,36 @@
 bash <(curl -sSL https://raw.githubusercontent.com/zhizinan1997/mcs-iot/main/scripts/deploy.sh)
 ```
 
-**脚本将自动完成：**
+**首次安装自动完成：**
 
 - ✅ 环境检测与依赖安装 (Docker)
 - ✅ 域名配置与 API 密钥配置
-- ✅ 数据库密码配置
-- ✅ Docker 容器部署
+- ✅ 拉取预构建 Docker 镜像 (无需本地构建)
+- ✅ 数据库初始化
 - ✅ 可选导入演示数据
 
+**已有安装时自动检测，支持：**
+
+- 🔄 更新到最新版本 (保留数据)
+- 💾 自动备份数据库
+- 📦 拉取最新镜像并重启
+
 > ⚠️ **注意**: SSL 证书需要在宝塔面板中手动申请和配置
+
+---
+
+## 🆕 最新功能
+
+- **授权管理系统** - 基于 Cloudflare Worker 的设备授权验证
+- **AI 智能分析** - 定时生成平台运行状况智能总结
+- **预构建镜像** - 托管于 ghcr.io，无需本地构建
+- **一键升级** - 自动检测现有部署，支持无缝升级
 
 ---
 
 ## ⚠️ 部署前准备
 
 ### 1. 准备域名
-
-部署前请准备 3-4 个域名并解析到服务器 IP：
 
 | 域名      | 用途       | 示例                 |
 | --------- | ---------- | -------------------- |
@@ -40,8 +53,6 @@ bash <(curl -sSL https://raw.githubusercontent.com/zhizinan1997/mcs-iot/main/scr
 
 ### 2. 开放端口
 
-在云服务商控制台（阿里云/腾讯云安全组）放行以下端口：
-
 | 端口 | 用途        |
 | ---- | ----------- |
 | 80   | HTTP        |
@@ -51,36 +62,28 @@ bash <(curl -sSL https://raw.githubusercontent.com/zhizinan1997/mcs-iot/main/scr
 
 ---
 
-## 🔧 部署后宝塔配置
+## 🔧 部署后配置
 
-部署脚本完成后，需要在宝塔面板中配置 nginx 反向代理和 SSL 证书。
+### 宝塔面板配置
 
-### 第一步：创建网站并申请 SSL 证书
+1. **创建网站并申请 SSL 证书** - 使用 Let's Encrypt
+2. **配置反向代理**：
+   - 主站: `127.0.0.1:3000`
+   - API: `127.0.0.1:8000`
+3. **MQTT TLS 证书** - 复制到 `/opt/mcs-iot/nginx/ssl/`
 
-在宝塔面板中为每个域名创建网站，并使用「SSL」功能申请 Let's Encrypt 证书。
+### 授权服务器配置 (可选)
 
-### 第二步：配置反向代理
+项目包含 Cloudflare Worker 授权服务，需要单独部署：
 
-| 域名用途     | 反向代理目标端口       |
-| ------------ | ---------------------- |
-| 主站/管理后台 | 127.0.0.1:3000         |
-| API 接口     | 127.0.0.1:8000         |
-| 大屏展示     | 127.0.0.1:3000 (访问 /screen 路径) |
-
-### 第三步：配置 MQTT TLS 证书
-
-将宝塔申请的 SSL 证书文件复制到 `/opt/mcs-iot/nginx/ssl/` 目录：
-
-| 原文件名                    | 复制后文件名 |
-| --------------------------- | ------------ |
-| fullchain.pem 或 证书.pem   | server.crt   |
-| privkey.pem 或 私钥.pem     | server.key   |
-
-证书文件通常位于：`/www/server/panel/vhost/ssl/域名/`
+1. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/)
+2. 创建 Worker，粘贴 `cfworker/license-server.js` 代码
+3. 绑定 KV 命名空间 `LICENSES`
+4. 设置环境变量 `ADMIN_TOKEN`
 
 ---
 
-## 🛠️ 部署后管理
+## 🛠️ 服务管理
 
 ```bash
 # 服务管理
@@ -90,10 +93,22 @@ mcs-iot restart    # 重启服务
 mcs-iot status     # 查看状态
 mcs-iot logs       # 查看日志
 
-# 模拟器
+# 模拟器 (永久运行，10秒/条数据)
 mcs-simulator-start    # 启动 24 个模拟传感器
 mcs-simulator-stop     # 停止模拟器
 ```
+
+---
+
+## 🔄 升级方法
+
+```bash
+cd /opt/mcs-iot
+bash scripts/deploy.sh
+# 选择 1 - 更新到最新版本
+```
+
+升级过程会自动：备份数据库 → 拉取代码 → 更新镜像 → 重启服务
 
 ---
 
@@ -125,26 +140,53 @@ mcs-simulator-stop     # 停止模拟器
 
 ---
 
+## 🐳 Docker 镜像
+
+预构建镜像托管于 GitHub Container Registry：
+
+```
+ghcr.io/zhizinan1997/mcs-iot-backend:latest
+ghcr.io/zhizinan1997/mcs-iot-worker:latest
+ghcr.io/zhizinan1997/mcs-iot-frontend:latest
+```
+
+手动部署：
+
+```bash
+docker compose -f docker-compose.ghcr.yml pull
+docker compose -f docker-compose.ghcr.yml up -d
+```
+
+---
+
 ## ❗ 常见问题
 
 ### 容器无法启动
 
 ```bash
-# 查看容器状态
 mcs-iot status
-
-# 查看详细日志
 mcs-iot logs
 ```
 
 ### MQTT 连接失败
 
-- 检查 SSL 证书是否已正确复制到 `/opt/mcs-iot/nginx/ssl/`
-- 确保证书文件名为 `server.crt` 和 `server.key`
-- 重启服务：`mcs-iot restart`
+- 检查 SSL 证书是否在 `/opt/mcs-iot/nginx/ssl/`
+- 确保文件名为 `server.crt` 和 `server.key`
+- 重启：`mcs-iot restart`
+
+### 升级后服务异常
+
+```bash
+# 恢复数据库备份
+cat backup_YYYYMMDD_HHMMSS.sql | docker exec -i mcs_db psql -U postgres mcs_iot
+```
 
 ---
 
 ## 📄 许可证
 
 MIT License
+
+---
+
+**开发者**: Ryan Zhi | **邮箱**: <zinanzhi@gmail.com>
