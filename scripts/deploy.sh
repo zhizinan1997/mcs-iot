@@ -16,6 +16,7 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # 全局变量
+VERSION="v1.0.1"
 INSTALL_DIR="/opt/mcs-iot"
 REPO_URL="https://github.com/zhizinan1997/mcs-iot.git"
 COMPOSE_VERSION="2.24.0"
@@ -44,6 +45,7 @@ print_banner() {
     echo "║                                                                   ║"
     echo "╚═══════════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
+    echo -e "                        版本: ${GREEN}${VERSION}${NC}"
     echo ""
 }
 
@@ -183,7 +185,8 @@ check_resources() {
 check_ports() {
     log_step "第三步：检测端口占用情况"
     
-    REQUIRED_PORTS=(80 443 1883 8883 5432 6379)
+    # 注意: 80/443 端口由宝塔 nginx 管理，不再检测
+    REQUIRED_PORTS=(1883 8883 3000 5432 6379 8000)
     PORTS_IN_USE=()
     
     log_info "检测以下端口: ${REQUIRED_PORTS[*]}"
@@ -203,12 +206,13 @@ check_ports() {
         echo ""
         log_warn "以下端口已被占用: ${PORTS_IN_USE[*]}"
         log_info "端口说明:"
-        log_info "  - 80/443: Web 服务 (HTTP/HTTPS)"
+        log_info "  - 3000: 前端服务"
+        log_info "  - 8000: 后端 API"
         log_info "  - 1883/8883: MQTT 服务"
         log_info "  - 5432: PostgreSQL 数据库"
         log_info "  - 6379: Redis 缓存"
         echo ""
-        log_info "提示: 您可以手动检查端口占用: ss -tuln | grep -E ':(80|443|1883|8883|5432|6379)'"
+        log_info "提示: 80/443 端口由宝塔 nginx 管理，无需检测"
         echo ""
         if ! confirm "是否继续? (部署后 Docker 将使用这些端口)"; then
             exit 1
