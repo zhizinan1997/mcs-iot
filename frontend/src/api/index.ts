@@ -75,6 +75,7 @@ export const configApi = {
     getArchive: () => api.get('/config/archive'),
     updateArchive: (data: any) => api.put('/config/archive', data),
     testArchive: () => api.post('/config/archive/test'),
+    getArchiveStats: () => api.get('/config/archive/stats'),
     // 站点品牌配置
     getSite: () => api.get('/config/site'),
     updateSite: (data: any) => api.put('/config/site', data),
@@ -117,7 +118,7 @@ export const instrumentsApi = {
     create: (data: any) => api.post('/instruments', data),
     update: (id: number, data: any) => api.put(`/instruments/${id}`, data),
     delete: (id: number) => api.delete(`/instruments/${id}`),
-    updatePosition: (id: number, pos_x: number, pos_y: number) => 
+    updatePosition: (id: number, pos_x: number, pos_y: number) =>
         api.patch(`/instruments/${id}/position`, { pos_x, pos_y }),
     history: (id: number, hours = 1) => api.get(`/instruments/${id}/history`, { params: { hours } })
 }

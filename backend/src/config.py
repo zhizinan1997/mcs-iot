@@ -35,7 +35,8 @@ class DashboardConfig(BaseModel):
 class ArchiveConfig(BaseModel):
     """数据归档配置 (Cloudflare R2)"""
     enabled: bool = False
-    retention_days: int = 3
+    local_retention_days: int = 3  # 本地数据库保留天数
+    r2_retention_days: int = 30    # R2 备份保留天数
     r2_endpoint: str = ""
     r2_bucket: str = ""
     r2_access_key: str = ""
@@ -274,6 +275,85 @@ async def test_archive_connection(redis = Depends(get_redis)):
             raise HTTPException(status_code=400, detail=f"Bucket '{bucket}' 不存在")
         else:
             raise HTTPException(status_code=500, detail=f"连接测试失败: {error_str}")
+
+@router.get("/archive/stats")
+async def get_storage_stats(redis = Depends(get_redis), db = Depends(get_db)):
+    """获取存储空间统计"""
+    stats = {
+        "local_db": {"size_bytes": 0, "size_human": "0 B", "row_count": 0},
+        "r2": {"size_bytes": 0, "size_human": "0 B", "file_count": 0, "message": ""}
+    }
+    
+    def format_size(size_bytes: int) -> str:
+        if size_bytes < 1024:
+            return f"{size_bytes} B"
+        elif size_bytes < 1024 * 1024:
+            return f"{size_bytes / 1024:.2f} KB"
+        elif size_bytes < 1024 * 1024 * 1024:
+            return f"{size_bytes / (1024 * 1024):.2f} MB"
+        else:
+            return f"{size_bytes / (1024 * 1024 * 1024):.2f} GB"
+    
+    # 获取本地数据库大小
+    try:
+        async with db.acquire() as conn:
+            size_result = await conn.fetchrow("""
+                SELECT pg_total_relation_size('sensor_data') as size,
+                       (SELECT COUNT(*) FROM sensor_data) as count
+            """)
+            if size_result:
+                stats["local_db"]["size_bytes"] = size_result['size'] or 0
+                stats["local_db"]["size_human"] = format_size(size_result['size'] or 0)
+                stats["local_db"]["row_count"] = size_result['count'] or 0
+    except Exception as e:
+        stats["local_db"]["error"] = str(e)
+    
+    # 获取 R2 存储大小
+    config_str = await redis.get("config:archive")
+    if config_str:
+        config = json.loads(config_str)
+        if config.get("r2_endpoint"):
+            try:
+                import boto3
+                from botocore.config import Config as BotoConfig
+                
+                def get_r2_stats():
+                    s3 = boto3.client(
+                        's3',
+                        endpoint_url=config['r2_endpoint'],
+                        aws_access_key_id=config['r2_access_key'],
+                        aws_secret_access_key=config['r2_secret_key'],
+                        config=BotoConfig(signature_version='s3v4'),
+                        verify=False
+                    )
+                    
+                    total_size = 0
+                    file_count = 0
+                    
+                    paginator = s3.get_paginator('list_objects_v2')
+                    for page in paginator.paginate(Bucket=config['r2_bucket'], Prefix='archive/'):
+                        for obj in page.get('Contents', []):
+                            total_size += obj.get('Size', 0)
+                            file_count += 1
+                    
+                    return total_size, file_count
+                
+                loop = asyncio.get_event_loop()
+                total_size, file_count = await loop.run_in_executor(None, get_r2_stats)
+                
+                stats["r2"]["size_bytes"] = total_size
+                stats["r2"]["size_human"] = format_size(total_size)
+                stats["r2"]["file_count"] = file_count
+            except ImportError:
+                stats["r2"]["message"] = "boto3 未安装"
+            except Exception as e:
+                stats["r2"]["error"] = str(e)
+        else:
+            stats["r2"]["message"] = "R2 未配置"
+    else:
+        stats["r2"]["message"] = "归档配置未设置"
+    
+    return stats
 
 # Test notification
 @router.post("/alarm/test")

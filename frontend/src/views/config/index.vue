@@ -435,16 +435,29 @@
               <el-switch v-model="archiveConfig.enabled" />
             </el-form-item>
 
-            <el-form-item label="保留天数">
+            <el-form-item label="本地保留天数">
               <el-slider
-                v-model="archiveConfig.retention_days"
+                v-model="archiveConfig.local_retention_days"
                 :min="1"
                 :max="30"
                 show-input
                 style="width: 100%"
               />
               <div class="form-tip" style="margin-top: 8px">
-                热数据保留天数 (1-30天)，超过后将归档到 R2 冷存储
+                本地数据库保留最近 {{ archiveConfig.local_retention_days }} 天的数据
+              </div>
+            </el-form-item>
+
+            <el-form-item label="R2 保留天数">
+              <el-slider
+                v-model="archiveConfig.r2_retention_days"
+                :min="7"
+                :max="365"
+                show-input
+                style="width: 100%"
+              />
+              <div class="form-tip" style="margin-top: 8px">
+                R2 备份保留 {{ archiveConfig.r2_retention_days }} 天，超过后自动删除
               </div>
             </el-form-item>
 
@@ -495,33 +508,62 @@
               >
                 测试连接
               </el-button>
+              <el-button
+                type="info"
+                @click="fetchStorageStats"
+                :loading="loadingStats"
+              >
+                查看存储空间
+              </el-button>
             </el-form-item>
           </el-form>
+
+          <!-- Storage Stats Display -->
+          <el-card v-if="storageStats" class="storage-stats-card" style="margin-top: 20px;">
+            <template #header>
+              <span>存储空间统计</span>
+            </template>
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-statistic title="本地数据库" :value="storageStats.local_db.size_human">
+                  <template #suffix>
+                    <span style="font-size: 12px; color: #909399;">({{ storageStats.local_db.row_count.toLocaleString() }} 条记录)</span>
+                  </template>
+                </el-statistic>
+              </el-col>
+              <el-col :span="12">
+                <el-statistic title="R2 备份" :value="storageStats.r2.size_human">
+                  <template #suffix>
+                    <span style="font-size: 12px; color: #909399;">
+                      <template v-if="storageStats.r2.file_count">({{ storageStats.r2.file_count }} 个文件)</template>
+                      <template v-else-if="storageStats.r2.message">{{ storageStats.r2.message }}</template>
+                    </span>
+                  </template>
+                </el-statistic>
+              </el-col>
+            </el-row>
+          </el-card>
 
           <el-divider />
 
           <div class="tips">
-            <h4>配置说明:</h4>
+            <h4>归档说明:</h4>
             <ul>
-              <li>
-                <strong>Endpoint URL</strong> - 在 Cloudflare Dashboard → R2 →
-                概述 中获取
-              </li>
-              <li><strong>Bucket 名称</strong> - R2 存储桶名称</li>
-              <li>
-                <strong>Access Key</strong> - 在 R2 → 管理 R2 API 令牌 中创建
-              </li>
+              <li>每天 <strong>00:00</strong> 自动执行归档任务</li>
+              <li>备份 <strong>{{ archiveConfig.local_retention_days }} 天前</strong>的数据到 R2</li>
+              <li>上传成功后自动删除本地旧数据</li>
+              <li>R2 中超过 <strong>{{ archiveConfig.r2_retention_days }} 天</strong>的备份自动清理</li>
             </ul>
 
             <el-alert
-              title="数据安全提示"
+              title="数据安全"
               type="info"
               :closable="false"
               style="margin-top: 10px"
             >
               <template #default>
                 <p>
-                  归档数据将以 CSV.GZ 格式存储，每日凌晨 2:00 自动执行归档任务。
+                  归档数据以 CSV.GZ 格式存储，按日期命名（如 sensor_data_20231219.csv.gz）
                 </p>
               </template>
             </el-alert>
@@ -577,7 +619,8 @@ const mqttConfig = reactive({
 
 const archiveConfig = reactive({
   enabled: false,
-  retention_days: 3,
+  local_retention_days: 3,
+  r2_retention_days: 30,
   r2_endpoint: "",
   r2_bucket: "",
   r2_access_key: "",
@@ -585,6 +628,8 @@ const archiveConfig = reactive({
 });
 
 const testingArchive = ref(false);
+const loadingStats = ref(false);
+const storageStats = ref<any>(null);
 
 // Instruments state
 const instruments = ref<any[]>([]); // Define type for instruments
@@ -731,6 +776,20 @@ async function loadArchiveConfig() {
     Object.assign(archiveConfig, res.data);
   } catch (error) {
     console.error("Failed to load archive config:", error);
+  }
+}
+
+async function fetchStorageStats() {
+  loadingStats.value = true;
+  try {
+    const res = await configApi.getArchiveStats();
+    storageStats.value = res.data;
+    ElMessage.success("存储统计已更新");
+  } catch (error: any) {
+    const detail = error.response?.data?.detail || "获取存储统计失败";
+    ElMessage.error(detail);
+  } finally {
+    loadingStats.value = false;
   }
 }
 

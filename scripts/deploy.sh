@@ -187,6 +187,52 @@ check_resources() {
     log_info "✓ 服务器资源检测通过"
 }
 
+setup_swap() {
+    log_step "内存优化：检查 Swap 空间"
+    
+    # 检查是否已有 swap
+    SWAP_TOTAL=$(free -m | awk '/^Swap:/{print $2}')
+    
+    if [[ $SWAP_TOTAL -gt 0 ]]; then
+        log_info "✓ 已有 Swap 空间: ${SWAP_TOTAL}MB"
+        return 0
+    fi
+    
+    # 检查内存，小于4GB时自动创建swap
+    TOTAL_MEM=$(free -m | awk '/^Mem:/{print $2}')
+    
+    if [[ $TOTAL_MEM -lt 4096 ]]; then
+        log_warn "内存较低(${TOTAL_MEM}MB)，没有 Swap，将自动创建 2GB Swap 空间"
+        
+        # 检查磁盘空间是否足够
+        DISK_FREE=$(df -BG / | awk 'NR==2{print $4}' | sed 's/G//')
+        if [[ $DISK_FREE -lt 3 ]]; then
+            log_warn "磁盘空间不足，跳过 Swap 创建"
+            return 0
+        fi
+        
+        log_info "正在创建 2GB Swap 文件..."
+        
+        # 创建 swap 文件
+        if dd if=/dev/zero of=/swapfile bs=1M count=2048 status=progress 2>&1; then
+            chmod 600 /swapfile
+            mkswap /swapfile
+            swapon /swapfile
+            
+            # 添加到 fstab 使其永久生效
+            if ! grep -q '/swapfile' /etc/fstab; then
+                echo '/swapfile none swap sw 0 0' >> /etc/fstab
+            fi
+            
+            log_info "✓ Swap 空间创建成功 (2GB)"
+        else
+            log_warn "Swap 创建失败，继续安装"
+        fi
+    else
+        log_info "✓ 内存充足(${TOTAL_MEM}MB)，无需 Swap"
+    fi
+}
+
 configure_china_mirror() {
     log_step "网络加速配置"
     
@@ -630,19 +676,62 @@ deploy_containers() {
     
     cd "$INSTALL_DIR"
     
-    log_info "正在构建并启动容器，这可能需要几分钟..."
-    log_info "首次构建需要下载镜像，请耐心等待..."
-    echo ""
+    # 检查内存，决定构建方式
+    TOTAL_MEM=$(free -m | awk '/^Mem:/{print $2}')
     
-    # 使用 docker compose (V2) 或 docker-compose (V1)
-    if docker compose version &> /dev/null; then
-        docker compose up -d --build
+    if [[ $TOTAL_MEM -lt 4096 ]]; then
+        log_info "检测到低内存环境(${TOTAL_MEM}MB)，使用顺序构建模式..."
+        log_info "这可能需要较长时间，请耐心等待..."
+        echo ""
+        
+        # 顺序构建：先拉取基础镜像，再逐个构建自定义镜像
+        log_info "[1/6] 拉取基础镜像..."
+        docker pull timescale/timescaledb:latest-pg15 2>&1 || true
+        docker pull redis:7-alpine 2>&1 || true
+        docker pull eclipse-mosquitto:2 2>&1 || true
+        
+        log_info "[2/6] 构建 Worker 服务..."
+        if docker compose version &> /dev/null; then
+            docker compose build --no-cache worker 2>&1
+        else
+            docker-compose build --no-cache worker 2>&1
+        fi
+        
+        log_info "[3/6] 构建 Backend 服务..."
+        if docker compose version &> /dev/null; then
+            docker compose build --no-cache backend 2>&1
+        else
+            docker-compose build --no-cache backend 2>&1
+        fi
+        
+        log_info "[4/6] 构建 Frontend 服务..."
+        if docker compose version &> /dev/null; then
+            docker compose build --no-cache frontend 2>&1
+        else
+            docker-compose build --no-cache frontend 2>&1
+        fi
+        
+        log_info "[5/6] 启动所有服务..."
+        if docker compose version &> /dev/null; then
+            docker compose up -d
+        else
+            docker-compose up -d
+        fi
     else
-        docker-compose up -d --build
+        log_info "正在构建并启动容器，这可能需要几分钟..."
+        log_info "首次构建需要下载镜像，请耐心等待..."
+        echo ""
+        
+        # 正常并行构建
+        if docker compose version &> /dev/null; then
+            docker compose up -d --build
+        else
+            docker-compose up -d --build
+        fi
     fi
     
     echo ""
-    log_info "等待服务启动..."
+    log_info "[6/6] 等待服务启动..."
     sleep 10
     
     # 检查容器状态
@@ -927,6 +1016,7 @@ main() {
     # 执行安装步骤
     detect_os
     check_resources
+    setup_swap
     configure_china_mirror
     check_ports
     install_dependencies
