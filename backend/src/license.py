@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 LICENSE_SERVER = os.getenv("LICENSE_SERVER", "https://lic.zinanzhi.workers.dev")
 
 # Grace period in days when verification fails
-GRACE_PERIOD_DAYS = 7
+GRACE_PERIOD_DAYS = 1
 
 # Features that require license
 LICENSED_FEATURES = ["mqtt_external", "ai", "r2_archive", "notifications"]

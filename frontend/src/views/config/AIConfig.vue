@@ -39,14 +39,11 @@
           </el-form-item>
           
           <el-form-item label="模型名称">
-            <el-select v-model="form.model" placeholder="选择模型" style="width: 100%">
-              <el-option label="GPT-3.5 Turbo (推荐)" value="gpt-3.5-turbo" />
-              <el-option label="GPT-4o Mini" value="gpt-4o-mini" />
-              <el-option label="GPT-4o" value="gpt-4o" />
-              <el-option label="Gemini 2.0 Flash" value="gemini-2.0-flash" />
-              <el-option label="Claude 3.5 Sonnet" value="claude-3-5-sonnet" />
-            </el-select>
-            <div class="form-tip">根据需求选择合适的模型，推荐使用 GPT-3.5 Turbo</div>
+            <el-input 
+              v-model="form.model" 
+              placeholder="如: gpt-3.5-turbo, gpt-4o, claude-3-5-sonnet"
+            />
+            <div class="form-tip">输入模型名称，如 gpt-3.5-turbo、gpt-4o、gemini-2.0-flash 等</div>
           </el-form-item>
 
           <el-form-item>

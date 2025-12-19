@@ -104,3 +104,4 @@ To fix this, use `chmod 0700 /mosquitto/config/acl`.
 1766132871: Client TEMP0404 disconnected.
 1766132871: Client HUMI0405 disconnected.
 1766132872: Client PM250406 disconnected.
+1766133746: Saving in-memory database to /mosquitto/data//mosquitto.db.

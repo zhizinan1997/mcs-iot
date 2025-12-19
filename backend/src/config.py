@@ -517,3 +517,47 @@ async def get_weather_config(redis = Depends(get_redis)):
 async def update_weather_config(config: WeatherConfig, redis = Depends(get_redis)):
     await redis.set("config:weather", json.dumps(config.dict()))
     return config
+
+# =============================================================================
+# License API
+# =============================================================================
+
+@router.get("/license")
+async def get_license_status():
+    """获取授权状态和设备编码"""
+    try:
+        from .license import get_license_manager
+        mgr = get_license_manager()
+        return await mgr.get_license_status()
+    except Exception as e:
+        # 如果 license manager 未初始化，返回基本信息
+        from .license import LicenseManager
+        import socket
+        import hashlib
+        import uuid
+        
+        # 生成设备 ID
+        hostname = socket.gethostname()
+        mac = hex(uuid.getnode())[2:]
+        raw_id = f"{hostname}:{mac}:"
+        hash_bytes = hashlib.sha256(raw_id.encode()).digest()
+        hex_str = hash_bytes.hex()[:12].upper()
+        device_id = f"MCS-{hex_str[:4]}-{hex_str[4:8]}-{hex_str[8:12]}"
+        
+        return {
+            "device_id": device_id,
+            "status": "unlicensed",
+            "error": str(e),
+            "contact": "zinanzhi@gmail.com",
+            "features": []
+        }
+
+@router.post("/license/verify")
+async def verify_license():
+    """手动触发授权验证"""
+    try:
+        from .license import get_license_manager
+        mgr = get_license_manager()
+        return await mgr.verify_license()
+    except Exception as e:
+        return {"valid": False, "error": str(e)}

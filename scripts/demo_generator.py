@@ -293,8 +293,8 @@ class SensorSimulator:
 
 def main():
     parser = argparse.ArgumentParser(description="MCS-IoT 演示数据生成器")
-    parser.add_argument("-d", "--duration", type=int, default=60, 
-                        help="运行时长(分钟)，默认60分钟")
+    parser.add_argument("-d", "--duration", type=int, default=0, 
+                        help="运行时长(分钟)，0表示永不停止，默认0")
     parser.add_argument("-i", "--interval", type=int, default=10, 
                         help="数据发送间隔(秒)，默认10秒")
     parser.add_argument("--init-only", action="store_true", 
@@ -368,12 +368,15 @@ def main():
         time.sleep(0.1)
     
     print(f"\n✓ 所有传感器已启动!")
-    print(f"  运行至 {time.strftime('%H:%M', time.localtime(time.time() + args.duration * 60))}")
-    print(f"  按 Ctrl+C 可提前停止\n")
+    if args.duration > 0:
+        print(f"  运行至 {time.strftime('%H:%M', time.localtime(time.time() + args.duration * 60))}")
+    else:
+        print(f"  永久运行模式")
+    print(f"  按 Ctrl+C 可停止\n")
     
     # 定时触发报警 (每小时 1-2 次)
     start_time = time.time()
-    end_time = start_time + args.duration * 60
+    end_time = start_time + args.duration * 60 if args.duration > 0 else float('inf')
     last_alarm_time = start_time
     alarm_interval = 3600 / 2  # 平均每 30 分钟一次报警
     
@@ -381,7 +384,7 @@ def main():
         while time.time() < end_time:
             current_time = time.time()
             elapsed = int((current_time - start_time) / 60)
-            remaining = args.duration - elapsed
+            remaining = args.duration - elapsed if args.duration > 0 else -1
             
             # 检查是否需要触发报警
             if current_time - last_alarm_time > alarm_interval:
@@ -395,7 +398,10 @@ def main():
             # 状态报告
             online = sum(1 for s in simulators if s.running)
             total_msgs = sum(s.seq for s in simulators)
-            print(f"[状态] 在线: {online}/{len(simulators)}, 消息数: {total_msgs}, 剩余: {remaining}分钟")
+            if remaining >= 0:
+                print(f"[状态] 在线: {online}/{len(simulators)}, 消息数: {total_msgs}, 剩余: {remaining}分钟")
+            else:
+                print(f"[状态] 在线: {online}/{len(simulators)}, 消息数: {total_msgs}, 已运行: {elapsed}分钟")
             
             time.sleep(30)
             
