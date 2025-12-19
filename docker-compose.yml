@@ -123,6 +123,9 @@ services:
       - MQTT_PORT=1883
       - MQTT_USER=admin
       - MQTT_PASS=${MQTT_PASSWORD:-admin123}
+      - AI_API_KEY=${AI_API_KEY:-}
+      - AI_MODEL=${AI_MODEL:-gpt-3.5-turbo}
+      - WEATHER_API_KEY=${WEATHER_API_KEY:-}
     volumes:
       - ./backend/src:/app/src
       - ./mosquitto/config:/app/mosquitto # MQTT 配置管理

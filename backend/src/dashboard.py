@@ -94,7 +94,13 @@ async def get_realtime_data(db = Depends(get_db), redis = Depends(get_redis)):
     devices = []
     
     async with db.acquire() as conn:
-        rows = await conn.fetch("SELECT sn, name, instrument_id, unit, sensor_type FROM devices")
+        # JOIN instruments 表获取仪表名称和颜色
+        rows = await conn.fetch("""
+            SELECT d.sn, d.name, d.instrument_id, d.unit, d.sensor_type,
+                   i.name as instrument_name, i.color as instrument_color
+            FROM devices d
+            LEFT JOIN instruments i ON d.instrument_id = i.id
+        """)
     
     for row in rows:
         sn = row['sn']
@@ -114,6 +120,8 @@ async def get_realtime_data(db = Depends(get_db), redis = Depends(get_redis)):
             rssi=int(rt_data.get('rssi')) if rt_data.get('rssi') else None,
             network=rt_data.get('net') if rt_data.get('net') else None,
             instrument_id=row['instrument_id'],
+            instrument_name=row['instrument_name'],
+            instrument_color=row['instrument_color'],
             unit=row['unit'] or "ppm",
             sensor_type=row['sensor_type']
         ))

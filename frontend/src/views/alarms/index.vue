@@ -9,6 +9,7 @@
               <el-option label="高浓度" value="HIGH" />
               <el-option label="低浓度" value="LOW" />
               <el-option label="低电量" value="LOW_BAT" />
+              <el-option label="信号弱" value="WEAK_SIGNAL" />
               <el-option label="离线" value="OFFLINE" />
             </el-select>
             <el-select v-model="filters.status" placeholder="状态" clearable @change="fetchAlarms">
@@ -158,6 +159,7 @@ function getTypeName(type: string) {
     'HIGH': '高浓度',
     'LOW': '低浓度',
     'LOW_BAT': '低电量',
+    'WEAK_SIGNAL': '信号弱',
     'OFFLINE': '离线'
   }
   return typeMap[type] || type
@@ -168,6 +170,7 @@ function getTypeColor(type: string) {
     case 'HIGH': return 'danger'
     case 'LOW': return 'warning'
     case 'LOW_BAT': return 'warning'
+    case 'WEAK_SIGNAL': return 'info'
     case 'OFFLINE': return 'info'
     default: return ''
   }
