@@ -9,9 +9,8 @@
 支持 Ubuntu 20.04+、CentOS 7+、OpenCloudOS、Debian 10+
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/zhizinan1997/mcs-iot/main/scripts/deploy.sh -o deploy.sh
-chmod +x deploy.sh
-sudo ./deploy.sh
+# 一键部署（自动拉取最新脚本）
+bash <(curl -sSL https://raw.githubusercontent.com/zhizinan1997/mcs-iot/main/scripts/deploy.sh)
 ```
 
 **脚本将自动完成：**

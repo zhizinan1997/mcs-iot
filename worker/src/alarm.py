@@ -61,6 +61,17 @@ class AlarmCenter:
                 "time_restriction": {"enabled": False}
             }
 
+    async def get_site_name(self) -> str:
+        """获取平台名称，从管理员配置中读取"""
+        try:
+            site_cfg = await self.redis.get("config:site")
+            if site_cfg:
+                config = json.loads(site_cfg)
+                return config.get("site_name", "MCS-IoT")
+        except Exception as e:
+            logger.error(f"Error getting site name: {e}")
+        return "MCS-IoT"
+
     def is_in_notification_window(self, time_config: dict) -> bool:
         """
         检查当前时间是否在通知时段内
@@ -198,23 +209,24 @@ class AlarmCenter:
                                 value: float, threshold: float, message: str = ""):
         """Send notifications via all enabled channels"""
         config = await self.get_notification_config()
+        site_name = await self.get_site_name()
         
         if not message:
-            message = f"⚠️ 报警通知\n设备: {device_name} ({sn})\n类型: {alarm_type}\n数值: {value:.2f}\n阈值: {threshold:.2f}\n时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            message = f"⚠️ {site_name} 报警通知\n设备: {device_name} ({sn})\n类型: {alarm_type}\n数值: {value:.2f}\n阈值: {threshold:.2f}\n时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
         # Email notification
         if config["email"].get("enabled"):
-            await self.send_email(config["email"], sn, alarm_type, message)
+            await self.send_email(config["email"], sn, alarm_type, message, site_name)
 
         # Webhook notification (DingTalk, Feishu, etc.)
         if config["webhook"].get("enabled"):
-            await self.send_webhook(config["webhook"], sn, alarm_type, value, threshold, device_name)
+            await self.send_webhook(config["webhook"], sn, alarm_type, value, threshold, device_name, site_name)
 
         # SMS notification
         if config["sms"].get("enabled"):
             await self.send_sms(config["sms"], sn, alarm_type, value)
 
-    async def send_email(self, config: dict, sn: str, alarm_type: str, message: str):
+    async def send_email(self, config: dict, sn: str, alarm_type: str, message: str, site_name: str = "MCS-IoT"):
         """Send email notification"""
         try:
             smtp_host = config.get("smtp_host", "smtp.qq.com")
@@ -230,7 +242,7 @@ class AlarmCenter:
             msg = MIMEMultipart()
             msg["From"] = sender
             msg["To"] = ", ".join(receivers)
-            msg["Subject"] = f"[MCS-IoT] {alarm_type} 报警 - {sn}"
+            msg["Subject"] = f"[{site_name}] {alarm_type} 报警 - {sn}"
             msg.attach(MIMEText(message, "plain", "utf-8"))
 
             with smtplib.SMTP_SSL(smtp_host, smtp_port) as server:
@@ -252,7 +264,7 @@ class AlarmCenter:
         return timestamp, sign
 
     async def send_webhook(self, config: dict, sn: str, alarm_type: str, 
-                          value: float, threshold: float, device_name: str):
+                          value: float, threshold: float, device_name: str, site_name: str = "MCS-IoT"):
         """Send webhook notification (DingTalk/Feishu compatible with signing)"""
         try:
             url = config.get("url")
@@ -264,7 +276,7 @@ class AlarmCenter:
             at_mobiles = config.get("at_mobiles", [])
 
             # 构建消息内容
-            content = f"⚠️ MCS-IoT 报警\n设备: {device_name} ({sn})\n类型: {alarm_type}\n数值: {value:.2f}\n阈值: {threshold:.2f}\n时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            content = f"⚠️ {site_name} 报警\n设备: {device_name} ({sn})\n类型: {alarm_type}\n数值: {value:.2f}\n阈值: {threshold:.2f}\n时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
             # 钉钉格式
             if platform == "dingtalk":

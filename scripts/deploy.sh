@@ -34,7 +34,7 @@ MQTT_PASSWORD=""
 JWT_SECRET=""
 WEATHER_API_KEY=""
 AI_API_KEY=""
-AI_API_URL=""
+AI_MODEL="gpt-3.5-turbo"
 
 # =============================================================================
 # 工具函数
@@ -510,10 +510,25 @@ configure_credentials() {
     
     # AI API (URL 已固定)
     echo -e "${CYAN}AI API 用于生成智能分析报告 (可选)${NC}"
-    echo -e "${CYAN}API 接口已固定，仅需配置 Key，可在管理后台配置${NC}"
+    echo -e "${CYAN}API 接口已固定，仅需配置 Key 和模型${NC}"
     read -r -p "请输入 AI API Key (留空则跳过): " AI_API_KEY
     if [[ -n "$AI_API_KEY" ]]; then
-        log_info "✓ AI API Key 已设置"
+        echo ""
+        echo -e "${CYAN}请选择 AI 模型:${NC}"
+        echo "  1. gpt-3.5-turbo (推荐，快速经济)"
+        echo "  2. gpt-4o-mini (精准)"
+        echo "  3. gpt-4o (最强)"
+        echo "  4. gemini-2.0-flash (Google)"
+        echo "  5. claude-3-5-sonnet (Anthropic)"
+        read -r -p "请选择 [1-5]，默认 1: " model_choice
+        case $model_choice in
+            2) AI_MODEL="gpt-4o-mini" ;;
+            3) AI_MODEL="gpt-4o" ;;
+            4) AI_MODEL="gemini-2.0-flash" ;;
+            5) AI_MODEL="claude-3-5-sonnet" ;;
+            *) AI_MODEL="gpt-3.5-turbo" ;;
+        esac
+        log_info "✓ AI API 已设置，模型: $AI_MODEL"
     else
         log_warn "未设置 AI API，可稍后在管理后台配置"
     fi
@@ -598,6 +613,7 @@ WEATHER_API_KEY=${WEATHER_API_KEY}
 
 # AI API 配置 (URL 已固定为 https://newapi2.zhizinan.top/v1)
 AI_API_KEY=${AI_API_KEY}
+AI_MODEL=${AI_MODEL}
 EOF
 
     log_info "✓ 配置文件已生成: $INSTALL_DIR/.env"
