@@ -216,12 +216,19 @@ function handleLogout() {
 </script>
 
 <style scoped>
+/* Global Font Stack for Apple Feel */
 .layout-container {
   min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  background-color: #fbfbfd; /* Apple's light gray background */
 }
 
+/* Glassmorphism Sidebar */
 .sidebar {
-  background-color: #304156;
+  background-color: rgba(250, 250, 250, 0.8) !important;
+  backdrop-filter: blur(20px) saturate(180%);
+  border-right: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .logo {
@@ -229,38 +236,83 @@ function handleLogout() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #263445;
+  background-color: transparent; /* Transparent for glass effect */
   gap: 10px;
   padding: 0 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .logo-img {
-  height: 32px;
+  height: 28px;
   width: auto;
 }
 
 .logo h2 {
-  color: #fff;
+  color: #1d1d1f; /* Apple's dark text */
   margin: 0;
-  font-size: 18px;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+/* Apple-style Menu Items */
+:deep(.el-menu) {
+  border-right: none;
+  background-color: transparent !important; /* Override element-plus default */
+  padding: 10px;
+}
+
+:deep(.el-menu-item), :deep(.el-sub-menu__title) {
+  height: 44px;
+  line-height: 44px;
+  margin: 4px 0;
+  border-radius: 8px; /* Rounded pill shape */
+  color: #424245;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+:deep(.el-menu-item:hover), :deep(.el-sub-menu__title:hover) {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+  color: #1d1d1f;
+}
+
+:deep(.el-menu-item.is-active) {
+  background-color: #0071e3 !important; /* Apple Blue */
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(0, 113, 227, 0.25);
+  font-weight: 600;
+}
+
+:deep(.el-icon) {
+  font-size: 18px;
+  margin-right: 10px;
+  vertical-align: middle;
+}
+
+/* Glassmorphism Header */
 .header {
-  background: #fff;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  padding: 0 24px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: 60px;
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
 }
 
 .header-logo-img {
@@ -268,14 +320,33 @@ function handleLogout() {
   width: auto;
 }
 
+/* Breadcrumb Styling */
+:deep(.el-breadcrumb__inner) {
+  color: #86868b !important;
+  font-weight: 400;
+}
+
+:deep(.el-breadcrumb__inner.is-link:hover) {
+  color: #0071e3 !important;
+}
+
+:deep(.el-breadcrumb__item:last-child .el-breadcrumb__inner) {
+  color: #1d1d1f !important;
+  font-weight: 500;
+}
+
 .header-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
 }
 
 .license-tag {
   font-size: 12px;
+  border-radius: 12px; /* Soft pill shape */
+  padding: 0 12px;
+  border: none;
+  font-weight: 500;
 }
 
 .user-info {
@@ -283,14 +354,44 @@ function handleLogout() {
   align-items: center;
   gap: 8px;
   cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 20px;
+  transition: background 0.2s;
+}
+
+.user-info:hover {
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .username {
-  color: #606266;
+  color: #1d1d1f;
+  font-size: 14px;
+  font-weight: 500;
 }
 
+/* Main Content Area */
 .main-content {
-  background-color: #f5f7fa;
-  padding: 20px;
+  background-color: transparent; /* Allow layout background to show */
+  padding: 24px;
+  overflow-y: auto;
+}
+
+/* Smooth Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
 }
 </style>
