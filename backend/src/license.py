@@ -128,13 +128,15 @@ class LicenseManager:
         await self.redis.set("license:error", reason)
         
         grace_end = datetime.fromisoformat(grace_start) + timedelta(days=GRACE_PERIOD_DAYS)
-        remaining_days = (grace_end - datetime.now()).days
+        remaining_seconds = (grace_end - datetime.now()).total_seconds()
+        remaining_hours = int(remaining_seconds / 3600)
         
-        if remaining_days > 0:
+        if remaining_seconds > 0:
             return {
                 "valid": True,  # Still valid during grace period
                 "status": "grace",
-                "grace_remaining_days": remaining_days,
+                "grace_remaining_hours": remaining_hours,
+                "grace_remaining_days": max(0, remaining_hours // 24),
                 "error": reason,
                 "features": []  # Limited features during grace
             }
@@ -153,13 +155,15 @@ class LicenseManager:
         
         if grace_start:
             grace_end = datetime.fromisoformat(grace_start) + timedelta(days=GRACE_PERIOD_DAYS)
-            remaining_days = (grace_end - datetime.now()).days
+            remaining_seconds = (grace_end - datetime.now()).total_seconds()
+            remaining_hours = int(remaining_seconds / 3600)
             
-            if remaining_days > 0:
+            if remaining_seconds > 0:
                 return {
                     "valid": True,
                     "status": "grace",
-                    "grace_remaining_days": remaining_days,
+                    "grace_remaining_hours": remaining_hours,
+                    "grace_remaining_days": max(0, remaining_hours // 24),
                     "error": "无法连接授权服务器",
                     "features": []
                 }
