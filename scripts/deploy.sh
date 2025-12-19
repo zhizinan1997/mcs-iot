@@ -34,7 +34,7 @@ MQTT_PASSWORD=""
 JWT_SECRET=""
 WEATHER_API_KEY=""
 AI_API_KEY=""
-AI_MODEL="gpt-3.5-turbo"
+AI_MODEL="gemini-lite"
 
 # =============================================================================
 # 工具函数
@@ -729,26 +729,17 @@ configure_credentials() {
     
     echo ""
     
-    # AI API (URL 已固定)
+    # AI API 配置
     echo -e "${CYAN}AI API 用于生成智能分析报告 (可选)${NC}"
-    echo -e "${CYAN}API 接口已固定，仅需配置 Key 和模型${NC}"
+    echo -e "${YELLOW}购买 AI API Key 请前往: https://zhizinan.top${NC}"
+    echo ""
     read -r -p "请输入 AI API Key (留空则跳过): " AI_API_KEY
     if [[ -n "$AI_API_KEY" ]]; then
         echo ""
-        echo -e "${CYAN}请选择 AI 模型:${NC}"
-        echo "  1. gpt-3.5-turbo (推荐，快速经济)"
-        echo "  2. gpt-4o-mini (精准)"
-        echo "  3. gpt-4o (最强)"
-        echo "  4. gemini-2.0-flash (Google)"
-        echo "  5. claude-3-5-sonnet (Anthropic)"
-        read -r -p "请选择 [1-5]，默认 1: " model_choice
-        case $model_choice in
-            2) AI_MODEL="gpt-4o-mini" ;;
-            3) AI_MODEL="gpt-4o" ;;
-            4) AI_MODEL="gemini-2.0-flash" ;;
-            5) AI_MODEL="claude-3-5-sonnet" ;;
-            *) AI_MODEL="gpt-3.5-turbo" ;;
-        esac
+        echo -e "${CYAN}请输入 AI 模型名称:${NC}"
+        echo -e "${CYAN}常用模型参考: gemini-lite, gpt-4o-mini, gpt-4o, gemini-2.0-flash, claude-3-5-sonnet${NC}"
+        read -r -p "请输入模型名称 (默认 gemini-lite): " AI_MODEL
+        AI_MODEL=${AI_MODEL:-gemini-lite}
         log_info "✓ AI API 已设置，模型: $AI_MODEL"
     else
         log_warn "未设置 AI API，可稍后在管理后台配置"
@@ -1010,64 +1001,11 @@ deploy_containers() {
 }
 
 # =============================================================================
-# 演示数据
+# 演示数据 (已禁用 - 不再自动导入模拟数据)
 # =============================================================================
 
-import_demo_data() {
-    log_step "第十三步：生成演示数据 (可选)"
-    
-    echo ""
-    echo -e "${CYAN}演示数据生成器将创建:${NC}"
-    echo "  - 4 个仪表 (总经理办公室/员工办公室/公共走廊/创新实验室)"
-    echo "  - 24 个传感器 (氢气/甲烷/VOCs/温度/湿度/PM2.5)"
-    echo "  - 实时模拟数据 (每10秒)"
-    echo "  - 偶尔触发报警 (每小时1-2次)"
-    echo ""
-    
-    if ! confirm "是否生成演示数据?"; then
-        log_info "跳过演示数据生成"
-        return 0
-    fi
-    
-    echo ""
-    echo -e "${CYAN}请选择数据生成时长:${NC}"
-    echo "  1. 10 分钟 (快速演示)"
-    echo "  2. 30 分钟 (推荐)"
-    echo "  3. 60 分钟 (完整数据)"
-    echo "  4. 仅创建设备，不生成数据"
-    echo ""
-    read -r -p "请输入选项 [1-4]: " duration_choice
-    
-    case $duration_choice in
-        1) duration=10 ;;
-        2) duration=30 ;;
-        3) duration=60 ;;
-        4) 
-            log_info "仅创建设备..."
-            cd "$INSTALL_DIR"
-            python3 scripts/demo_generator.py --init-only 2>&1 || true
-            log_info "✓ 设备创建完成"
-            return 0
-            ;;
-        *) duration=30 ;;
-    esac
-    
-    log_info "启动演示数据生成器 (${duration}分钟)..."
-    
-    # 后台运行演示生成器
-    cd "$INSTALL_DIR"
-    nohup python3 scripts/demo_generator.py -d "$duration" > /var/log/mcs-demo-generator.log 2>&1 &
-    DEMO_PID=$!
-    echo $DEMO_PID > /var/run/mcs-demo-generator.pid
-    
-    echo ""
-    log_info "✓ 演示数据生成器已在后台启动"
-    log_info "  PID: $DEMO_PID"
-    log_info "  时长: ${duration} 分钟"
-    log_info "  日志: tail -f /var/log/mcs-demo-generator.log"
-    log_info "  停止: kill $DEMO_PID"
-    echo ""
-}
+# import_demo_data() 函数已禁用
+# 如需运行演示数据生成器，请使用: mcs-simulator-start
 
 # =============================================================================
 # 部署完成
@@ -1301,7 +1239,7 @@ main() {
     clone_repository
     generate_env_file
     deploy_containers
-    import_demo_data
+    # import_demo_data  # 已禁用 - 不再自动导入模拟数据
     create_management_scripts
     print_success
 }
