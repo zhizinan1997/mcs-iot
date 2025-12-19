@@ -619,11 +619,10 @@ deploy_containers() {
     echo ""
     
     # 使用 docker compose (V2) 或 docker-compose (V1)
-    # --progress=plain 避免动态进度条导致的输出闪烁
     if docker compose version &> /dev/null; then
-        docker compose up -d --build --progress=plain 2>&1 | tail -20
+        docker compose up -d --build
     else
-        docker-compose up -d --build 2>&1 | tail -20
+        docker-compose up -d --build
     fi
     
     echo ""
