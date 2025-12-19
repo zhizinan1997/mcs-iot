@@ -518,15 +518,18 @@ deploy_containers() {
     cd "$INSTALL_DIR"
     
     log_info "正在构建并启动容器，这可能需要几分钟..."
+    log_info "首次构建需要下载镜像，请耐心等待..."
     echo ""
     
     # 使用 docker compose (V2) 或 docker-compose (V1)
+    # --progress=plain 避免动态进度条导致的输出闪烁
     if docker compose version &> /dev/null; then
-        docker compose up -d --build
+        docker compose up -d --build --progress=plain 2>&1 | tail -20
     else
-        docker-compose up -d --build
+        docker-compose up -d --build 2>&1 | tail -20
     fi
     
+    echo ""
     log_info "等待服务启动..."
     sleep 10
     
