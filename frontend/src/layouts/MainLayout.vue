@@ -220,110 +220,102 @@ function handleLogout() {
 .layout-container {
   min-height: 100vh;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
-  background-color: #fbfbfd; /* Apple's light gray background */
+  background-color: #f5f5f7; /* Apple's standard light gray background */
 }
 
-/* Glassmorphism Sidebar */
+/* Glassmorphism Sidebar - Darker for Contrast */
 .sidebar {
-  background-color: rgba(250, 250, 250, 0.8) !important;
+  background-color: rgba(235, 235, 240, 0.85) !important; /* Darker gray frosted glass */
   backdrop-filter: blur(20px) saturate(180%);
-  border-right: 1px solid rgba(0, 0, 0, 0.05);
+  border-right: 1px solid rgba(0, 0, 0, 0.08); /* Stronger border */
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .logo {
-  height: 60px;
+  height: 64px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: transparent; /* Transparent for glass effect */
-  gap: 10px;
-  padding: 0 10px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  background-color: transparent;
+  gap: 12px;
+  padding: 0 16px;
+  /* border-bottom: 1px solid rgba(0, 0, 0, 0.05); Remove border for cleaner look */
 }
 
 .logo-img {
-  height: 28px;
+  height: 32px;
   width: auto;
 }
 
 .logo h2 {
-  color: #1d1d1f; /* Apple's dark text */
+  color: #1d1d1f;
   margin: 0;
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 600;
   letter-spacing: -0.01em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* Apple-style Menu Items */
 :deep(.el-menu) {
   border-right: none;
-  background-color: transparent !important; /* Override element-plus default */
-  padding: 10px;
+  background-color: transparent !important;
+  padding: 12px;
 }
 
 :deep(.el-menu-item), :deep(.el-sub-menu__title) {
-  height: 44px;
-  line-height: 44px;
+  height: 48px;
+  line-height: 48px;
   margin: 4px 0;
-  border-radius: 8px; /* Rounded pill shape */
-  color: #424245;
+  border-radius: 12px; /* Smoother rounding */
+  color: #48484a; /* Darker gray text */
   font-size: 14px;
   font-weight: 500;
   transition: all 0.2s ease;
 }
 
 :deep(.el-menu-item:hover), :deep(.el-sub-menu__title:hover) {
-  background-color: rgba(0, 0, 0, 0.04) !important;
+  background-color: rgba(0, 0, 0, 0.05) !important;
   color: #1d1d1f;
 }
 
 :deep(.el-menu-item.is-active) {
-  background-color: #0071e3 !important; /* Apple Blue */
+  background-color: #0071e3 !important;
   color: #ffffff !important;
-  box-shadow: 0 4px 12px rgba(0, 113, 227, 0.25);
+  box-shadow: 0 4px 12px rgba(0, 113, 227, 0.3); /* Stronger shadow */
   font-weight: 600;
 }
 
 :deep(.el-icon) {
-  font-size: 18px;
-  margin-right: 10px;
+  font-size: 20px;
+  margin-right: 12px;
   vertical-align: middle;
 }
 
 /* Glassmorphism Header */
 .header {
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.8); /* Whiter header for contrast against gray sidebar */
   backdrop-filter: blur(20px) saturate(180%);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 0 32px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   position: sticky;
   top: 0;
   z-index: 100;
-  height: 60px;
+  height: 64px;
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 16px;
-}
-
-.header-logo-img {
-  height: 24px;
-  width: auto;
+  gap: 20px;
 }
 
 /* Breadcrumb Styling */
 :deep(.el-breadcrumb__inner) {
   color: #86868b !important;
-  font-weight: 400;
+  font-weight: 500;
 }
 
 :deep(.el-breadcrumb__inner.is-link:hover) {
@@ -332,35 +324,37 @@ function handleLogout() {
 
 :deep(.el-breadcrumb__item:last-child .el-breadcrumb__inner) {
   color: #1d1d1f !important;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 20px;
 }
 
 .license-tag {
-  font-size: 12px;
-  border-radius: 12px; /* Soft pill shape */
-  padding: 0 12px;
+  font-size: 13px;
+  border-radius: 14px;
+  padding: 4px 12px;
   border: none;
-  font-weight: 500;
+  font-weight: 600;
+  height: 28px;
+  line-height: 20px;
 }
 
 .user-info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   cursor: pointer;
-  padding: 4px 8px;
+  padding: 6px 12px;
   border-radius: 20px;
   transition: background 0.2s;
 }
 
 .user-info:hover {
-  background: rgba(0, 0, 0, 0.04);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .username {
@@ -371,27 +365,36 @@ function handleLogout() {
 
 /* Main Content Area */
 .main-content {
-  background-color: transparent; /* Allow layout background to show */
-  padding: 24px;
+  background-color: transparent;
+  padding: 32px; /* Increase padding */
   overflow-y: auto;
 }
 
-/* Smooth Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+/* Global Card Override for "Rounded Corners" request */
+:deep(.el-card) {
+  border-radius: 16px !important; /* Force global rounding */
+  border: none !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04) !important;
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
+/* Global Table Styling for Aesthetics */
+:deep(.el-table) {
+  border-radius: 12px;
+  overflow: hidden;
+  --el-table-header-bg-color: #f5f5f7;
 }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
-  border-radius: 4px;
+:deep(.el-table th.el-table__cell) {
+  background-color: #f5f5f7;
+  color: #86868b;
+  font-weight: 600;
+  font-size: 13px;
+  height: 48px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.25);
+:deep(.el-button--small) {
+  border-radius: 14px;
+  padding: 8px 16px;
 }
+
 </style>
