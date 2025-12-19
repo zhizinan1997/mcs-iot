@@ -27,8 +27,26 @@ coverage/
 .DS_Store
 .vscode/
 .idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
 # Secrets / Local Config
 .env
+.env.*
+!.env.example
+*.key
+*.pem
 license.key
+
+# SSL Certificates (sensitive)
+nginx/ssl/
+
+# Debug / Temp Files
 debug_info.txt
+check_types.py
+
+# Demo Data (large file, optional)
+scripts/demo_data.sql

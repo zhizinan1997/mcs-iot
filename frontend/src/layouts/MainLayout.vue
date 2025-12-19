@@ -112,6 +112,16 @@
             </template>
           </el-tag>
 
+          <!-- Tampering Warning Badge -->
+          <el-tag 
+            type="danger"
+            effect="dark"
+            class="tamper-warning-tag"
+            v-if="licenseStatus.tampered"
+          >
+            <el-icon><WarningFilled /></el-icon> 检测到代码篡改
+          </el-tag>
+
           <el-dropdown>
             <span class="user-info">
               <el-avatar size="small" icon="User" />
@@ -143,6 +153,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { configApi } from '../api'
 import { ElMessage } from 'element-plus'
+import { WarningFilled } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -157,7 +168,8 @@ const siteConfig = ref({
 const licenseStatus = ref<any>({
   status: '',
   expires: '',
-  grace_remaining_days: 0
+  grace_remaining_days: 0,
+  tampered: false
 })
 
 async function loadSiteConfig() {

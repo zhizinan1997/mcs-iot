@@ -26,6 +26,81 @@ LICENSED_FEATURES = ["mqtt_external", "ai", "r2_archive", "notifications"]
 # Device limit for unlicensed usage
 UNLICENSED_DEVICE_LIMIT = 10
 
+# Expected integrity hash (computed at build time)
+# This is the SHA-256 hash of critical source files
+EXPECTED_INTEGRITY_HASH = "1f872545cd99018c"
+
+
+def compute_integrity_hash() -> str:
+    """
+    Compute SHA-256 hash of critical source files to detect tampering.
+    Excludes the EXPECTED_INTEGRITY_HASH line itself to avoid circular dependency.
+    Returns first 16 characters of hex digest.
+    """
+    import os
+    
+    # Critical files to hash (relative to src/)
+    critical_files = [
+        "license.py",
+        "config.py", 
+        "main.py"
+    ]
+    
+    hasher = hashlib.sha256()
+    src_dir = os.path.dirname(__file__)
+    
+    for filename in sorted(critical_files):
+        filepath = os.path.join(src_dir, filename)
+        try:
+            if os.path.exists(filepath):
+                with open(filepath, 'rb') as f:
+                    content = f.read()
+                    
+                    # For license.py, exclude the EXPECTED_INTEGRITY_HASH line
+                    if filename == 'license.py':
+                        lines = content.decode('utf-8', errors='ignore').split('\n')
+                        filtered_lines = [
+                            line for line in lines 
+                            if 'EXPECTED_INTEGRITY_HASH' not in line
+                        ]
+                        content = '\n'.join(filtered_lines).encode('utf-8')
+                    
+                    hasher.update(content)
+        except Exception as e:
+            logger.warning(f"Failed to read {filename} for integrity check: {e}")
+    
+    return hasher.hexdigest()[:16]
+
+
+def check_integrity() -> Dict[str, Any]:
+    """
+    Check if source code has been tampered with.
+    Returns dict with tampered flag and hash details.
+    """
+    actual_hash = compute_integrity_hash()
+    expected_hash = EXPECTED_INTEGRITY_HASH
+    
+    # During development, expected hash might not be set yet
+    if expected_hash == "PLACEHOLDER_HASH_WILL_BE_COMPUTED":
+        logger.warning("Integrity check disabled: expected hash not set")
+        return {
+            "tampered": False,
+            "expected": expected_hash,
+            "actual": actual_hash,
+            "warning": "Integrity check not configured"
+        }
+    
+    tampered = (actual_hash != expected_hash)
+    
+    if tampered:
+        logger.error(f"CODE TAMPERING DETECTED! Expected: {expected_hash}, Actual: {actual_hash}")
+    
+    return {
+        "tampered": tampered,
+        "expected": expected_hash,
+        "actual": actual_hash
+    }
+
 
 class LicenseManager:
     """Manages license verification and feature access control"""
@@ -80,11 +155,18 @@ class LicenseManager:
         """Verify license with remote server"""
         device_id = self.get_device_id()
         
+        # Perform integrity check
+        integrity = check_integrity()
+        integrity_hash = integrity["actual"]
+        
         try:
             async with httpx.AsyncClient(timeout=15) as client:
                 response = await client.post(
                     f"{LICENSE_SERVER}/verify",
-                    json={"device_id": device_id}
+                    json={
+                        "device_id": device_id,
+                        "integrity_hash": integrity_hash
+                    }
                 )
                 
                 if response.status_code == 200:
@@ -93,6 +175,10 @@ class LicenseManager:
                     # Cache successful verification
                     await self.redis.set("license:valid", "1", ex=86400 * 2)
                     await self.redis.set("license:last_check", datetime.now().isoformat())
+                    
+                    # Cache tampering status from server
+                    tampered = data.get("tampered", False)
+                    await self.redis.set("license:tampered", "1" if tampered else "0")
                     
                     if data.get("valid"):
                         await self.redis.set("license:status", "active")
@@ -105,7 +191,8 @@ class LicenseManager:
                             "status": "active",
                             "expires_at": data.get("expires_at"),
                             "customer": data.get("customer"),
-                            "features": data.get("features", LICENSED_FEATURES)
+                            "features": data.get("features", LICENSED_FEATURES),
+                            "tampered": tampered
                         }
                     else:
                         return await self._start_grace_period(data.get("error", "授权验证失败"))
@@ -190,6 +277,7 @@ class LicenseManager:
         last_check = await self.redis.get("license:last_check") or ""
         error = await self.redis.get("license:error") or ""
         grace_start = await self.redis.get("license:grace_start")
+        tampered_str = await self.redis.get("license:tampered") or "0"
         
         result = {
             "device_id": device_id,
@@ -197,7 +285,8 @@ class LicenseManager:
             "expires_at": expires,
             "customer": customer,
             "last_check": last_check,
-            "contact": "zinanzhi@gmail.com"
+            "contact": "zinanzhi@gmail.com",
+            "tampered": (tampered_str == "1")
         }
         
         if status == "grace" and grace_start:
