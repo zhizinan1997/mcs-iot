@@ -178,110 +178,6 @@
         </el-card>
       </el-tab-pane>
 
-      <!-- Weather Config -->
-      <el-tab-pane label="天气设置" name="weather">
-        <el-card>
-          <template #header>
-            <div class="card-header">
-              <span>天气接口设置</span>
-              <el-tag :type="weatherConfig.enabled ? 'success' : 'info'">
-                {{ weatherConfig.enabled ? "已启用" : "未启用" }}
-              </el-tag>
-            </div>
-          </template>
-          <el-form :model="weatherConfig" label-width="120px">
-            <el-form-item label="启用天气">
-              <el-switch v-model="weatherConfig.enabled" />
-            </el-form-item>
-            <el-form-item label="所在地区">
-              <el-cascader
-                v-model="selectedRegion"
-                :options="provinceAndCityData"
-                :props="{ value: 'label' }"
-                placeholder="请选择省/市"
-                @change="handleRegionChange"
-                style="width: 100%"
-              />
-            </el-form-item>
-            <el-form-item label="城市拼音">
-              <el-input v-model="weatherConfig.city_pinyin" disabled placeholder="自动生成" />
-            </el-form-item>
-            <el-form-item label="API 私钥">
-              <el-input v-model="weatherConfig.api_key" placeholder="请输入 Seniverse API Key" type="password" show-password />
-              <div class="form-tip">
-                请前往 <a href="https://www.seniverse.com/" target="_blank" style="color: #409EFF">心知天气 (Seniverse)</a> 申请免费 API Key
-              </div>
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" @click="saveWeatherConfig" :loading="saving">保存配置</el-button>
-            </el-form-item>
-          </el-form>
-        </el-card>
-      </el-tab-pane>
-
-      <!-- Dashboard Config -->
-      <el-tab-pane label="大屏配置" name="dashboard">
-        <el-card>
-          <el-form :model="dashboardConfig" label-width="120px">
-            <el-form-item label="大屏标题">
-              <el-input v-model="dashboardConfig.title" />
-            </el-form-item>
-            <el-form-item label="刷新频率(秒)">
-              <el-input-number
-                v-model="dashboardConfig.refresh_rate"
-                :min="1"
-                :max="60"
-              />
-            </el-form-item>
-            <el-form-item>
-              <el-button
-                type="primary"
-                @click="saveDashboardConfig"
-                :loading="saving"
-                >保存配置</el-button
-              >
-            </el-form-item>
-          </el-form>
-        </el-card>
-      </el-tab-pane>
-
-      <!-- Zones Config -->
-      <!-- Screen Management (Formerly Zones Config) -->
-      <el-tab-pane label="大屏显示管理" name="screen">
-        <el-card>
-          <el-tabs type="border-card">
-            <el-tab-pane label="显示仪表设置">
-              <div class="card-header" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
-                <span>选择在大屏上显示的仪表</span>
-                <el-button type="primary" size="small" @click="fetchInstruments">
-                  <el-icon><Refresh /></el-icon> 刷新列表
-                </el-button>
-              </div>
-              
-              <el-table :data="instruments" stripe v-loading="loadingInstruments" style="width: 100%">
-                <el-table-column label="显示" width="80" align="center">
-                  <template #default="{ row }">
-                    <el-switch 
-                      v-model="row.is_displayed" 
-                      @change="handleInstrumentDisplayChange(row)"
-                      :loading="row.saving"
-                    />
-                  </template>
-                </el-table-column>
-                <el-table-column label="颜色" width="60" align="center">
-                  <template #default="{ row }">
-                    <span class="color-dot" :style="{ backgroundColor: row.color }"></span>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="name" label="仪表名称" min-width="150" />
-                <el-table-column prop="description" label="描述" min-width="200" />
-                <el-table-column prop="sensor_count" label="关联传感器数" width="120" align="center" />
-              </el-table>
-            </el-tab-pane>
-          </el-tabs>
-        </el-card>
-      </el-tab-pane>
-
       <!-- MQTT Account Config -->
       <el-tab-pane label="MQTT账号" name="mqtt">
         <el-card>
@@ -411,165 +307,6 @@
           </div>
         </el-card>
       </el-tab-pane>
-
-      <!-- Archive Config (R2) -->
-      <el-tab-pane label="数据归档" name="archive">
-        <el-card>
-          <template #header>
-            <div
-              class="card-header"
-              style="display: flex; align-items: center; gap: 12px"
-            >
-              <span>Cloudflare R2 归档配置</span>
-              <el-tag
-                :type="archiveConfig.enabled ? 'success' : 'info'"
-                size="small"
-              >
-                {{ archiveConfig.enabled ? "已启用" : "未启用" }}
-              </el-tag>
-            </div>
-          </template>
-
-          <el-form :model="archiveConfig" label-width="140px">
-            <el-form-item label="启用数据归档">
-              <el-switch v-model="archiveConfig.enabled" />
-            </el-form-item>
-
-            <el-form-item label="本地保留天数">
-              <el-slider
-                v-model="archiveConfig.local_retention_days"
-                :min="1"
-                :max="30"
-                show-input
-                style="width: 100%"
-              />
-              <div class="form-tip" style="margin-top: 8px">
-                本地数据库保留最近 {{ archiveConfig.local_retention_days }} 天的数据
-              </div>
-            </el-form-item>
-
-            <el-form-item label="R2 保留天数">
-              <el-slider
-                v-model="archiveConfig.r2_retention_days"
-                :min="7"
-                :max="365"
-                show-input
-                style="width: 100%"
-              />
-              <div class="form-tip" style="margin-top: 8px">
-                R2 备份保留 {{ archiveConfig.r2_retention_days }} 天，超过后自动删除
-              </div>
-            </el-form-item>
-
-            <el-divider content-position="left">R2 存储配置</el-divider>
-
-            <el-form-item label="Endpoint URL">
-              <el-input
-                v-model="archiveConfig.r2_endpoint"
-                placeholder="https://<account-id>.r2.cloudflarestorage.com"
-              />
-              <div class="form-tip">Cloudflare R2 端点地址</div>
-            </el-form-item>
-
-            <el-form-item label="Bucket 名称">
-              <el-input
-                v-model="archiveConfig.r2_bucket"
-                placeholder="mcs-archive"
-              />
-            </el-form-item>
-
-            <el-form-item label="Access Key ID">
-              <el-input
-                v-model="archiveConfig.r2_access_key"
-                placeholder="R2 Access Key"
-              />
-            </el-form-item>
-
-            <el-form-item label="Secret Access Key">
-              <el-input
-                v-model="archiveConfig.r2_secret_key"
-                type="password"
-                show-password
-                placeholder="R2 Secret Key"
-              />
-            </el-form-item>
-
-            <el-form-item>
-              <el-button
-                type="primary"
-                @click="saveArchiveConfig"
-                :loading="saving"
-              >
-                保存配置
-              </el-button>
-              <el-button
-                @click="testArchiveConnection"
-                :loading="testingArchive"
-              >
-                测试连接
-              </el-button>
-              <el-button
-                type="info"
-                @click="fetchStorageStats"
-                :loading="loadingStats"
-              >
-                查看存储空间
-              </el-button>
-            </el-form-item>
-          </el-form>
-
-          <!-- Storage Stats Display -->
-          <el-card v-if="storageStats" class="storage-stats-card" style="margin-top: 20px;">
-            <template #header>
-              <span>存储空间统计</span>
-            </template>
-            <el-row :gutter="20">
-              <el-col :span="12">
-                <el-statistic title="本地数据库" :value="storageStats.local_db.size_human">
-                  <template #suffix>
-                    <span style="font-size: 12px; color: #909399;">({{ storageStats.local_db.row_count.toLocaleString() }} 条记录)</span>
-                  </template>
-                </el-statistic>
-              </el-col>
-              <el-col :span="12">
-                <el-statistic title="R2 备份" :value="storageStats.r2.size_human">
-                  <template #suffix>
-                    <span style="font-size: 12px; color: #909399;">
-                      <template v-if="storageStats.r2.file_count">({{ storageStats.r2.file_count }} 个文件)</template>
-                      <template v-else-if="storageStats.r2.message">{{ storageStats.r2.message }}</template>
-                    </span>
-                  </template>
-                </el-statistic>
-              </el-col>
-            </el-row>
-          </el-card>
-
-          <el-divider />
-
-          <div class="tips">
-            <h4>归档说明:</h4>
-            <ul>
-              <li>每天 <strong>00:00</strong> 自动执行归档任务</li>
-              <li>备份 <strong>{{ archiveConfig.local_retention_days }} 天前</strong>的数据到 R2</li>
-              <li>上传成功后自动删除本地旧数据</li>
-              <li>R2 中超过 <strong>{{ archiveConfig.r2_retention_days }} 天</strong>的备份自动清理</li>
-            </ul>
-
-            <el-alert
-              title="数据安全"
-              type="info"
-              :closable="false"
-              style="margin-top: 10px"
-            >
-              <template #default>
-                <p>
-                  归档数据以 CSV.GZ 格式存储，按日期命名（如 sensor_data_20231219.csv.gz）
-                </p>
-              </template>
-            </el-alert>
-          </div>
-        </el-card>
-      </el-tab-pane>
     </el-tabs>
 
 
@@ -579,9 +316,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from "vue";
 import { ElMessage } from "element-plus";
-import { configApi, instrumentsApi } from "../../api";
-import { provinceAndCityData } from 'element-china-area-data';
-import { pinyin } from 'pinyin-pro';
+import { configApi } from "../../api";
 
 const activeTab = ref("site");
 const saving = ref(false);
@@ -617,62 +352,9 @@ const mqttConfig = reactive({
   device_pass: "",
 });
 
-const archiveConfig = reactive({
-  enabled: false,
-  local_retention_days: 3,
-  r2_retention_days: 30,
-  r2_endpoint: "",
-  r2_bucket: "",
-  r2_access_key: "",
-  r2_secret_key: "",
-});
 
-const testingArchive = ref(false);
-const loadingStats = ref(false);
-const storageStats = ref<any>(null);
 
-// Instruments state
-const instruments = ref<any[]>([]); // Define type for instruments
-const loadingInstruments = ref(false);
 
-// Instruments Management
-async function fetchInstruments() {
-  loadingInstruments.value = true;
-  try {
-    const res = await instrumentsApi.list();
-    // Ensure is_displayed is boolean
-    instruments.value = res.data.data.map((i: any) => ({
-      ...i,
-      is_displayed: i.is_displayed !== false, // Default true
-      saving: false,
-    }));
-  } catch (error) {
-    console.error("Failed to fetch instruments:", error);
-  } finally {
-    loadingInstruments.value = false;
-  }
-}
-
-async function handleInstrumentDisplayChange(row: any) {
-  row.saving = true;
-  try {
-    await instrumentsApi.update(row.id, {
-      name: row.name,
-      description: row.description,
-      color: row.color,
-      sort_order: row.sort_order,
-      zone_id: row.zone_id,
-      is_displayed: row.is_displayed,
-    });
-    ElMessage.success("更新成功");
-  } catch (error) {
-    console.error("Update failed:", error);
-    row.is_displayed = !row.is_displayed; // Revert on error
-    ElMessage.error("更新失败");
-  } finally {
-    row.saving = false;
-  }
-}
 
 
 
@@ -715,17 +397,7 @@ async function saveWebhookConfig() {
   }
 }
 
-async function saveDashboardConfig() {
-  saving.value = true;
-  try {
-    await configApi.updateDashboard(dashboardConfig);
-    ElMessage.success("大屏配置已保存");
-  } catch (error) {
-    ElMessage.error("保存失败");
-  } finally {
-    saving.value = false;
-  }
-}
+
 
 async function testNotification(channel: string) {
   ElMessage.info(`正在发送 ${channel} 测试通知...`);
@@ -770,128 +442,12 @@ async function loadMqttConfig() {
   }
 }
 
-async function loadArchiveConfig() {
-  try {
-    const res = await configApi.getArchive();
-    Object.assign(archiveConfig, res.data);
-  } catch (error) {
-    console.error("Failed to load archive config:", error);
-  }
-}
-
-async function fetchStorageStats() {
-  loadingStats.value = true;
-  try {
-    const res = await configApi.getArchiveStats();
-    storageStats.value = res.data;
-    ElMessage.success("存储统计已更新");
-  } catch (error: any) {
-    const detail = error.response?.data?.detail || "获取存储统计失败";
-    ElMessage.error(detail);
-  } finally {
-    loadingStats.value = false;
-  }
-}
-
-async function saveArchiveConfig() {
-  saving.value = true;
-  try {
-    await configApi.updateArchive(archiveConfig);
-    ElMessage.success("归档配置已保存");
-  } catch (error: any) {
-    const detail = error.response?.data?.detail || "保存失败";
-    ElMessage.error(detail);
-  } finally {
-    saving.value = false;
-  }
-}
-
-async function testArchiveConnection() {
-  testingArchive.value = true;
-  ElMessage.info("正在测试 R2 连接...");
-  try {
-    // 先保存配置
-    await configApi.updateArchive(archiveConfig);
-    // 再测试连接
-    const response = await configApi.testArchive();
-    ElMessage.success(response.data.message || "R2 连接成功");
-  } catch (error: any) {
-    const detail = error.response?.data?.detail || "连接测试失败";
-    ElMessage.error(detail);
-  } finally {
-    testingArchive.value = false;
-  }
-}
-
 // Site Config
 const siteConfig = reactive({
   site_name: "",
   logo_url: "",
   browser_title: ""
 })
-
-// Weather Config
-const weatherConfig = reactive({
-  enabled: true,
-  province: '',
-  city: '',
-  city_pinyin: '',
-  api_key: ''
-});
-
-const selectedRegion = ref<string[]>([]);
-
-async function loadWeatherConfig() {
-  try {
-    const res = await configApi.getWeather();
-    Object.assign(weatherConfig, res.data);
-    if (weatherConfig.province && weatherConfig.city) {
-      selectedRegion.value = [weatherConfig.province, weatherConfig.city];
-    }
-  } catch (error) {
-    console.error("Failed to load weather config:", error);
-  }
-}
-
-async function saveWeatherConfig() {
-  saving.value = true;
-  try {
-    await configApi.updateWeather(weatherConfig);
-    ElMessage.success("天气配置已保存");
-  } catch (error) {
-    ElMessage.error("保存失败");
-  } finally {
-    saving.value = false;
-  }
-}
-
-const handleRegionChange = (value: string[]) => {
-  if (value && value.length === 2) {
-    weatherConfig.province = value[0] || '';
-    weatherConfig.city = value[1] || '';
-    
-    let cityName = value[1] || '';
-    if (cityName.endsWith('市')) cityName = cityName.slice(0, -1);
-    else if (cityName.endsWith('地区')) cityName = cityName.slice(0, -2);
-    else if (cityName.endsWith('盟')) cityName = cityName.slice(0, -1);
-    else if (cityName.endsWith('自治州')) cityName = cityName.slice(0, -3);
-
-    // Special case: Direct-controlled municipalities
-    const municipalities = ['北京市', '上海市', '天津市', '重庆市'];
-    if (municipalities.includes(value[0] || '')) {
-        cityName = value[0] || '';
-        if (cityName.endsWith('市')) cityName = cityName.slice(0, -1);
-    } else if (cityName === '市辖区' || cityName === '县') {
-        cityName = value[0] || '';
-        if (cityName.endsWith('市')) cityName = cityName.slice(0, -1);
-    }
-
-    if (cityName) {
-      const py = pinyin(cityName, { toneType: 'none', type: 'array' }) as string[];
-      weatherConfig.city_pinyin = py.join('');
-    }
-  }
-};
 
 async function loadSiteConfig() {
   try {
@@ -939,12 +495,9 @@ function previewTitle() {
 }
 
 onMounted(() => {
-  loadConfigs(); // This already loads email, webhook, dashboard
+  loadConfigs(); // This already loads email, webhook, dashboard  
   loadMqttConfig();
-  loadArchiveConfig();
   loadSiteConfig();
-  loadWeatherConfig();
-  fetchInstruments();
 });
 </script>
 
@@ -952,18 +505,110 @@ onMounted(() => {
 .config-page {
   width: 100%;
   height: 100%;
-  padding: 20px;
+  padding: 24px;
   box-sizing: border-box;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+  min-height: calc(100vh - 100px);
 }
 
+/* Tabs styling */
+:deep(.el-tabs__header) {
+  margin-bottom: 20px;
+}
+
+:deep(.el-tabs__item) {
+  font-size: 15px;
+  font-weight: 500;
+  padding: 0 20px;
+}
+
+:deep(.el-tabs__item.is-active) {
+  color: #409eff;
+}
+
+/* Card styling */
+:deep(.el-card) {
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border: none;
+  overflow: hidden;
+}
+
+:deep(.el-card__header) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 16px 20px;
+  border-bottom: none;
+}
+
+:deep(.el-card__body) {
+  padding: 24px;
+}
+
+/* Form styling */
+:deep(.el-form-item) {
+  margin-bottom: 22px;
+}
+
+:deep(.el-form-item__label) {
+  font-weight: 500;
+  color: #606266;
+}
+
+:deep(.el-input__wrapper),
+:deep(.el-select__wrapper) {
+  border-radius: 8px;
+}
+
+:deep(.el-input-number) {
+  width: 100%;
+}
+
+:deep(.el-divider__text) {
+  font-weight: 600;
+  color: #409eff;
+  background: transparent;
+}
+
+/* Card header */
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.card-header span {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.card-header .el-tag {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+}
+
+/* Tips section */
 .tips {
-  color: #909399;
-  font-size: 14px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f5 100%);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-top: 16px;
+  border-left: 4px solid #409eff;
 }
 
 .tips h4 {
-  margin: 0 0 8px;
-  color: #606266;
+  margin: 0 0 12px;
+  color: #303133;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tips h4::before {
+  content: "💡";
 }
 
 .tips ul {
@@ -972,56 +617,112 @@ onMounted(() => {
 }
 
 .tips li {
-  margin-bottom: 4px;
+  margin-bottom: 8px;
+  color: #606266;
+  line-height: 1.6;
 }
 
-.card-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.tips li strong {
+  color: #303133;
 }
 
+/* Form tip */
+.form-tip {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+/* Logo preview */
 .logo-preview {
-  margin-top: 8px;
+  margin-top: 12px;
+  padding: 12px;
+  background: #f5f7fa;
+  border-radius: 8px;
+  display: inline-block;
 }
 
 .logo-preview img {
-  max-height: 40px;
+  max-height: 48px;
   max-width: 200px;
+  display: block;
 }
 
+/* Zone color */
 .zone-color {
   display: inline-block;
-  width: 20px;
-  height: 20px;
-  border-radius: 4px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* Upload area */
 .upload-area {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
 }
 
+/* Background preview */
 .bg-preview {
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  padding: 10px;
-  background: #f5f7fa;
+  border: 2px dashed #dcdfe6;
+  border-radius: 10px;
+  padding: 16px;
+  background: #fafafa;
+  transition: all 0.3s;
+}
+
+.bg-preview:hover {
+  border-color: #409eff;
 }
 
 .bg-preview img {
   max-width: 400px;
   max-height: 225px;
   display: block;
+  border-radius: 6px;
 }
 
+/* Color dot */
 .color-dot {
   display: inline-block;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+/* Button styling */
+:deep(.el-button--primary) {
+  border-radius: 8px;
+  font-weight: 500;
+  padding: 10px 24px;
+}
+
+:deep(.el-button--default) {
+  border-radius: 8px;
+}
+
+/* Divider styling */
+:deep(.el-divider) {
+  margin: 24px 0;
+}
+
+:deep(.el-divider--horizontal) {
+  border-color: #e4e7ed;
+}
+
+/* Alert styling */
+:deep(.el-alert) {
+  border-radius: 8px;
+}
+
+/* Switch styling */
+:deep(.el-switch) {
+  --el-switch-on-color: #67c23a;
 }
 </style>

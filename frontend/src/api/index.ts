@@ -55,6 +55,7 @@ export const alarmsApi = {
     list: (params: any) => api.get('/alarms', { params }),
     get: (id: number) => api.get(`/alarms/${id}`),
     ack: (id: number) => api.post(`/alarms/${id}/ack`),
+    ackAll: () => api.post('/alarms/ack-all'),
     stats: () => api.get('/alarms/stats/summary')
 }
 
@@ -76,6 +77,7 @@ export const configApi = {
     updateArchive: (data: any) => api.put('/config/archive', data),
     testArchive: () => api.post('/config/archive/test'),
     getArchiveStats: () => api.get('/config/archive/stats'),
+    listArchiveFiles: () => api.get('/config/archive/files'),
     // 站点品牌配置
     getSite: () => api.get('/config/site'),
     updateSite: (data: any) => api.put('/config/site', data),

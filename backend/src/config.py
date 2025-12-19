@@ -359,6 +359,82 @@ async def get_storage_stats(redis = Depends(get_redis), db = Depends(get_db)):
     
     return stats
 
+@router.get("/archive/files")
+async def list_archive_files(redis = Depends(get_redis)):
+    """列出 R2 中的所有归档文件"""
+    import asyncio
+    
+    config_str = await redis.get("config:archive")
+    if not config_str:
+        return {"files": [], "message": "归档配置未设置"}
+    
+    config = json.loads(config_str)
+    if not config.get("r2_endpoint") or not config.get("r2_bucket"):
+        return {"files": [], "message": "R2 未配置"}
+    
+    try:
+        import boto3
+        from botocore.config import Config as BotoConfig
+        from datetime import datetime
+        
+        def get_files_list():
+            s3 = boto3.client(
+                's3',
+                endpoint_url=config['r2_endpoint'],
+                aws_access_key_id=config['r2_access_key'],
+                aws_secret_access_key=config['r2_secret_key'],
+                config=BotoConfig(signature_version='s3v4'),
+                verify=False
+            )
+            
+            files = []
+            paginator = s3.get_paginator('list_objects_v2')
+            for page in paginator.paginate(Bucket=config['r2_bucket'], Prefix='archive/'):
+                for obj in page.get('Contents', []):
+                    key = obj.get('Key', '')
+                    size = obj.get('Size', 0)
+                    last_modified = obj.get('LastModified')
+                    
+                    # 生成预签名下载 URL (有效期 1 小时)
+                    download_url = s3.generate_presigned_url(
+                        'get_object',
+                        Params={'Bucket': config['r2_bucket'], 'Key': key},
+                        ExpiresIn=3600
+                    )
+                    
+                    # 格式化文件大小
+                    if size < 1024:
+                        size_human = f"{size} B"
+                    elif size < 1024 * 1024:
+                        size_human = f"{size / 1024:.2f} KB"
+                    elif size < 1024 * 1024 * 1024:
+                        size_human = f"{size / (1024 * 1024):.2f} MB"
+                    else:
+                        size_human = f"{size / (1024 * 1024 * 1024):.2f} GB"
+                    
+                    files.append({
+                        "key": key,
+                        "name": key.split('/')[-1],
+                        "size": size,
+                        "size_human": size_human,
+                        "last_modified": last_modified.isoformat() if last_modified else None,
+                        "download_url": download_url
+                    })
+            
+            # 按时间倒序排列
+            files.sort(key=lambda x: x.get('last_modified', ''), reverse=True)
+            return files
+        
+        loop = asyncio.get_event_loop()
+        files = await loop.run_in_executor(None, get_files_list)
+        
+        return {"files": files, "count": len(files)}
+        
+    except ImportError:
+        return {"files": [], "message": "boto3 未安装"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Test notification
 @router.post("/alarm/test")
 async def test_notification(channel: str, redis = Depends(get_redis)):

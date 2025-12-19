@@ -5,6 +5,7 @@
         <div class="card-header">
           <span>报警记录</span>
           <div class="filter-area">
+            <el-button type="danger" @click="ackAllAlarms">确认所有报警</el-button>
             <el-select v-model="filters.type" placeholder="报警类型" clearable @change="fetchAlarms">
               <el-option label="高浓度" value="HIGH" />
               <el-option label="低浓度" value="LOW" />
@@ -142,6 +143,16 @@ async function ackAlarm(id: number) {
   try {
     await alarmsApi.ack(id)
     ElMessage.success('已确认')
+    fetchAlarms()
+  } catch (error) {
+    ElMessage.error('操作失败')
+  }
+}
+
+async function ackAllAlarms() {
+  try {
+    await alarmsApi.ackAll()
+    ElMessage.success(`已确认所有报警`)
     fetchAlarms()
   } catch (error) {
     ElMessage.error('操作失败')

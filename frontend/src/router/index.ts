@@ -49,6 +49,31 @@ const routes: RouteRecordRaw[] = [
                 component: () => import('../views/screen/background.vue')
             },
             {
+                path: 'screen/config',
+                name: 'ScreenConfig',
+                component: () => import('../views/screen/ScreenConfig.vue')
+            },
+            {
+                path: 'screen/display',
+                name: 'ScreenDisplay',
+                component: () => import('../views/screen/ScreenDisplay.vue')
+            },
+            {
+                path: 'screen/weather',
+                name: 'ScreenWeather',
+                component: () => import('../views/screen/ScreenWeather.vue')
+            },
+            {
+                path: 'health-check',
+                name: 'HealthCheck',
+                component: () => import('../views/health/index.vue')
+            },
+            {
+                path: 'archive',
+                name: 'Archive',
+                component: () => import('../views/archive/index.vue')
+            },
+            {
                 path: 'license',
                 name: 'License',
                 component: () => import('../views/license/index.vue')

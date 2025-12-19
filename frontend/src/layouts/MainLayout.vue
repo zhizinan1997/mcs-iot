@@ -34,13 +34,21 @@
           <el-icon><Cpu /></el-icon>
           <span>AI 接口</span>
         </el-menu-item>
+        <el-menu-item index="/license">
+          <el-icon><Key /></el-icon>
+          <span>授权管理</span>
+        </el-menu-item>
         <el-menu-item index="/config">
           <el-icon><Setting /></el-icon>
           <span>系统配置</span>
         </el-menu-item>
-        <el-menu-item index="/license">
-          <el-icon><Key /></el-icon>
-          <span>授权管理</span>
+        <el-menu-item index="/health-check">
+          <el-icon><FirstAidKit /></el-icon>
+          <span>系统自检</span>
+        </el-menu-item>
+        <el-menu-item index="/archive">
+          <el-icon><Folder /></el-icon>
+          <span>数据归档</span>
         </el-menu-item>
         <el-divider />
         <el-sub-menu index="/screen-group">
@@ -55,6 +63,18 @@
           <el-menu-item index="/screen/background">
             <el-icon><Picture /></el-icon>
             <span>背景设置</span>
+          </el-menu-item>
+          <el-menu-item index="/screen/config">
+            <el-icon><Setting /></el-icon>
+            <span>大屏配置</span>
+          </el-menu-item>
+          <el-menu-item index="/screen/display">
+            <el-icon><Grid /></el-icon>
+            <span>显示管理</span>
+          </el-menu-item>
+          <el-menu-item index="/screen/weather">
+            <el-icon><Cloudy /></el-icon>
+            <span>天气设置</span>
           </el-menu-item>
         </el-sub-menu>
       </el-menu>
@@ -75,6 +95,23 @@
         </div>
         
         <div class="header-right">
+          <!-- License Status -->
+          <el-tag 
+            :type="licenseStatus.status === 'active' ? 'success' : licenseStatus.status === 'grace' ? 'warning' : 'danger'"
+            class="license-tag"
+            v-if="licenseStatus.status"
+          >
+            <template v-if="licenseStatus.status === 'active'">
+              已授权 {{ licenseStatus.expires ? `(到期: ${licenseStatus.expires})` : '' }}
+            </template>
+            <template v-else-if="licenseStatus.status === 'grace'">
+              宽限期 (剩余 {{ licenseStatus.grace_remaining_days || 0 }} 天)
+            </template>
+            <template v-else>
+              未授权
+            </template>
+          </el-tag>
+
           <el-dropdown>
             <span class="user-info">
               <el-avatar size="small" icon="User" />
@@ -117,6 +154,12 @@ const siteConfig = ref({
   browser_title: ""
 })
 
+const licenseStatus = ref<any>({
+  status: '',
+  expires: '',
+  grace_remaining_days: 0
+})
+
 async function loadSiteConfig() {
   try {
     const res = await configApi.getSite()
@@ -147,7 +190,23 @@ function updateFavicon(url: string) {
 
 onMounted(() => {
   loadSiteConfig()
+  loadLicenseStatus()
 })
+
+async function loadLicenseStatus() {
+  try {
+    const res = await configApi.getLicense()
+    if (res.data) {
+      licenseStatus.value = {
+        status: res.data.status || 'unlicensed',
+        expires: res.data.expires_at ? res.data.expires_at.split('T')[0] : '',
+        grace_remaining_days: res.data.grace_remaining_days || 0
+      }
+    }
+  } catch (error) {
+    console.error("Failed to load license status")
+  }
+}
 
 function handleLogout() {
   authStore.logout()
@@ -212,6 +271,11 @@ function handleLogout() {
 .header-right {
   display: flex;
   align-items: center;
+  gap: 12px;
+}
+
+.license-tag {
+  font-size: 12px;
 }
 
 .user-info {

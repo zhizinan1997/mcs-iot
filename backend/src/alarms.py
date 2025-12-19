@@ -97,6 +97,19 @@ async def acknowledge_alarm(alarm_id: int, db = Depends(get_db)):
         )
     return {"message": "Alarm acknowledged", "id": alarm_id}
 
+@router.post("/ack-all")
+async def acknowledge_all_alarms(db = Depends(get_db)):
+    """Acknowledge all active alarms at once"""
+    async with db.acquire() as conn:
+        result = await conn.execute(
+            "UPDATE alarm_logs SET status = 'ack' WHERE status = 'active'"
+        )
+        # Get count of updated rows
+        count = await conn.fetchval(
+            "SELECT COUNT(*) FROM alarm_logs WHERE status = 'ack' AND ack_at IS NULL"
+        )
+    return {"message": "All alarms acknowledged", "count": count or 0}
+
 @router.get("/stats/summary")
 async def get_alarm_stats(db = Depends(get_db)):
     async with db.acquire() as conn:
