@@ -75,7 +75,7 @@ def load_mqtt_config():
 def get_admin_token():
     """获取管理员 token"""
     try:
-        resp = requests.post(f"{API_BASE}/auth/login", json={
+        resp = requests.post(f"{API_BASE}/auth/login", data={
             "username": "admin",
             "password": "admin123"
         }, timeout=10)

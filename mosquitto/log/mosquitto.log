@@ -15,3 +15,92 @@ To fix this, use `chmod 0700 /mosquitto/config/acl`.
 1766061997: mosquitto version 2.0.22 running
 1766062008: New connection from 172.19.0.5:51227 on port 1883.
 1766062008: New client connected from 172.19.0.5:51227 as worker_1766062008 (p2, c1, k60, u'worker').
+1766131945: mosquitto version 2.0.22 starting
+1766131945: Config loaded from /mosquitto/config/mosquitto.conf.
+1766131945: Warning: File /mosquitto/config/passwd has world readable permissions. Future versions will refuse to load this file.
+To fix this, use `chmod 0700 /mosquitto/config/passwd`.
+1766131945: Warning: File /mosquitto/config/passwd has world readable permissions. Future versions will refuse to load this file.
+To fix this, use `chmod 0700 /mosquitto/config/passwd`.
+1766131945: Warning: File /mosquitto/config/acl has world readable permissions. Future versions will refuse to load this file.
+To fix this, use `chmod 0700 /mosquitto/config/acl`.
+1766131945: Warning: File /mosquitto/config/acl has world readable permissions. Future versions will refuse to load this file.
+To fix this, use `chmod 0700 /mosquitto/config/acl`.
+1766131945: Opening ipv4 listen socket on port 1883.
+1766131945: Opening ipv6 listen socket on port 1883.
+1766131945: Opening ipv4 listen socket on port 8883.
+1766131945: Opening ipv6 listen socket on port 8883.
+1766131945: mosquitto version 2.0.22 running
+1766131951: New connection from 172.18.0.6:33329 on port 1883.
+1766131951: New client connected from 172.18.0.6:33329 as worker_1766131951 (p2, c1, k60, u'worker').
+1766132639: New connection from 172.18.0.1:62210 on port 1883.
+1766132639: New client connected from 172.18.0.1:62210 as H20101 (p2, c1, k60, u'zhizinan').
+1766132640: New connection from 172.18.0.1:62212 on port 1883.
+1766132640: New client connected from 172.18.0.1:62212 as CH40102 (p2, c1, k60, u'zhizinan').
+1766132640: New connection from 172.18.0.1:62222 on port 1883.
+1766132640: New client connected from 172.18.0.1:62222 as VOCs0103 (p2, c1, k60, u'zhizinan').
+1766132640: New connection from 172.18.0.1:62234 on port 1883.
+1766132640: New client connected from 172.18.0.1:62234 as TEMP0104 (p2, c1, k60, u'zhizinan').
+1766132640: New connection from 172.18.0.1:62242 on port 1883.
+1766132640: New client connected from 172.18.0.1:62242 as HUMI0105 (p2, c1, k60, u'zhizinan').
+1766132640: New connection from 172.18.0.1:62256 on port 1883.
+1766132640: New client connected from 172.18.0.1:62256 as PM250106 (p2, c1, k60, u'zhizinan').
+1766132640: New connection from 172.18.0.1:62258 on port 1883.
+1766132640: New client connected from 172.18.0.1:62258 as H20201 (p2, c1, k60, u'zhizinan').
+1766132640: New connection from 172.18.0.1:62262 on port 1883.
+1766132640: New client connected from 172.18.0.1:62262 as CH40202 (p2, c1, k60, u'zhizinan').
+1766132640: New connection from 172.18.0.1:62272 on port 1883.
+1766132640: New client connected from 172.18.0.1:62272 as VOCs0203 (p2, c1, k60, u'zhizinan').
+1766132640: New connection from 172.18.0.1:62282 on port 1883.
+1766132640: New client connected from 172.18.0.1:62282 as TEMP0204 (p2, c1, k60, u'zhizinan').
+1766132641: New connection from 172.18.0.1:62294 on port 1883.
+1766132641: New client connected from 172.18.0.1:62294 as HUMI0205 (p2, c1, k60, u'zhizinan').
+1766132641: New connection from 172.18.0.1:62308 on port 1883.
+1766132641: New client connected from 172.18.0.1:62308 as PM250206 (p2, c1, k60, u'zhizinan').
+1766132641: New connection from 172.18.0.1:62322 on port 1883.
+1766132641: New client connected from 172.18.0.1:62322 as H20301 (p2, c1, k60, u'zhizinan').
+1766132641: New connection from 172.18.0.1:62326 on port 1883.
+1766132641: New client connected from 172.18.0.1:62326 as CH40302 (p2, c1, k60, u'zhizinan').
+1766132641: New connection from 172.18.0.1:62330 on port 1883.
+1766132641: New client connected from 172.18.0.1:62330 as VOCs0303 (p2, c1, k60, u'zhizinan').
+1766132641: New connection from 172.18.0.1:62332 on port 1883.
+1766132641: New client connected from 172.18.0.1:62332 as TEMP0304 (p2, c1, k60, u'zhizinan').
+1766132641: New connection from 172.18.0.1:62342 on port 1883.
+1766132641: New client connected from 172.18.0.1:62342 as HUMI0305 (p2, c1, k60, u'zhizinan').
+1766132641: New connection from 172.18.0.1:62346 on port 1883.
+1766132641: New client connected from 172.18.0.1:62346 as PM250306 (p2, c1, k60, u'zhizinan').
+1766132641: New connection from 172.18.0.1:62352 on port 1883.
+1766132641: New client connected from 172.18.0.1:62352 as H20401 (p2, c1, k60, u'zhizinan').
+1766132641: New connection from 172.18.0.1:62358 on port 1883.
+1766132641: New client connected from 172.18.0.1:62358 as CH40402 (p2, c1, k60, u'zhizinan').
+1766132642: New connection from 172.18.0.1:62374 on port 1883.
+1766132642: New client connected from 172.18.0.1:62374 as VOCs0403 (p2, c1, k60, u'zhizinan').
+1766132642: New connection from 172.18.0.1:62310 on port 1883.
+1766132642: New client connected from 172.18.0.1:62310 as TEMP0404 (p2, c1, k60, u'zhizinan').
+1766132642: New connection from 172.18.0.1:62324 on port 1883.
+1766132642: New client connected from 172.18.0.1:62324 as HUMI0405 (p2, c1, k60, u'zhizinan').
+1766132642: New connection from 172.18.0.1:62328 on port 1883.
+1766132642: New client connected from 172.18.0.1:62328 as PM250406 (p2, c1, k60, u'zhizinan').
+1766132860: Client H20101 disconnected.
+1766132861: Client CH40102 disconnected.
+1766132862: Client VOCs0103 disconnected.
+1766132862: Client TEMP0104 disconnected.
+1766132863: Client HUMI0105 disconnected.
+1766132864: Client PM250106 disconnected.
+1766132864: Client H20201 disconnected.
+1766132864: Client CH40202 disconnected.
+1766132865: Client VOCs0203 disconnected.
+1766132865: Client TEMP0204 disconnected.
+1766132866: Client HUMI0205 disconnected.
+1766132866: Client PM250206 disconnected.
+1766132867: Client H20301 disconnected.
+1766132867: Client CH40302 disconnected.
+1766132868: Client VOCs0303 disconnected.
+1766132868: Client TEMP0304 disconnected.
+1766132868: Client HUMI0305 disconnected.
+1766132868: Client PM250306 disconnected.
+1766132869: Client H20401 disconnected.
+1766132869: Client CH40402 disconnected.
+1766132870: Client VOCs0403 disconnected.
+1766132871: Client TEMP0404 disconnected.
+1766132871: Client HUMI0405 disconnected.
+1766132872: Client PM250406 disconnected.

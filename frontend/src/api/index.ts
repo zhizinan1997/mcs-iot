@@ -88,7 +88,10 @@ export const configApi = {
     // AI 配置
     getAI: () => api.get('/config/ai'),
     updateAI: (data: any) => api.put('/config/ai', data),
-    testAI: (data: any) => api.post('/config/ai/test', data)
+    testAI: (data: any) => api.post('/config/ai/test', data),
+    // 授权管理
+    getLicense: () => api.get('/config/license'),
+    verifyLicense: () => api.post('/config/license/verify')
 }
 
 // Upload API

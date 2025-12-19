@@ -676,6 +676,49 @@ deploy_containers() {
     
     cd "$INSTALL_DIR"
     
+    # 检查是否使用预构建镜像
+    if [[ -f "docker-compose.ghcr.yml" ]]; then
+        echo ""
+        echo -e "${CYAN}请选择部署方式:${NC}"
+        echo "  1. 使用预构建镜像 (推荐，快速稳定)"
+        echo "  2. 本地构建镜像 (需要更多内存和时间)"
+        read -r -p "请选择 [1/2]，默认 1: " deploy_mode
+        deploy_mode=${deploy_mode:-1}
+        
+        if [[ "$deploy_mode" == "1" ]]; then
+            log_info "使用预构建镜像部署..."
+            log_info "正在拉取镜像，首次可能需要几分钟..."
+            echo ""
+            
+            if docker compose -f docker-compose.ghcr.yml pull 2>&1; then
+                log_info "✓ 镜像拉取成功"
+            else
+                log_warn "部分镜像拉取失败，尝试继续..."
+            fi
+            
+            log_info "启动服务..."
+            if docker compose -f docker-compose.ghcr.yml up -d 2>&1; then
+                log_info "✓ 服务启动成功"
+            else
+                log_error "服务启动失败"
+                return 1
+            fi
+            
+            # 等待服务启动
+            log_info "等待服务就绪..."
+            sleep 15
+            
+            if docker compose -f docker-compose.ghcr.yml ps | grep -q "healthy"; then
+                log_info "✓ 所有服务已就绪"
+            else
+                log_warn "部分服务可能还在启动中，请稍后检查"
+            fi
+            
+            return 0
+        fi
+    fi
+    
+    # 本地构建模式
     # 检查内存，决定构建方式
     TOTAL_MEM=$(free -m | awk '/^Mem:/{print $2}')
     

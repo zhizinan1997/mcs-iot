@@ -169,3 +169,39 @@ class LicenseGuard:
             "status": self.status,
             "last_check": self.last_check.isoformat() if self.last_check else None
         }
+    
+    def is_internal_ip(self, ip: str) -> bool:
+        """Check if IP is from internal network"""
+        if not ip:
+            return True
+        
+        # Localhost
+        if ip in ("127.0.0.1", "localhost", "::1"):
+            return True
+        
+        # Docker internal networks
+        if ip.startswith("172.") or ip.startswith("192.168.") or ip.startswith("10."):
+            return True
+        
+        # Allow Docker container names (no dots or non-numeric first segment)
+        if '.' not in ip:
+            return True
+        
+        return False
+    
+    def is_mqtt_allowed(self, client_ip: str = None) -> bool:
+        """
+        Check if MQTT data should be processed.
+        - If licensed: allow all
+        - If not licensed: only allow internal IPs
+        """
+        if self.is_valid:
+            return True
+        
+        # Not licensed - only allow internal network
+        if client_ip and not self.is_internal_ip(client_ip):
+            logger.warning(f"Unlicensed: Rejected external MQTT from {client_ip}")
+            return False
+        
+        return True
+

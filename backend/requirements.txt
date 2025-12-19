@@ -20,5 +20,6 @@ paho-mqtt
 # Utilities
 python-dotenv
 aiohttp
+httpx
 loguru
 boto3

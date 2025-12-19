@@ -47,6 +47,11 @@ const routes: RouteRecordRaw[] = [
                 path: 'screen/background',
                 name: 'ScreenBackground',
                 component: () => import('../views/screen/background.vue')
+            },
+            {
+                path: 'license',
+                name: 'License',
+                component: () => import('../views/license/index.vue')
             }
         ]
     },

@@ -6,6 +6,7 @@ import redis.asyncio as aioredis
 import asyncpg
 import os
 import logging
+from . import deps
 
 from .auth import router as auth_router
 from .devices import router as devices_router
@@ -24,33 +25,37 @@ from .ai import router as ai_router
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Global connections
-redis_pool = None
-db_pool = None
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global redis_pool, db_pool
-    
     # Startup
     logger.info("Starting Backend API...")
     
     # Redis
     redis_url = f"redis://{os.getenv('REDIS_HOST', 'redis')}:6379"
-    redis_pool = await aioredis.from_url(redis_url, decode_responses=True)
+    deps.redis_pool = await aioredis.from_url(redis_url, decode_responses=True)
     logger.info("Connected to Redis")
     
     # Database
     db_dsn = f"postgres://{os.getenv('DB_USER','postgres')}:{os.getenv('DB_PASS','password')}@{os.getenv('DB_HOST','timescaledb')}:5432/{os.getenv('DB_NAME','mcs_iot')}"
-    db_pool = await asyncpg.create_pool(db_dsn, min_size=5, max_size=20)
+    deps.db_pool = await asyncpg.create_pool(db_dsn, min_size=5, max_size=20)
     logger.info("Connected to Database")
+    
+    # Initialize License Manager
+    try:
+        from .license import init_license_manager
+        license_mgr = await init_license_manager(deps.redis_pool)
+        logger.info(f"License initialized - Device ID: {license_mgr.get_device_id()}")
+    except Exception as e:
+        logger.warning(f"License initialization failed: {e}")
     
     yield
     
     # Shutdown
     logger.info("Shutting down...")
-    await redis_pool.close()
-    await db_pool.close()
+    if deps.redis_pool:
+        await deps.redis_pool.close()
+    if deps.db_pool:
+        await deps.db_pool.close()
 
 app = FastAPI(
     title="MCS-IoT Admin API",
@@ -68,13 +73,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Dependency to get Redis
-async def get_redis():
-    return redis_pool
+# Dependencies (re-exported from deps)
+from .deps import get_redis, get_db
 
-# Dependency to get DB
-async def get_db():
-    return db_pool
+# Backward compatibility: Allow other modules to import db_pool/redis_pool from main
+# These are now managed in deps module
+def __getattr__(name):
+    if name == 'db_pool':
+        return deps.db_pool
+    if name == 'redis_pool':
+        return deps.redis_pool
+    raise AttributeError(f"module 'src.main' has no attribute '{name}'")
 
 # Include routers
 app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
@@ -107,10 +116,10 @@ async def health_check():
     }
     
     # 检查数据库
-    if db_pool:
+    if deps.db_pool:
         try:
             start = time.time()
-            async with db_pool.acquire() as conn:
+            async with deps.db_pool.acquire() as conn:
                 await conn.fetchval("SELECT 1")
             latency = int((time.time() - start) * 1000)
             health["components"]["database"] = {"status": "up", "latency_ms": latency}
@@ -122,10 +131,10 @@ async def health_check():
         health["status"] = "unhealthy"
     
     # 检查 Redis
-    if redis_pool:
+    if deps.redis_pool:
         try:
             start = time.time()
-            await redis_pool.ping()
+            await deps.redis_pool.ping()
             latency = int((time.time() - start) * 1000)
             health["components"]["redis"] = {"status": "up", "latency_ms": latency}
         except Exception as e:
@@ -137,7 +146,7 @@ async def health_check():
     
     # 获取 Worker 健康状态 (从 Redis)
     try:
-        worker_health = await redis_pool.get("system:health")
+        worker_health = await deps.redis_pool.get("system:health")
         if worker_health:
             worker_data = json.loads(worker_health)
             health["components"]["worker"] = {"status": worker_data.get("status", "unknown")}
@@ -150,7 +159,7 @@ async def health_check():
     
     # 获取授权状态
     try:
-        license_status = await redis_pool.get("license:status")
+        license_status = await deps.redis_pool.get("license:status")
         if license_status:
             health["components"]["license"] = {"status": license_status}
         else:
@@ -160,15 +169,15 @@ async def health_check():
     
     # 获取统计指标
     try:
-        stats = await redis_pool.hgetall("stats:devices")
+        stats = await deps.redis_pool.hgetall("stats:devices")
         if stats:
             health["metrics"]["devices_online"] = int(stats.get("online", 0))
             health["metrics"]["devices_offline"] = int(stats.get("offline", 0))
             health["metrics"]["devices_total"] = int(stats.get("total", 0))
         
         # 今日报警数
-        if db_pool:
-            async with db_pool.acquire() as conn:
+        if deps.db_pool:
+            async with deps.db_pool.acquire() as conn:
                 today_alarms = await conn.fetchval(
                     "SELECT COUNT(*) FROM alarm_logs WHERE triggered_at >= CURRENT_DATE"
                 )

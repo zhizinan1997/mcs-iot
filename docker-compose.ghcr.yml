@@ -1,0 +1,175 @@
+# MCS-IoT 生产部署配置 (使用预构建镜像)
+# 镜像托管在 ghcr.io/zhizinan1997/mcs-iot-*
+#
+# 使用方法:
+#   docker compose -f docker-compose.ghcr.yml up -d
+#
+# 如需更新镜像:
+#   docker compose -f docker-compose.ghcr.yml pull
+#   docker compose -f docker-compose.ghcr.yml up -d
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  # 🟢 MQTT Broker
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mcs_mosquitto
+    restart: always
+    ports:
+      - "1883:1883"
+      - "8883:8883"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./nginx/ssl:/mosquitto/certs:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+    networks:
+      - mcs-net
+    logging: *default-logging
+
+  # 🟡 Time-Series Database
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: mcs_db
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME:-mcs_iot}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASS:-changeme}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - mcs-net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: *default-logging
+
+  # ⚪ Cache
+  redis:
+    image: redis:7-alpine
+    container_name: mcs_redis
+    restart: always
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - mcs-net
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    logging: *default-logging
+
+  # 🔵 Core Worker (预构建镜像)
+  worker:
+    image: ghcr.io/zhizinan1997/mcs-iot-worker:latest
+    container_name: mcs_worker
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+      - DB_HOST=timescaledb
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASS=${DB_PASS:-changeme}
+      - DB_NAME=${DB_NAME:-mcs_iot}
+      - REDIS_HOST=redis
+      - MQTT_HOST=mosquitto
+      - MQTT_PORT=1883
+      - MQTT_USER=${MQTT_USER:-admin}
+      - MQTT_PASS=${MQTT_PASS:-admin123}
+      - DEV_MODE=false
+    volumes:
+      - ./mosquitto/config:/app/mosquitto
+      - /etc/machine-id:/app/host_id:ro
+      - ./license.key:/app/license.key:ro
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+    networks:
+      - mcs-net
+    logging: *default-logging
+
+  # 🟣 Backend API (预构建镜像)
+  backend:
+    image: ghcr.io/zhizinan1997/mcs-iot-backend:latest
+    container_name: mcs_backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - TZ=Asia/Shanghai
+      - DB_HOST=timescaledb
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASS=${DB_PASS:-changeme}
+      - DB_NAME=${DB_NAME:-mcs_iot}
+      - REDIS_HOST=redis
+      - JWT_SECRET=${JWT_SECRET:-change-this-in-production}
+      - ADMIN_INITIAL_PASSWORD=${ADMIN_INITIAL_PASSWORD:-admin123}
+      - MQTT_HOST=mosquitto
+      - MQTT_PORT=1883
+      - MQTT_USER=${MQTT_USER:-admin}
+      - MQTT_PASS=${MQTT_PASS:-admin123}
+      - AI_API_KEY=${AI_API_KEY:-}
+      - AI_MODEL=${AI_MODEL:-gpt-3.5-turbo}
+      - WEATHER_API_KEY=${WEATHER_API_KEY:-}
+    volumes:
+      - ./mosquitto/config:/app/mosquitto
+      - /var/run/docker.sock:/var/run/docker.sock
+      - uploads_data:/app/uploads
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/api/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - mcs-net
+    logging: *default-logging
+
+  # 🟠 Frontend (预构建镜像)
+  frontend:
+    image: ghcr.io/zhizinan1997/mcs-iot-frontend:latest
+    container_name: mcs_frontend
+    restart: always
+    ports:
+      - "3000:80"
+    environment:
+      - TZ=Asia/Shanghai
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - mcs-net
+    logging: *default-logging
+
+volumes:
+  pg_data:
+  redis_data:
+  mosquitto_data:
+  mosquitto_log:
+  uploads_data:
+
+
+networks:
+  mcs-net:
+    name: mcs-net

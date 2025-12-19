@@ -72,6 +72,10 @@ async def get_redis():
     from .main import redis_pool
     return redis_pool
 
+async def get_db():
+    from .main import db_pool
+    return db_pool
+
 # AI Config
 @router.get("/ai", response_model=AIConfig)
 async def get_ai_config(redis = Depends(get_redis)):
