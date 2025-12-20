@@ -6,7 +6,7 @@ const routes: RouteRecordRaw[] = [
         path: '/login',
         name: 'Login',
         component: () => import('../views/login/index.vue'),
-        meta: { requiresAuth: false }
+        meta: { requiresAuth: false, title: '登录' }
     },
     {
         path: '/',
@@ -16,72 +16,86 @@ const routes: RouteRecordRaw[] = [
             {
                 path: '',
                 name: 'Dashboard',
-                component: () => import('../views/dashboard/index.vue')
+                component: () => import('../views/dashboard/index.vue'),
+                meta: { title: '仪表盘' }
             },
             {
                 path: 'instruments',
                 name: 'Instruments',
-                component: () => import('../views/instruments/index.vue')
+                component: () => import('../views/instruments/index.vue'),
+                meta: { title: '仪表管理' }
             },
             {
                 path: 'devices',
                 name: 'Devices',
-                component: () => import('../views/devices/index.vue')
+                component: () => import('../views/devices/index.vue'),
+                meta: { title: '传感器管理' }
             },
             {
                 path: 'alarms',
                 name: 'Alarms',
-                component: () => import('../views/alarms/index.vue')
+                component: () => import('../views/alarms/index.vue'),
+                meta: { title: '报警记录' }
             },
             {
                 path: 'ai-config',
                 name: 'AIConfig',
-                component: () => import('../views/config/AIConfig.vue')
+                component: () => import('../views/config/AIConfig.vue'),
+                meta: { title: 'AI 接口' }
             },
             {
                 path: 'config',
                 name: 'Config',
-                component: () => import('../views/config/index.vue')
+                component: () => import('../views/config/index.vue'),
+                meta: { title: '系统配置' }
             },
             {
                 path: 'screen/background',
                 name: 'ScreenBackground',
-                component: () => import('../views/screen/background.vue')
+                component: () => import('../views/screen/background.vue'),
+                meta: { title: '大屏背景' }
             },
             {
                 path: 'screen/config',
                 name: 'ScreenConfig',
-                component: () => import('../views/screen/ScreenConfig.vue')
+                component: () => import('../views/screen/ScreenConfig.vue'),
+                meta: { title: '大屏配置' }
             },
             {
                 path: 'screen/display',
                 name: 'ScreenDisplay',
-                component: () => import('../views/screen/ScreenDisplay.vue')
+                component: () => import('../views/screen/ScreenDisplay.vue'),
+                meta: { title: '大屏显示管理' }
             },
             {
                 path: 'screen/weather',
                 name: 'ScreenWeather',
-                component: () => import('../views/screen/ScreenWeather.vue')
+                component: () => import('../views/screen/ScreenWeather.vue'),
+                meta: { title: '天气设置' }
             },
             {
                 path: 'health-check',
                 name: 'HealthCheck',
-                component: () => import('../views/health/index.vue')
+                component: () => import('../views/health/index.vue'),
+                meta: { title: '系统自检' }
             },
             {
                 path: 'archive',
                 name: 'Archive',
-                component: () => import('../views/archive/index.vue')
+                component: () => import('../views/archive/index.vue'),
+                meta: { title: '数据归档' }
             },
             {
                 path: 'license',
                 name: 'License',
-                component: () => import('../views/license/index.vue')
+                component: () => import('../views/license/index.vue'),
+                meta: { title: '授权管理' }
             },
             {
                 path: 'logs',
                 name: 'ServerLogs',
-                component: () => import('../views/serverlogs/index.vue')
+                component: () => import('../views/serverlogs/index.vue'),
+                meta: { title: '服务器日志' }
             }
         ]
     },
@@ -89,7 +103,7 @@ const routes: RouteRecordRaw[] = [
         path: '/screen',
         name: 'Screen',
         component: () => import('../views/screen/index.vue'),
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, title: '可视化大屏' }
     }
 ]
 

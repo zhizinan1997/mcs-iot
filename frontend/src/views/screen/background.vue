@@ -244,37 +244,32 @@ onMounted(() => {
 
 <style scoped>
 .screen-background-page {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+  /* Remove height: 100% to allow scrolling */
+  width: 100%;
+  box-sizing: border-box;
 }
 
 :deep(.full-card) {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+  /* Allow card to extend naturally */
+  min-height: 100%;
 }
 
 :deep(.full-card .el-card__body) {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  padding-bottom: 0;
+  /* Remove flex:1 and overflow:hidden which blocked scrolling */
+  padding-bottom: 24px;
 }
 
 .main-form {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+  /* Allow form to flow */
 }
 
 .editor-form-item {
-  flex: 1;
+  /* Give the editor a fixed workable height instead of stretching */
+  height: 60vh; 
+  min-height: 500px;
   display: flex;
   flex-direction: column;
-  margin-bottom: 0;
-  overflow: hidden;
+  margin-bottom: 24px;
 }
 
 :deep(.editor-form-item .el-form-item__content) {

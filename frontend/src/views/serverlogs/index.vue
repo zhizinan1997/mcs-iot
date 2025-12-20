@@ -9,7 +9,7 @@
             <span class="dot yellow"></span>
             <span class="dot green"></span>
           </div>
-          <span class="page-title">Server Logs</span>
+          <span class="page-title">服务器日志</span>
         </div>
         
         <div class="actions-section">
@@ -23,12 +23,12 @@
               popper-class="mac-select-dropdown"
             >
               <template #prefix><el-icon><Monitor /></el-icon></template>
-              <el-option label="Backend" value="backend" />
-              <el-option label="Worker" value="worker" />
-              <el-option label="Frontend" value="frontend" />
-              <el-option label="Database" value="database" />
-              <el-option label="Redis" value="redis" />
-              <el-option label="MQTT" value="mosquitto" />
+              <el-option label="Backend (后端)" value="backend" />
+              <el-option label="Worker (任务)" value="worker" />
+              <el-option label="Frontend (前端)" value="frontend" />
+              <el-option label="Database (数据库)" value="database" />
+              <el-option label="Redis (缓存)" value="redis" />
+              <el-option label="MQTT (消息队列)" value="mosquitto" />
             </el-select>
             
             <el-select 
@@ -39,13 +39,13 @@
               popper-class="mac-select-dropdown"
             >
               <template #prefix><el-icon><Filter /></el-icon></template>
-              <el-option label="Error" value="error">
+              <el-option label="错误 (Error)" value="error">
                 <span class="level-dot error"></span>Error
               </el-option>
-              <el-option label="Warning" value="warning">
+              <el-option label="警告 (Warning)" value="warning">
                 <span class="level-dot warning"></span>Warning
               </el-option>
-              <el-option label="Info" value="info">
+              <el-option label="信息 (Info)" value="info">
                 <span class="level-dot info"></span>Info
               </el-option>
             </el-select>
@@ -53,10 +53,10 @@
 
           <!-- 操作按钮 -->
           <div class="action-buttons">
-            <el-button class="mac-btn glass-btn" @click="loadLogs" :loading="loading" circle>
+            <el-button class="mac-btn glass-btn" @click="loadLogs" :loading="loading" circle title="刷新">
               <el-icon><Refresh /></el-icon>
             </el-button>
-            <el-button class="mac-btn glass-btn danger" @click="clearLogs" :loading="clearing" circle>
+            <el-button class="mac-btn glass-btn danger" @click="clearLogs" :loading="clearing" circle title="清空日志">
               <el-icon><Delete /></el-icon>
             </el-button>
           </div>
@@ -67,26 +67,26 @@
       <div class="status-bar">
         <div class="stat-item error" :class="{ active: stats.error > 0 }">
           <span class="stat-dot"></span>
-          <span class="stat-label">Errors</span>
+          <span class="stat-label">错误</span>
           <span class="stat-value">{{ stats.error }}</span>
         </div>
         <div class="stat-item warning" :class="{ active: stats.warning > 0 }">
           <span class="stat-dot"></span>
-          <span class="stat-label">Warnings</span>
+          <span class="stat-label">警告</span>
           <span class="stat-value">{{ stats.warning }}</span>
         </div>
         <div class="stat-item info">
           <span class="stat-dot"></span>
-          <span class="stat-label">Info</span>
+          <span class="stat-label">信息</span>
           <span class="stat-value">{{ stats.info }}</span>
         </div>
         <div class="divider"></div>
         <div class="stat-item total">
-          <span class="stat-label">Total</span>
+          <span class="stat-label">总计</span>
           <span class="stat-value">{{ logs.length }}</span>
         </div>
         <div class="last-update" v-if="lastUpdate">
-          Updated: {{ formatTime(lastUpdate) }}
+          更新于: {{ formatTime(lastUpdate) }}
         </div>
       </div>
 
@@ -95,12 +95,12 @@
         <div class="logs-container custom-scroll" ref="logsContainer">
           <div v-if="loading && logs.length === 0" class="placeholder">
             <div class="loading-spinner"></div>
-            <span>Loading system logs...</span>
+            <span>正在加载系统日志...</span>
           </div>
           
           <div v-else-if="logs.length === 0" class="placeholder">
             <el-icon :size="48"><Document /></el-icon>
-            <span>No logs available</span>
+            <span>暂无日志数据</span>
           </div>
 
           <div 
@@ -173,7 +173,7 @@ async function loadLogs() {
     logs.value = res.data.logs || []
     lastUpdate.value = new Date()
   } catch (error: any) {
-    ElMessage.error('Failed to load logs')
+    ElMessage.error('加载日志失败')
   } finally {
     loading.value = false
   }
@@ -183,10 +183,10 @@ async function clearLogs() {
   clearing.value = true
   try {
     await axios.delete('/api/logs')
-    ElMessage.success('Logs cleared')
+    ElMessage.success('日志已清空')
     logs.value = []
   } catch (error: any) {
-    ElMessage.error('Failed to clear')
+    ElMessage.error('清空失败')
   } finally {
     clearing.value = false
   }
