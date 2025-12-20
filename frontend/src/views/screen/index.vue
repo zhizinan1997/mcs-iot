@@ -49,17 +49,19 @@
                           <div class="header-sub">INSTRUMENT OVERVIEW</div>
                         </div>
                         <div class="instruments-grid">
-                          <div class="instrument-card" v-for="inst in displayedInstruments" :key="inst.id" :style="{ '--card-color': inst.color || '#22d3ee' }">
-                            <div class="inst-header">
-                              <span class="inst-name">{{ inst.name }}</span>
-                              <span class="inst-color" :style="{ background: inst.color || '#22d3ee' }"></span>
+                          <TransitionGroup name="inst-fade">
+                            <div class="instrument-card" v-for="inst in carouselInstruments" :key="inst.id" :style="{ '--card-color': inst.color || '#22d3ee' }">
+                              <div class="inst-header">
+                                <span class="inst-name">{{ inst.name }}</span>
+                                <span class="inst-color" :style="{ background: inst.color || '#22d3ee' }"></span>
+                              </div>
+                              <div class="inst-desc">{{ inst.description || '监控仪表' }}</div>
+                              <div class="inst-footer">
+                                <span class="sensor-count">{{ inst.sensor_count || 0 }}</span>
+                                <span class="sensor-types">传感器</span>
+                              </div>
                             </div>
-                            <div class="inst-desc">{{ inst.description || '监控仪表' }}</div>
-                            <div class="inst-footer">
-                              <span class="sensor-count">{{ inst.sensor_count || 0 }}</span>
-                              <span class="sensor-types">传感器</span>
-                            </div>
-                          </div>
+                          </TransitionGroup>
                           <div v-if="!displayedInstruments.length" class="empty-instruments">
                             暂无显示的仪表<br/><small>请在管理界面→大屏显示管理中设置</small>
                           </div>
@@ -745,6 +747,46 @@ const displayedInstruments = computed(() => {
   return instruments.value.filter((i: Instrument) => i.is_displayed === true)
 })
 
+// Carousel pagination for instrument panel
+const CAROUSEL_PAGE_SIZE = 4
+const CAROUSEL_INTERVAL_MS = 5000
+const carouselPage = ref(0)
+let carouselTimer: ReturnType<typeof setInterval> | null = null
+
+const totalCarouselPages = computed(() => {
+  return Math.ceil(displayedInstruments.value.length / CAROUSEL_PAGE_SIZE)
+})
+
+const carouselInstruments = computed(() => {
+  const start = carouselPage.value * CAROUSEL_PAGE_SIZE
+  return displayedInstruments.value.slice(start, start + CAROUSEL_PAGE_SIZE)
+})
+
+function startCarouselTimer() {
+  if (carouselTimer) clearInterval(carouselTimer)
+  if (totalCarouselPages.value <= 1) return
+  carouselTimer = setInterval(() => {
+    carouselPage.value = (carouselPage.value + 1) % totalCarouselPages.value
+  }, CAROUSEL_INTERVAL_MS)
+}
+
+function stopCarouselTimer() {
+  if (carouselTimer) {
+    clearInterval(carouselTimer)
+    carouselTimer = null
+  }
+}
+
+// Watch to restart carousel when instrument count changes
+watch(totalCarouselPages, (newPages) => {
+  if (newPages > 1) {
+    startCarouselTimer()
+  } else {
+    stopCarouselTimer()
+    carouselPage.value = 0
+  }
+})
+
 // Get devices belonging to a specific instrument
 function getInstrumentDevices(instrumentId: number): Device[] {
   return devices.value.filter((d: Device) => d.instrument_id === instrumentId)
@@ -1281,6 +1323,9 @@ onMounted(() => {
   // Initial data fetch
   fetchData(); fetchWeather(); fetchAI(); fetchScreenBg()
   
+  // Start instrument carousel timer
+  startCarouselTimer()
+  
   // Fetch configs and setup timer
   fetchConfigs().then(() => {
     // If watch didn't trigger (rate is same as default), set timer manually
@@ -1294,7 +1339,7 @@ onMounted(() => {
 
   aiTimer = setInterval(fetchAI, 60000) // Refresh AI summary every minute
 })
-onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
+onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer); stopCarouselTimer() })
 </script>
 
 <style scoped>
@@ -1914,6 +1959,41 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer) })
 .empty-instruments {
   text-align: center; color: #475569;
   padding: 15px; font-size: 11px; line-height: 1.5;
+}
+
+/* Carousel Transition */
+.inst-fade-enter-active,
+.inst-fade-leave-active {
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.inst-fade-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.inst-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+/* Carousel Pagination Dots */
+.carousel-dots {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 0;
+}
+.carousel-dots .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(148, 163, 184, 0.3);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.carousel-dots .dot.active {
+  background: #22d3ee;
+  box-shadow: 0 0 8px #22d3ee;
 }
 
 /* ========== LEFT COLUMN: Donut Chart ========== */
