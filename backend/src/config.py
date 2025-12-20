@@ -68,6 +68,19 @@ class WeatherConfig(BaseModel):
     api_key: str = ""
     enabled: bool = True
 
+class ScreenLayoutConfig(BaseModel):
+    """大屏面板布局配置"""
+    left: float = 75
+    center: float = 0
+    right: float = 25
+    mainHeight: float = 70
+    trendHeight: float = 30
+    leftInner: float = 35
+    centerInner: float = 65
+    leftPanel1: float = 35
+    leftPanel2: float = 45
+    leftPanel3: float = 20
+
 # AI 接口配置
 AI_API_URL = "https://newapi2.zhizinan.top/v1"  # 固定 API 地址
 
@@ -186,6 +199,20 @@ async def get_dashboard_config(redis = Depends(get_redis)):
 async def update_dashboard_config(config: DashboardConfig, redis = Depends(get_redis)):
     await redis.set("config:dashboard", config.json())
     return {"message": "Dashboard config updated"}
+
+# Screen Layout Config
+@router.get("/screen-layout", response_model=ScreenLayoutConfig)
+async def get_screen_layout_config(redis = Depends(get_redis)):
+    data = await redis.get("config:screen_layout")
+    if data:
+        return ScreenLayoutConfig(**json.loads(data))
+    return ScreenLayoutConfig()
+
+@router.put("/screen-layout")
+async def update_screen_layout_config(config: ScreenLayoutConfig, redis = Depends(get_redis)):
+    await redis.set("config:screen_layout", config.json())
+    return {"message": "Screen layout config updated"}
+
 
 @router.post("/dashboard/background")
 async def upload_background(file: UploadFile = File(...)):

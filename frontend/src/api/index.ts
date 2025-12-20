@@ -96,7 +96,10 @@ export const configApi = {
     updateAlarmGeneral: (data: any) => api.put('/config/alarm/general', data),
     // 授权管理
     getLicense: () => api.get('/config/license'),
-    verifyLicense: () => api.post('/config/license/verify')
+    verifyLicense: () => api.post('/config/license/verify'),
+    // 大屏面板布局配置
+    getScreenLayout: () => api.get('/config/screen-layout'),
+    updateScreenLayout: (data: any) => api.put('/config/screen-layout', data)
 }
 
 // Upload API

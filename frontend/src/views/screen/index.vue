@@ -28,8 +28,12 @@
     </header>
 
     <!-- Main Content with Resizable Splitpanes -->
+    <!-- Loading state while fetching layout -->
+    <div v-if="!layoutReady" class="layout-loading">
+      <div class="loading-spinner"></div>
+    </div>
     <!-- Outer: Left+Center Area | Right Column (full height) -->
-    <Splitpanes class="main-splitpanes" @resized="onHorizontalResize">
+    <Splitpanes v-else class="main-splitpanes" @resized="onHorizontalResize">
       <!-- Left + Center with vertical split -->
       <Pane :size="panelSizes.left + panelSizes.center" min-size="50">
         <Splitpanes horizontal @resized="onVerticalResize">
@@ -391,37 +395,39 @@ const defaultSizes = {
   leftPanel3: 20 // ai analysis
 }
 const panelSizes = reactive({ ...defaultSizes })
+const layoutReady = ref(false)
 
-function loadLayoutSizes() {
+async function loadLayoutSizes() {
   try {
-    const saved = localStorage.getItem(LAYOUT_STORAGE_KEY)
-    if (saved) {
-      const parsed = JSON.parse(saved)
+    const res = await configApi.getScreenLayout()
+    if (res.data) {
+      const parsed = res.data
       // Merge with defaults, allowing new keys
       for (const key of Object.keys(defaultSizes)) {
-        // Use type assertion to allow dynamic key access
         if (parsed[key] !== undefined) {
           (panelSizes as Record<string, number>)[key] = parsed[key]
         }
       }
-      // Ensure new keys are present if missing in saved data
-      for (const key of Object.keys(defaultSizes)) {
-        if ((panelSizes as Record<string, number>)[key] === undefined) {
-          (panelSizes as Record<string, number>)[key] = (defaultSizes as Record<string, number>)[key] || 0
-        }
-      }
     }
   } catch (e) {
-    console.warn('Failed to load layout sizes:', e)
+    console.warn('Failed to load layout sizes from server:', e)
+    // Fallback to localStorage
+    try {
+      const saved = localStorage.getItem(LAYOUT_STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        for (const key of Object.keys(defaultSizes)) {
+          if (parsed[key] !== undefined) {
+            (panelSizes as Record<string, number>)[key] = parsed[key]
+          }
+        }
+      }
+    } catch (localErr) {
+      console.warn('Failed to load from localStorage:', localErr)
+    }
   }
-}
-
-function saveLayoutSizes() {
-  try {
-    localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(panelSizes))
-  } catch (e) {
-    console.warn('Failed to save layout sizes:', e)
-  }
+  // Signal that layout is ready for rendering
+  layoutReady.value = true
 }
 
 // Outer horizontal: left+center area vs right column
@@ -429,7 +435,6 @@ function onHorizontalResize(panes: Array<{ size: number }>) {
   if (panes && panes.length >= 2) {
     panelSizes.left = panes[0]?.size ?? panelSizes.left
     panelSizes.right = panes[1]?.size ?? panelSizes.right
-    saveLayoutSizes()
   }
 }
 
@@ -438,7 +443,6 @@ function onVerticalResize(panes: Array<{ size: number }>) {
   if (panes && panes.length >= 2) {
     panelSizes.mainHeight = panes[0]?.size ?? panelSizes.mainHeight
     panelSizes.trendHeight = panes[1]?.size ?? panelSizes.trendHeight
-    saveLayoutSizes()
   }
 }
 
@@ -447,7 +451,6 @@ function onLeftCenterResize(panes: Array<{ size: number }>) {
   if (panes && panes.length >= 2) {
     panelSizes.leftInner = panes[0]?.size ?? panelSizes.leftInner
     panelSizes.centerInner = panes[1]?.size ?? panelSizes.centerInner
-    saveLayoutSizes()
   }
 }
 
@@ -457,7 +460,6 @@ function onLeftColumnResize(panes: Array<{ size: number }>) {
     panelSizes.leftPanel1 = panes[0]?.size ?? panelSizes.leftPanel1
     panelSizes.leftPanel2 = panes[1]?.size ?? panelSizes.leftPanel2
     panelSizes.leftPanel3 = panes[2]?.size ?? panelSizes.leftPanel3
-    saveLayoutSizes()
   }
 }
 
@@ -1316,8 +1318,8 @@ watch(refreshRate, (newRate) => {
   }, newRate * 1000)
 })
 
-onMounted(() => {
-  loadLayoutSizes() // Restore saved panel sizes
+onMounted(async () => {
+  await loadLayoutSizes() // Restore saved panel sizes (from server)
   currentDate.value = new Date().toLocaleDateString('zh-CN')
   
   // Initial data fetch
@@ -1356,6 +1358,26 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer); stopCarouselTi
   color: #cbd5e1;
   font-family: 'Rajdhani', 'Microsoft YaHei', sans-serif;
   display: flex; flex-direction: column; overflow: hidden;
+}
+
+/* Layout Loading Spinner */
+.layout-loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.9);
+}
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(34, 211, 238, 0.2);
+  border-top-color: #22d3ee;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* ========== HEADER ========== */
