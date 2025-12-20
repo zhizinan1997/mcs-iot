@@ -18,7 +18,19 @@ class AlarmCenter:
     def __init__(self, redis, storage):
         self.redis = redis
         self.storage = storage
-        self.debounce_ttl = 600  # 10 minutes debounce
+        self._default_debounce_ttl = 600  # 默认 10 分钟
+
+    async def get_debounce_ttl(self) -> int:
+        """从 Redis 获取消抖时间(秒)，如果未配置则使用默认值"""
+        try:
+            cfg = await self.redis.get("config:alarm_general")
+            if cfg:
+                config = json.loads(cfg)
+                minutes = config.get("debounce_minutes", 10)
+                return minutes * 60
+        except Exception as e:
+            logger.error(f"Error loading debounce config: {e}")
+        return self._default_debounce_ttl
 
     async def get_device_config(self, sn):
         """Get device alarm thresholds from Redis or DB"""
@@ -44,13 +56,25 @@ class AlarmCenter:
             email_cfg = await self.redis.get("config:email")
             webhook_cfg = await self.redis.get("config:webhook")
             sms_cfg = await self.redis.get("config:sms")
-            time_cfg = await self.redis.get("config:alarm_time")
+            # 从新的统一配置读取时段限制
+            alarm_general_cfg = await self.redis.get("config:alarm_general")
+            
+            # 解析时段限制配置
+            time_restriction = {"enabled": False}
+            if alarm_general_cfg:
+                general = json.loads(alarm_general_cfg)
+                time_restriction = {
+                    "enabled": general.get("time_restriction_enabled", False),
+                    "days": general.get("time_restriction_days", [1, 2, 3, 4, 5]),
+                    "start": general.get("time_restriction_start", "08:00"),
+                    "end": general.get("time_restriction_end", "18:00")
+                }
             
             return {
                 "email": json.loads(email_cfg) if email_cfg else {"enabled": False},
                 "webhook": json.loads(webhook_cfg) if webhook_cfg else {"enabled": False},
                 "sms": json.loads(sms_cfg) if sms_cfg else {"enabled": False},
-                "time_restriction": json.loads(time_cfg) if time_cfg else {"enabled": False}
+                "time_restriction": time_restriction
             }
         except Exception as e:
             logger.error(f"Error loading notification config: {e}")
@@ -165,8 +189,10 @@ class AlarmCenter:
             logger.debug(f"[{sn}] Alarm {alarm_type} debounced")
             return False
 
-        # 设置防抖键
-        await self.redis.setex(debounce_key, self.debounce_ttl, "1")
+        # 获取动态消抖时间并设置防抖键
+        debounce_ttl = await self.get_debounce_ttl()
+        await self.redis.setex(debounce_key, debounce_ttl, "1")
+        logger.info(f"[{sn}] Debounce key set with TTL={debounce_ttl}s ({debounce_ttl//60}min)")
 
         # 获取通知配置
         notify_config = await self.get_notification_config()
@@ -211,6 +237,8 @@ class AlarmCenter:
         config = await self.get_notification_config()
         site_name = await self.get_site_name()
         
+        logger.info(f"[Notification] Preparing to send: email={config['email'].get('enabled')}, webhook={config['webhook'].get('enabled')}, sms={config['sms'].get('enabled')}")
+        
         if not message:
             message = f"⚠️ {site_name} 报警通知\n设备: {device_name} ({sn})\n类型: {alarm_type}\n数值: {value:.2f}\n阈值: {threshold:.2f}\n时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
@@ -220,7 +248,10 @@ class AlarmCenter:
 
         # Webhook notification (DingTalk, Feishu, etc.)
         if config["webhook"].get("enabled"):
+            logger.info(f"[Notification] Calling send_webhook...")
             await self.send_webhook(config["webhook"], sn, alarm_type, value, threshold, device_name, site_name)
+        else:
+            logger.info(f"[Notification] Webhook not enabled, skipping")
 
         # SMS notification
         if config["sms"].get("enabled"):
@@ -268,15 +299,19 @@ class AlarmCenter:
         """Send webhook notification (DingTalk/Feishu compatible with signing)"""
         try:
             url = config.get("url")
+            logger.info(f"[Webhook] Attempting to send: url={url[:50] if url else 'None'}..., platform={config.get('platform')}")
             if not url:
+                logger.warning("[Webhook] URL is empty, skipping")
                 return
 
             platform = config.get("platform", "dingtalk")  # dingtalk, feishu, wecom, custom
             secret = config.get("secret", "")
+            keyword = config.get("keyword", "")  # 钉钉关键词
             at_mobiles = config.get("at_mobiles", [])
 
-            # 构建消息内容
-            content = f"⚠️ {site_name} 报警\n设备: {device_name} ({sn})\n类型: {alarm_type}\n数值: {value:.2f}\n阈值: {threshold:.2f}\n时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            # 构建消息内容（如果配置了关键词，添加到开头）
+            keyword_prefix = f"【{keyword}】" if keyword else ""
+            content = f"{keyword_prefix}⚠️ {site_name} 报警\n设备: {device_name} ({sn})\n类型: {alarm_type}\n数值: {value:.2f}\n阈值: {threshold:.2f}\n时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
             # 钉钉格式
             if platform == "dingtalk":
@@ -317,10 +352,11 @@ class AlarmCenter:
 
             async with aiohttp.ClientSession() as session:
                 async with session.post(url, json=payload, timeout=10) as resp:
+                    resp_text = await resp.text()
                     if resp.status == 200:
-                        logger.info(f"Webhook notification sent via {platform}")
+                        logger.info(f"Webhook notification sent via {platform}, response: {resp_text[:200]}")
                     else:
-                        logger.warning(f"Webhook returned {resp.status}")
+                        logger.warning(f"Webhook returned {resp.status}: {resp_text[:500]}")
         except Exception as e:
             logger.error(f"Webhook send failed: {e}")
 

@@ -145,6 +145,15 @@
                 如果机器人设置了加签安全，请填写 SEC 开头的密钥
               </div>
             </el-form-item>
+            <el-form-item label="触发关键词">
+              <el-input
+                v-model="webhookConfig.keyword"
+                placeholder="如：报警、告警、MCS-IoT"
+              />
+              <div class="form-tip">
+                ⚠️ 重要：钉钉机器人设置了「自定义关键词」安全策略时，消息必须包含该关键词才能发送成功。请将机器人设置的关键词填写在此处。
+              </div>
+            </el-form-item>
             <el-form-item>
               <el-button
                 type="primary"
@@ -174,6 +183,88 @@
             <p style="color: #e6a23c; margin-top: 10px">
               💡 提示：选择"自动检测"会根据 URL 自动识别平台类型
             </p>
+          </div>
+        </el-card>
+      </el-tab-pane>
+
+      <!-- Alarm General Config -->
+      <el-tab-pane label="报警设置" name="alarm">
+        <el-card>
+          <template #header>
+            <div class="card-header">
+              <span>报警通用配置</span>
+              <el-tag type="info">消抖时间 + 时段限制</el-tag>
+            </div>
+          </template>
+
+          <el-form :model="alarmGeneralConfig" label-width="120px">
+            <el-divider content-position="left">消抖时间</el-divider>
+            <el-form-item label="消抖时间">
+              <el-input-number
+                v-model="alarmGeneralConfig.debounce_minutes"
+                :min="1"
+                :max="60"
+                :step="1"
+              />
+              <span style="margin-left: 12px; color: #86868b">分钟（同一设备相同报警类型的最小间隔）</span>
+            </el-form-item>
+
+            <el-divider content-position="left">报警时段限制</el-divider>
+            <el-form-item label="启用时段限制">
+              <el-switch v-model="alarmGeneralConfig.time_restriction_enabled" />
+              <span style="margin-left: 12px; color: #86868b">仅在指定时段内发送通知</span>
+            </el-form-item>
+
+            <el-form-item label="生效日期" v-if="alarmGeneralConfig.time_restriction_enabled">
+              <el-checkbox-group v-model="alarmGeneralConfig.time_restriction_days">
+                <el-checkbox :value="1">周一</el-checkbox>
+                <el-checkbox :value="2">周二</el-checkbox>
+                <el-checkbox :value="3">周三</el-checkbox>
+                <el-checkbox :value="4">周四</el-checkbox>
+                <el-checkbox :value="5">周五</el-checkbox>
+                <el-checkbox :value="6">周六</el-checkbox>
+                <el-checkbox :value="7">周日</el-checkbox>
+              </el-checkbox-group>
+            </el-form-item>
+
+            <el-form-item label="通知时段" v-if="alarmGeneralConfig.time_restriction_enabled">
+              <el-time-picker
+                v-model="alarmTimeStart"
+                format="HH:mm"
+                placeholder="开始时间"
+                @change="updateTimeRestriction"
+              />
+              <span style="margin: 0 12px; color: #86868b">至</span>
+              <el-time-picker
+                v-model="alarmTimeEnd"
+                format="HH:mm"
+                placeholder="结束时间"
+                @change="updateTimeRestriction"
+              />
+            </el-form-item>
+
+            <el-form-item>
+              <el-button
+                type="primary"
+                @click="saveAlarmGeneralConfig"
+                :loading="saving"
+                >保存配置</el-button
+              >
+            </el-form-item>
+          </el-form>
+
+          <el-divider />
+
+          <div class="tips">
+            <h4>💡 配置说明:</h4>
+            <ul>
+              <li>
+                <strong>消抖时间</strong> - 同一设备的相同报警类型在此时间内仅触发一次通知
+              </li>
+              <li>
+                <strong>时段限制</strong> - 仅在指定日期和时间段内发送报警通知，其他时间报警仍会记录但不会推送
+              </li>
+            </ul>
           </div>
         </el-card>
       </el-tab-pane>
@@ -335,6 +426,7 @@ const webhookConfig = reactive({
   url: "",
   platform: "custom",
   secret: "",
+  keyword: "",
 });
 
 const dashboardConfig = reactive({
@@ -352,8 +444,42 @@ const mqttConfig = reactive({
   device_pass: "",
 });
 
+// 报警通用配置
+const alarmGeneralConfig = reactive({
+  debounce_minutes: 10,
+  time_restriction_enabled: false,
+  time_restriction_days: [1, 2, 3, 4, 5] as number[],
+  time_restriction_start: "08:00",
+  time_restriction_end: "18:00",
+});
 
+// 时间选择器绑定值
+const alarmTimeStart = ref<Date | null>(null);
+const alarmTimeEnd = ref<Date | null>(null);
 
+// 时间字符串转Date对象
+function parseTimeString(timeStr: string): Date {
+  const parts = timeStr.split(':').map(Number);
+  const hours = parts[0] || 0;
+  const minutes = parts[1] || 0;
+  const date = new Date();
+  date.setHours(hours, minutes, 0, 0);
+  return date;
+}
+
+// Date对象转时间字符串
+function formatTimeToString(date: Date | null): string {
+  if (!date) return "00:00";
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
+
+// 更新时间配置
+function updateTimeRestriction() {
+  alarmGeneralConfig.time_restriction_start = formatTimeToString(alarmTimeStart.value);
+  alarmGeneralConfig.time_restriction_end = formatTimeToString(alarmTimeEnd.value);
+}
 
 
 
@@ -433,6 +559,32 @@ async function reloadMqtt() {
   }
 }
 
+// 报警通用配置
+async function loadAlarmGeneralConfig() {
+  try {
+    const res = await configApi.getAlarmGeneral();
+    Object.assign(alarmGeneralConfig, res.data);
+    // 初始化时间选择器
+    alarmTimeStart.value = parseTimeString(alarmGeneralConfig.time_restriction_start);
+    alarmTimeEnd.value = parseTimeString(alarmGeneralConfig.time_restriction_end);
+  } catch (error) {
+    console.error("Failed to load alarm general config:", error);
+  }
+}
+
+async function saveAlarmGeneralConfig() {
+  saving.value = true;
+  try {
+    await configApi.updateAlarmGeneral(alarmGeneralConfig);
+    ElMessage.success("报警配置已保存");
+  } catch (error: any) {
+    const detail = error.response?.data?.detail || "保存失败";
+    ElMessage.error(detail);
+  } finally {
+    saving.value = false;
+  }
+}
+
 async function loadMqttConfig() {
   try {
     const res = await configApi.getMqtt();
@@ -498,6 +650,7 @@ onMounted(() => {
   loadConfigs(); // This already loads email, webhook, dashboard  
   loadMqttConfig();
   loadSiteConfig();
+  loadAlarmGeneralConfig();
 });
 </script>
 

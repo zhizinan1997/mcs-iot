@@ -27,6 +27,14 @@ class SMSConfig(BaseModel):
     sign_name: str = ""
     template_id: str = ""
 
+class AlarmGeneralConfig(BaseModel):
+    """报警通用配置：消抖时间和报警时段"""
+    debounce_minutes: int = 10  # 消抖时间(分钟)
+    time_restriction_enabled: bool = False  # 是否启用时段限制
+    time_restriction_days: List[int] = [1, 2, 3, 4, 5]  # 周一到周五
+    time_restriction_start: str = "08:00"  # 开始时间
+    time_restriction_end: str = "18:00"  # 结束时间
+
 class DashboardConfig(BaseModel):
     title: str = "MCS-IoT Dashboard"
     refresh_rate: int = 5
@@ -138,6 +146,33 @@ async def get_sms_config(redis = Depends(get_redis)):
 async def update_sms_config(config: SMSConfig, redis = Depends(get_redis)):
     await redis.set("config:sms", config.json())
     return {"message": "SMS config updated"}
+
+# Alarm General Config (消抖时间和报警时段)
+@router.get("/alarm/general", response_model=AlarmGeneralConfig)
+async def get_alarm_general_config(redis = Depends(get_redis)):
+    data = await redis.get("config:alarm_general")
+    if data:
+        return AlarmGeneralConfig(**json.loads(data))
+    return AlarmGeneralConfig()
+
+@router.put("/alarm/general")
+async def update_alarm_general_config(config: AlarmGeneralConfig, redis = Depends(get_redis)):
+    await redis.set("config:alarm_general", config.json())
+    
+    # 立即更新所有现有消抖键的 TTL，使新配置立即生效
+    new_ttl = config.debounce_minutes * 60  # 转换为秒
+    debounce_keys = await redis.keys("alarm:debounce:*")
+    updated_count = 0
+    for key in debounce_keys:
+        # 只更新仍然存在的键（设置新的 TTL）
+        current_ttl = await redis.ttl(key)
+        if current_ttl > 0:
+            # 如果新 TTL 小于当前剩余时间，立即更新
+            # 如果新 TTL 大于当前剩余时间，也更新（延长消抖时间）
+            await redis.expire(key, new_ttl)
+            updated_count += 1
+    
+    return {"message": f"报警通用配置已保存，{updated_count} 个设备的消抖时间已同步更新"}
 
 # Dashboard Config
 @router.get("/dashboard", response_model=DashboardConfig)
@@ -608,15 +643,29 @@ async def get_license_status():
     except Exception as e:
         # 如果 license manager 未初始化，返回基本信息
         from .license import LicenseManager
-        import socket
+        import os
         import hashlib
-        import uuid
         
-        # 生成设备 ID
-        hostname = socket.gethostname()
-        mac = hex(uuid.getnode())[2:]
-        raw_id = f"{hostname}:{mac}:"
-        hash_bytes = hashlib.sha256(raw_id.encode()).digest()
+        # Generate device ID using same logic as LicenseManager
+        machine_id = None
+        
+        # Priority 1: Mounted host machine-id
+        if os.path.exists("/app/host_machine_id"):
+            with open("/app/host_machine_id", "r") as f:
+                machine_id = f.read().strip()
+        # Priority 2: System machine-id
+        elif os.path.exists("/etc/machine-id"):
+            with open("/etc/machine-id", "r") as f:
+                machine_id = f.read().strip()
+        # Priority 3: Fallback
+        else:
+            import socket
+            import uuid
+            hostname = socket.gethostname()
+            mac = hex(uuid.getnode())[2:]
+            machine_id = f"{hostname}:{mac}"
+        
+        hash_bytes = hashlib.sha256(machine_id.encode()).digest()
         hex_str = hash_bytes.hex()[:12].upper()
         device_id = f"MCS-{hex_str[:4]}-{hex_str[4:8]}-{hex_str[8:12]}"
         

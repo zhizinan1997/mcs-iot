@@ -297,7 +297,7 @@ async function fetchArchiveFiles() {
 function formatTime(time: string) {
   if (!time) return '-';
   const date = new Date(time);
-  return date.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+  return date.toLocaleString('zh-CN');
 }
 
 function downloadFile(file: any) {

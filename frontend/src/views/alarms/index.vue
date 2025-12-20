@@ -160,9 +160,9 @@ async function ackAllAlarms() {
 }
 
 function formatTime(time: string) {
-  // 将 UTC 时间转换为中国时间 (UTC+8)
-  const date = new Date(time + 'Z')  // 添加 Z 表示 UTC
-  return date.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
+  // 数据库已存储北京时间，直接格式化即可
+  const date = new Date(time)
+  return date.toLocaleString('zh-CN')
 }
 
 function getTypeName(type: string) {

@@ -1,3 +1,6 @@
+-- Set timezone to Beijing (China Standard Time)
+SET timezone = 'Asia/Shanghai';
+
 -- Enable TimescaleDB extension
 CREATE EXTENSION IF NOT EXISTS timescaledb;
 

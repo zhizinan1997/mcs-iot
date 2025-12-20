@@ -91,6 +91,9 @@ export const configApi = {
     getAI: () => api.get('/config/ai'),
     updateAI: (data: any) => api.put('/config/ai', data),
     testAI: (data: any) => api.post('/config/ai/test', data),
+    // 报警通用配置（消抖时间+报警时段）
+    getAlarmGeneral: () => api.get('/config/alarm/general'),
+    updateAlarmGeneral: (data: any) => api.put('/config/alarm/general', data),
     // 授权管理
     getLicense: () => api.get('/config/license'),
     verifyLicense: () => api.post('/config/license/verify')

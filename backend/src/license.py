@@ -110,43 +110,59 @@ class LicenseManager:
         self._device_id = None
     
     def get_device_id(self) -> str:
-        """Generate unique device ID based on hardware info"""
+        """
+        Generate unique device ID based on HOST machine hardware.
+        
+        Priority:
+        1. /app/host_machine_id (mounted from host's /etc/machine-id)
+        2. /etc/machine-id (if running directly on host)
+        3. Fallback to container-based identifiers (not recommended)
+        
+        This ensures:
+        - Same server: ID never changes (restart, redeploy)
+        - Different server: ID always changes (even with data migration)
+        """
         if self._device_id:
             return self._device_id
         
         try:
-            # Collect hardware identifiers
-            hostname = socket.gethostname()
+            machine_id = None
             
-            # Try to get MAC address
-            mac = ""
-            try:
-                import uuid
-                mac = hex(uuid.getnode())[2:]
-            except:
-                pass
+            # Priority 1: Mounted host machine-id (Docker production)
+            host_machine_id_path = "/app/host_machine_id"
+            if os.path.exists(host_machine_id_path):
+                with open(host_machine_id_path, "r") as f:
+                    machine_id = f.read().strip()
+                logger.info(f"Using host machine-id from mounted file")
             
-            # Try to get CPU info (Linux)
-            cpu_id = ""
-            try:
-                if os.path.exists("/proc/cpuinfo"):
-                    with open("/proc/cpuinfo", "r") as f:
-                        for line in f:
-                            if "Serial" in line or "model name" in line:
-                                cpu_id += line.strip()
-                                break
-            except:
-                pass
+            # Priority 2: System machine-id (direct host or some containers)
+            if not machine_id and os.path.exists("/etc/machine-id"):
+                with open("/etc/machine-id", "r") as f:
+                    machine_id = f.read().strip()
+                logger.info(f"Using system /etc/machine-id")
             
-            # Combine and hash
-            raw_id = f"{hostname}:{mac}:{cpu_id}"
-            hash_bytes = hashlib.sha256(raw_id.encode()).digest()
+            # Priority 3: Fallback - use container identifiers (less stable)
+            if not machine_id:
+                logger.warning("No host machine-id found, using fallback (may change on redeploy)")
+                hostname = socket.gethostname()
+                mac = ""
+                try:
+                    import uuid
+                    mac = hex(uuid.getnode())[2:]
+                except:
+                    pass
+                machine_id = f"{hostname}:{mac}"
+            
+            # Hash the machine_id to create consistent format
+            hash_bytes = hashlib.sha256(machine_id.encode()).digest()
             
             # Format as MCS-XXXX-XXXX-XXXX
             hex_str = hash_bytes.hex()[:12].upper()
             self._device_id = f"MCS-{hex_str[:4]}-{hex_str[4:8]}-{hex_str[8:12]}"
             
+            logger.info(f"Generated device ID: {self._device_id}")
             return self._device_id
+            
         except Exception as e:
             logger.error(f"Failed to generate device ID: {e}")
             return "MCS-0000-0000-0000"

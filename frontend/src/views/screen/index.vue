@@ -996,13 +996,12 @@ const metrics = computed(() => {
 })
 
 
-// Format time to Beijing timezone (Asia/Shanghai)
+// Format time (database already stores Beijing time)
 function fmtTime(t: string) { 
-  const date = new Date(t + (t.includes('Z') || t.includes('+') ? '' : 'Z'))
+  const date = new Date(t)
   return date.toLocaleTimeString('zh-CN', { 
     hour: '2-digit', 
-    minute: '2-digit',
-    timeZone: 'Asia/Shanghai'
+    minute: '2-digit'
   }) 
 }
 
