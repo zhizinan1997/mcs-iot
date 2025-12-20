@@ -1,5 +1,5 @@
 /**
- * MCS-IoT License Server
+ * MCS-IoT License Server (Optimized)
  * Deployed on Cloudflare Workers
  */
 
@@ -30,7 +30,7 @@ export default {
             return handleVerify(request, env);
         }
 
-        // Admin API: Add License
+        // Admin API: Add/Update License
         if (request.method === "POST" && url.pathname === "/admin/add") {
             return handleAddLicense(request, env);
         }
@@ -73,21 +73,23 @@ async function handleVerify(request, env) {
 
         if (!licenseData) {
             return Response.json(
-                { valid: false, error: "未找到授权信息", tampered: false },
+                { valid: false, error: "授权不存在", tampered: false },
                 { headers: corsHeaders() }
             );
         }
 
+        // Check Status
+        if (licenseData.status === "disabled") {
+             return Response.json(
+                { valid: false, error: "授权已被禁用", tampered: false },
+                { headers: corsHeaders() }
+            );
+        }
+
+        // Check Expiry
         if (new Date(licenseData.expires_at) < new Date()) {
             return Response.json(
                 { valid: false, error: "授权已过期", tampered: false },
-                { headers: corsHeaders() }
-            );
-        }
-
-        if (licenseData.status !== "active") {
-            return Response.json(
-                { valid: false, error: "授权已被禁用", tampered: false },
                 { headers: corsHeaders() }
             );
         }
@@ -109,8 +111,6 @@ async function handleVerify(request, env) {
                 
                 const reportKey = `tamper:${device_id}:${Date.now()}`;
                 await env.LICENSES.put(reportKey, JSON.stringify(tamperReport));
-                
-                console.log(`TAMPERING DETECTED: ${device_id}`);
             }
         }
 
@@ -136,16 +136,24 @@ async function handleAddLicense(request, env) {
     if (!checkAuth(request, env)) return new Response("Unauthorized", { status: 401, headers: corsHeaders() });
 
     try {
-        const { device_id, customer, expires_at, features, expected_hash } = await request.json();
+        const payload = await request.json();
+        const { device_id, customer, expires_at, features, expected_hash, status } = payload;
+
+        if (!device_id) return Response.json({ error: "Missing device ID" }, { status: 400, headers: corsHeaders() });
+
+        // Check if exists to preserve created_at
+        const existing = await env.LICENSES.get(`license:${device_id}`, "json");
+        const created_at = existing ? existing.created_at : new Date().toISOString();
 
         const licenseData = {
             device_id,
-            status: "active",
+            status: status || "active",
             customer,
             expires_at,
             features: features || ["mqtt_external", "ai", "r2_archive", "notifications"],
             expected_hash: expected_hash || "",
-            created_at: new Date().toISOString()
+            created_at: created_at,
+            updated_at: new Date().toISOString()
         };
 
         await env.LICENSES.put(`license:${device_id}`, JSON.stringify(licenseData));
@@ -164,11 +172,17 @@ async function handleListLicenses(request, env) {
         const keys = list.keys;
         const licenses = [];
 
-        // Fetch details (limit 10 for demo, or fetch all parallel)
-        for (const key of keys) {
-            const data = await env.LICENSES.get(key.name, "json");
-            licenses.push(data);
-        }
+        // In a real production scenario with thousands of keys, this should be paginated or better managed.
+        // For this scale, parallel fetching is fine.
+        const promises = keys.map(key => env.LICENSES.get(key.name, "json"));
+        const results = await Promise.all(promises);
+        
+        results.forEach(data => {
+            if(data) licenses.push(data);
+        });
+
+        // Sort by created_at desc
+        licenses.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
         return Response.json({ licenses }, { headers: corsHeaders() });
     } catch (e) {
@@ -186,6 +200,7 @@ async function handleDelete(request, env) {
         if (type === 'license') {
             if (!device_id) return Response.json({ error: "Missing device_id" }, { status: 400, headers: corsHeaders() });
             deleteKey = `license:${device_id}`;
+            // Also clean up associated logs? No, keep logs for history or delete manually.
         } else if (type === 'log') {
             if (!key) return Response.json({ error: "Missing key" }, { status: 400, headers: corsHeaders() });
             deleteKey = key;
@@ -199,21 +214,25 @@ async function handleDelete(request, env) {
         return Response.json({ error: e.message }, { status: 500, headers: corsHeaders() });
     }
 }
+
 async function handleTamperLogs(request, env) {
     if (!checkAuth(request, env)) return new Response("Unauthorized", { status: 401, headers: corsHeaders() });
 
     try {
         const list = await env.LICENSES.list({ prefix: "tamper:" });
         const keys = list.keys;
-        const tamperLogs = [];
-
-        for (const key of keys) {
-            const data = await env.LICENSES.get(key.name, "json");
-            if (data) {
-                data.key = key.name; // Include the key for deletion
-                tamperLogs.push(data);
-            }
-        }
+        
+        const promises = keys.map(async key => {
+             const data = await env.LICENSES.get(key.name, "json");
+             if(data) {
+                 data.key = key.name;
+                 return data;
+             }
+             return null;
+        });
+        
+        const results = await Promise.all(promises);
+        const tamperLogs = results.filter(r => r !== null);
 
         // Sort by timestamp descending
         tamperLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -233,11 +252,12 @@ function corsHeaders() {
     return {
         "Access-Control-Allow-Origin": "*",
         "Content-Type": "application/json",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
     };
 }
 
 // =============================================================================
-// Web UI Template
+// Web UI Template (Modernized)
 // =============================================================================
 
 const ADMIN_HTML = `
@@ -246,187 +266,294 @@ const ADMIN_HTML = `
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MCS-IoT License Admin</title>
+    <title>MCS-IoT License Manager</title>
     <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css" />
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/element-plus"></script>
     <script src="https://unpkg.com/@element-plus/icons-vue"></script>
     <style>
-        body { margin: 0; padding: 0; background: #f5f7fa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
-        .login-container { display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .login-card { width: 400px; }
-        .main-container { padding: 20px; max-width: 1200px; margin: 0 auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
-        .feature-tag { margin-right: 5px; margin-bottom: 5px; }
-        .hash-text { font-family: monospace; font-size: 12px; color: #666; }
+        :root { --el-color-primary: #409eff; --bg-color: #f0f2f5; }
+        body { margin: 0; padding: 0; background: var(--bg-color); font-family: -apple-system, system-ui, sans-serif; }
+        
+        .app-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        
+        /* Login */
+        .login-wrapper { height: 100vh; display: flex; align-items: center; justify-content: center; background: #2d3a4b; }
+        .login-box { width: 400px; padding: 40px; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .login-title { text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 30px; color: #333; }
+        
+        /* Dashboard */
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05); }
+        .brand { display: flex; align-items: center; font-size: 20px; font-weight: 600; color: #1f2f3d; }
+        .brand-icon { margin-right: 10px; font-size: 24px; color: var(--el-color-primary); }
+        
+        .main-card { border-radius: 8px; border: none; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05); }
+        .toolbar { display: flex; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        .search-input { width: 300px; }
+        
+        .feature-tag { margin-right: 6px; }
+        .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+        .status-active { background: #67c23a; }
+        .status-expired { background: #f56c6c; }
+        .status-disabled { background: #909399; }
+        
+        .code-box { background: #f4f4f5; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 12px; color: #909399; }
+        
+        /* Dialog */
+        .dialog-footer { text-align: right; margin-top: 20px; }
     </style>
 </head>
 <body>
     <div id="app">
-        <!-- Loading -->
-        <div v-if="loading" style="text-align:center; padding-top: 50px;">
-             Loading...
-        </div>
-
-        <!-- Login -->
-        <div v-else-if="!token" class="login-container">
-            <el-card class="login-card">
-                <template #header><h3>MCS-IoT 授权管理后台</h3></template>
+        <!-- Login Screen -->
+        <div v-if="!token" class="login-wrapper">
+            <div class="login-box">
+                <div class="login-title">
+                    <el-icon style="vertical-align: middle; margin-right: 8px;"><Key /></el-icon>
+                    MCS License Admin
+                </div>
                 <el-form>
-                    <el-form-item label="Token">
-                        <el-input v-model="inputToken" placeholder="输入 Admin Token" type="password" show-password></el-input>
+                    <el-form-item>
+                        <el-input v-model="inputToken" placeholder="Enter Admin Token" prefix-icon="Lock" type="password" show-password @keyup.enter="login"></el-input>
                     </el-form-item>
-                    <el-button type="primary" @click="login" style="width: 100%">登录</el-button>
+                    <el-button type="primary" @click="login" style="width: 100%" :loading="loading" size="large">登 录</el-button>
                 </el-form>
-            </el-card>
+            </div>
         </div>
 
-        <!-- Dashboard -->
-        <div v-else class="main-container">
+        <!-- Main Dashboard -->
+        <div v-else class="app-container">
             <div class="header">
-                <h2>授权管理</h2>
-                <div>
-                    <el-button type="info" @click="logout">退出</el-button>
+                <div class="brand">
+                    <el-icon class="brand-icon"><Files /></el-icon>
+                    设备授权管理系统
+                </div>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <el-tag type="info">Admin Mode</el-tag>
+                    <el-button type="danger" plain size="small" icon="SwitchButton" @click="logout">退出</el-button>
                 </div>
             </div>
 
-            <el-tabs type="border-card">
-                <el-tab-pane label="授权列表">
-                    <div style="margin-bottom: 15px;">
-                        <el-button type="primary" @click="showAddDialog = true">添加授权</el-button>
-                        <el-button @click="fetchList">刷新</el-button>
-                    </div>
-                    <el-table :data="licenses" stripe style="width: 100%" v-loading="loadingData">
-                        <el-table-column prop="customer" label="客户名称" width="180"></el-table-column>
-                        <el-table-column prop="device_id" label="设备 ID" width="220">
-                             <template #default="scope">
-                                <el-tag type="info">{{ scope.row.device_id }}</el-tag>
-                            </template>
-                        </el-table-column>
-                        <el-table-column prop="expires_at" label="过期时间" width="120"></el-table-column>
-                        <el-table-column prop="status" label="状态" width="100">
-                            <template #default="scope">
-                                <el-tag :type="getStatusType(scope.row)">{{ scope.row.status }}</el-tag>
-                            </template>
-                        </el-table-column>
-                        <el-table-column label="完整性校验" width="150">
-                            <template #default="scope">
-                                <el-tooltip :content="scope.row.expected_hash" placement="top" v-if="scope.row.expected_hash">
-                                    <span class="hash-text">{{ scope.row.expected_hash.substring(0, 8) }}...</span>
-                                </el-tooltip>
-                                <span v-else class="hash-text" style="color: #ccc">未设置</span>
-                            </template>
-                        </el-table-column>
-                        <el-table-column label="功能权限">
-                            <template #default="scope">
-                                <el-tag v-for="f in scope.row.features" :key="f" size="small" class="feature-tag">{{ f }}</el-tag>
-                            </template>
-                        </el-table-column>
-                        <el-table-column label="操作" width="150" align="right">
-                             <template #default="scope">
-                                <el-button type="primary" link @click="edit(scope.row)">编辑</el-button>
-                                <el-button type="danger" link @click="confirmDelete(scope.row.device_id, 'license')">删除</el-button>
-                             </template>
-                        </el-table-column>
-                    </el-table>
-                </el-tab-pane>
-                
-                <el-tab-pane label="破解记录(Tamper Logs)">
-                    <div style="margin-bottom: 15px;">
-                        <el-button @click="fetchTamperLogs">刷新</el-button>
-                    </div>
-                    <el-table :data="tamperLogs" stripe style="width: 100%" v-loading="loadingLogs">
-                        <el-table-column prop="timestamp" label="时间" width="180">
-                            <template #default="scope">
-                                {{ new Date(scope.row.timestamp).toLocaleString() }}
-                            </template>
-                        </el-table-column>
-                         <el-table-column prop="device_id" label="设备 ID" width="220">
-                             <template #default="scope">
-                                <el-tag type="danger">{{ scope.row.device_id }}</el-tag>
-                            </template>
-                        </el-table-column>
-                        <el-table-column prop="customer" label="可能客户" width="150"></el-table-column>
-                        <el-table-column label="哈希对比">
-                            <template #default="scope">
-                                <div>期望: <span class="hash-text">{{ scope.row.expected_hash }}</span></div>
-                                <div>实际: <span class="hash-text" style="color: red">{{ scope.row.actual_hash }}</span></div>
-                            </template>
-                        </el-table-column>
-                        <el-table-column label="操作" width="100" align="right">
-                             <template #default="scope">
-                                <el-button type="danger" link @click="confirmDelete(scope.row.key, 'log')">删除</el-button>
-                             </template>
-                        </el-table-column>
-                    </el-table>
-                </el-tab-pane>
-            </el-tabs>
+            <el-card class="main-card">
+                <el-tabs v-model="activeTab">
+                    
+                    <!-- LICENSE LIST TAB -->
+                    <el-tab-pane label="授权列表" name="licenses">
+                        <div class="toolbar">
+                            <div style="display: flex; gap: 10px;">
+                                <el-button type="primary" icon="Plus" @click="openAddDialog">新建授权</el-button>
+                                <el-button icon="Refresh" @click="fetchList" circle></el-button>
+                            </div>
+                            <el-input v-model="searchQuery" placeholder="搜索 客户名称 / 设备ID" class="search-input" clearable prefix-icon="Search"></el-input>
+                        </div>
+                        
+                        <el-table :data="filteredLicenses" v-loading="loadingData" stripe style="width: 100%">
+                            <!-- Status Column -->
+                            <el-table-column label="状态" width="100">
+                                <template #default="{ row }">
+                                    <div v-if="row.status === 'disabled'">
+                                        <el-tag type="info" size="small" effect="dark">已禁用</el-tag>
+                                    </div>
+                                    <div v-else-if="isExpired(row.expires_at)">
+                                        <el-tag type="danger" size="small" effect="dark">已过期</el-tag>
+                                    </div>
+                                    <div v-else>
+                                        <el-tag type="success" size="small" effect="dark">正常</el-tag>
+                                    </div>
+                                </template>
+                            </el-table-column>
+                            
+                            <!-- Customer Info -->
+                            <el-table-column label="客户信息" min-width="180">
+                                <template #default="{ row }">
+                                    <div style="font-weight: bold;">{{ row.customer }}</div>
+                                    <div style="font-size: 12px; color: #999;">创建于: {{ formatDate(row.created_at) }}</div>
+                                </template>
+                            </el-table-column>
+                            
+                            <!-- Device ID -->
+                            <el-table-column label="设备 ID" width="240">
+                                <template #default="{ row }">
+                                    <el-tooltip content="点击复制" placement="top">
+                                        <div class="code-box" style="cursor: pointer;" @click="copyToClipboard(row.device_id)">
+                                            {{ row.device_id }}
+                                        </div>
+                                    </el-tooltip>
+                                </template>
+                            </el-table-column>
+                            
+                            <!-- Expiry -->
+                            <el-table-column label="到期时间" width="150" prop="expires_at" sortable></el-table-column>
+                            
+                            <!-- Features -->
+                            <el-table-column label="功能权限" min-width="200">
+                                <template #default="{ row }">
+                                    <el-tag v-for="tag in row.features" :key="tag" size="small" class="feature-tag" type="primary" effect="plain">{{ tag }}</el-tag>
+                                </template>
+                            </el-table-column>
+                            
+                            <!-- Actions -->
+                            <el-table-column label="操作" width="180" fixed="right" align="right">
+                                <template #default="{ row }">
+                                    <el-button type="primary" text icon="Edit" @click="openEditDialog(row)">编辑</el-button>
+                                    <el-button type="danger" text icon="Delete" @click="handleDeleteLicense(row)">删除</el-button>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                    </el-tab-pane>
 
-            <!-- Add Dialog -->
-            <el-dialog v-model="showAddDialog" title="添加/编辑授权" width="600px">
-                <el-form :model="form" label-width="120px">
-                    <el-form-item label="设备 ID">
-                        <el-input v-model="form.device_id" placeholder="MCS-XXXX-XXXX-XXXX"></el-input>
+                    <!-- SECURITY LOGS TAB -->
+                    <el-tab-pane label="安全审计 (Tamper Logs)" name="logs">
+                        <div class="toolbar">
+                            <el-button icon="Refresh" @click="fetchLogs" circle></el-button>
+                            <el-alert title="检测到任何哈希不匹配的请求将被记录在此" type="warning" show-icon :closable="false" style="width: auto; flex: 1;"></el-alert>
+                        </div>
+                        
+                        <el-table :data="logs" v-loading="loadingLogs" style="width: 100%">
+                            <el-table-column label="时间" width="180">
+                                <template #default="{ row }">
+                                    {{ new Date(row.timestamp).toLocaleString() }}
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="设备 / 客户" min-width="200">
+                                <template #default="{ row }">
+                                    <div>{{ row.device_id }}</div>
+                                    <small style="color: #666">{{ row.customer || 'Unknown' }}</small>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="哈希校验详情" min-width="300">
+                                <template #default="{ row }">
+                                    <div style="font-family: monospace; font-size: 12px;">
+                                        <div style="color: #67c23a">EXPECT: {{ row.expected_hash }}</div>
+                                        <div style="color: #f56c6c">ACTUAL: {{ row.actual_hash }}</div>
+                                    </div>
+                                </template>
+                            </el-table-column>
+                             <el-table-column label="操作" width="100" align="right">
+                                <template #default="{ row }">
+                                    <el-button type="danger" text icon="Delete" @click="handleDeleteLog(row)">删除</el-button>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                    </el-tab-pane>
+                </el-tabs>
+            </el-card>
+
+            <!-- Dialog -->
+            <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑授权' : '新建授权'" width="600px" destroy-on-close>
+                <el-form :model="form" label-width="120px" :rules="rules" ref="formRef">
+                    
+                    <el-form-item label="设备 ID" prop="device_id">
+                        <el-input v-model="form.device_id" placeholder="唯一设备标识符 (如 MAC 或 UUID)" :disabled="isEdit">
+                             <template #append v-if="!isEdit">
+                                <el-button icon="Refresh" @click="generateUUID" tooltip="生成UUID" />
+                             </template>
+                        </el-input>
                     </el-form-item>
-                    <el-form-item label="客户名称">
-                        <el-input v-model="form.customer" placeholder="客户公司名称"></el-input>
+                    
+                    <el-form-item label="客户名称" prop="customer">
+                        <el-input v-model="form.customer" placeholder="客户或项目名称"></el-input>
                     </el-form-item>
-                    <el-form-item label="过期时间">
-                         <el-date-picker v-model="form.expires_at" type="date" placeholder="选择日期" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100%"></el-date-picker>
+                    
+                    <el-row>
+                        <el-col :span="12">
+                            <el-form-item label="过期日期" prop="expires_at">
+                                <el-date-picker v-model="form.expires_at" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width: 100%"></el-date-picker>
+                            </el-form-item>
+                        </el-col>
+                        <el-col :span="12">
+                            <el-form-item label="当前状态" prop="status">
+                                <el-select v-model="form.status" style="width: 100%">
+                                    <el-option label="正常 (Active)" value="active"></el-option>
+                                    <el-option label="禁用 (Disabled)" value="disabled"></el-option>
+                                </el-select>
+                            </el-form-item>
+                        </el-col>
+                    </el-row>
+
+                    <el-form-item label="完整性哈希" prop="expected_hash">
+                        <el-input v-model="form.expected_hash" placeholder="生产环境代码构建哈希 (SHA-256前16位)"></el-input>
                     </el-form-item>
-                    <el-form-item label="Expected Hash">
-                        <el-input v-model="form.expected_hash" placeholder="代码完整性哈希 (例如: 43b8117fff32ab77)"></el-input>
-                        <div style="font-size: 12px; color: #999;">生产环境代码的 SHA-256 哈希值 (前16位)</div>
-                    </el-form-item>
-                    <el-form-item label="功能权限">
+
+                    <el-form-item label="功能模块">
                         <el-checkbox-group v-model="form.features">
-                            <el-checkbox label="mqtt_external">MQTT 外网</el-checkbox>
-                            <el-checkbox label="ai">AI 分析</el-checkbox>
-                            <el-checkbox label="r2_archive">R2 归档</el-checkbox>
-                            <el-checkbox label="notifications">报警通知</el-checkbox>
+                            <el-checkbox label="mqtt_external" border>MQTT 外网</el-checkbox>
+                            <el-checkbox label="ai" border>AI 分析</el-checkbox>
+                            <el-checkbox label="r2_archive" border>数据归档</el-checkbox>
+                            <el-checkbox label="notifications" border>报警通知</el-checkbox>
                         </el-checkbox-group>
                     </el-form-item>
                 </el-form>
-                <template #footer>
-                    <el-button @click="showAddDialog = false">取消</el-button>
-                    <el-button type="primary" @click="submit" :loading="submitting">保存</el-button>
-                </template>
+                <div class="dialog-footer">
+                     <el-button @click="dialogVisible = false">取消</el-button>
+                     <el-button type="primary" @click="submitForm" :loading="submitting">保存提交</el-button>
+                </div>
             </el-dialog>
         </div>
     </div>
 
     <script>
-        const { createApp, ref, reactive, onMounted } = Vue;
+        const { createApp, ref, reactive, computed, onMounted } = Vue;
 
         const app = createApp({
             setup() {
-                const loading = ref(true);
+                // State
                 const token = ref(localStorage.getItem('admin_token') || '');
                 const inputToken = ref('');
+                const loading = ref(false);
+                const activeTab = ref('licenses');
+                const searchQuery = ref('');
                 const licenses = ref([]);
-                const tamperLogs = ref([]);
+                const logs = ref([]);
                 const loadingData = ref(false);
                 const loadingLogs = ref(false);
-                const showAddDialog = ref(false);
+
+                // Dialog State
+                const dialogVisible = ref(false);
+                const isEdit = ref(false);
                 const submitting = ref(false);
+                const formRef = ref(null);
                 
                 const form = reactive({
                     device_id: '',
                     customer: '',
                     expires_at: '',
+                    status: 'active',
                     expected_hash: '',
-                    features: ['mqtt_external', 'ai', 'r2_archive', 'notifications']
+                    features: []
                 });
 
-                const login = () => {
-                    if(inputToken.value) {
-                        token.value = inputToken.value;
-                        localStorage.setItem('admin_token', inputToken.value);
-                        fetchList();
-                        fetchTamperLogs();
-                    }
+                const rules = {
+                    device_id: [{ required: true, message: '请输入设备ID', trigger: 'blur' }],
+                    customer: [{ required: true, message: '请输入客户名称', trigger: 'blur' }],
+                    expires_at: [{ required: true, message: '请选择过期时间', trigger: 'change' }]
                 };
-                
+
+                // Icons
+                // Registered globally via ElementPlusIconsVue
+
+                // Computed
+                const filteredLicenses = computed(() => {
+                    const q = searchQuery.value.toLowerCase();
+                    if (!q) return licenses.value;
+                    return licenses.value.filter(item => 
+                        item.device_id.toLowerCase().includes(q) || 
+                        item.customer.toLowerCase().includes(q)
+                    );
+                });
+
+                // Methods
+                const login = () => {
+                   if (!inputToken.value) return;
+                   loading.value = true;
+                   // Simple local check, real check is on API call
+                   token.value = inputToken.value;
+                   localStorage.setItem('admin_token', inputToken.value);
+                   fetchList();
+                   fetchLogs();
+                   loading.value = false;
+                };
+
                 const logout = () => {
                     token.value = '';
                     localStorage.removeItem('admin_token');
@@ -435,123 +562,162 @@ const ADMIN_HTML = `
                 const fetchList = async () => {
                     loadingData.value = true;
                     try {
-                        const res = await fetch('/admin/list', {
-                            headers: { 'Authorization': 'Bearer ' + token.value }
-                        });
-                        if(res.status === 401) { logout(); return; }
-                        const data = await res.json();
-                        licenses.value = data.licenses || [];
-                    } catch(e) {
-                         ElementPlus.ElMessage.error('加载失败: ' + e.message);
+                        const res = await apiCall('/admin/list');
+                        licenses.value = res.licenses || [];
+                    } catch (e) {
+                         // Error handled in apiCall
                     } finally {
                         loadingData.value = false;
                     }
                 };
 
-                const fetchTamperLogs = async () => {
+                const fetchLogs = async () => {
                     loadingLogs.value = true;
                     try {
-                        const res = await fetch('/admin/tamper-logs', {
-                            headers: { 'Authorization': 'Bearer ' + token.value }
-                        });
-                        if(res.status === 401) return;
-                        const data = await res.json();
-                        tamperLogs.value = data.tamper_logs || [];
-                    } catch(e) {
-                         ElementPlus.ElMessage.error('加载日志失败: ' + e.message);
+                        const res = await apiCall('/admin/tamper-logs');
+                        logs.value = res.tamper_logs || [];
+                    } catch (e) {
                     } finally {
                         loadingLogs.value = false;
                     }
                 };
 
-                const edit = (row) => {
-                    form.device_id = row.device_id;
-                    form.customer = row.customer;
-                    form.expires_at = row.expires_at;
-                    form.features = row.features || [];
-                    form.expected_hash = row.expected_hash || '';
-                    showAddDialog.value = true;
+                const apiCall = async (endpoint, options = {}) => {
+                    const headers = {
+                        'Authorization': 'Bearer ' + token.value,
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    };
+                    
+                    try {
+                        const res = await fetch(endpoint, { ...options, headers });
+                        if (res.status === 401) {
+                            ElementPlus.ElMessage.error('Token 无效或已过期');
+                            logout();
+                            throw new Error('Unauthorized');
+                        }
+                        const data = await res.json();
+                        if (data.error) {
+                            ElementPlus.ElMessage.error(data.error);
+                            throw new Error(data.error);
+                        }
+                        return data;
+                    } catch (e) {
+                         console.error(e);
+                         throw e;
+                    }
                 };
 
-                const submit = async () => {
-                    if(!form.device_id) return ElementPlus.ElMessage.warning('请输入设备 ID');
-                    submitting.value = true;
-                    try {
-                        const res = await fetch('/admin/add', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': 'Bearer ' + token.value
-                            },
-                            body: JSON.stringify(form)
-                        });
-                        const data = await res.json();
-                        if(data.success) {
-                            ElementPlus.ElMessage.success('保存成功');
-                            showAddDialog.value = false;
-                            fetchList();
-                        } else {
-                            ElementPlus.ElMessage.error(data.error || '保存失败');
-                        }
-                    } catch(e) {
-                        ElementPlus.ElMessage.error('保存出错: ' + e.message);
-                    } finally {
-                        submitting.value = false;
-                    }
-                }
+                // CRUD
+                const openAddDialog = () => {
+                    isEdit.value = false;
+                    Object.assign(form, {
+                        device_id: '',
+                        customer: '',
+                        expires_at: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0], // Default 1 year
+                        status: 'active',
+                        expected_hash: '',
+                        features: ['mqtt_external', 'ai', 'r2_archive', 'notifications']
+                    });
+                    dialogVisible.value = true;
+                };
+
+                const openEditDialog = (row) => {
+                    isEdit.value = true;
+                    Object.assign(form, JSON.parse(JSON.stringify(row))); // Deep copy
+                    if(!form.status) form.status = 'active'; // Default for old records
+                    dialogVisible.value = true;
+                };
                 
-                const confirmDelete = (id, type) => {
-                    ElementPlus.ElMessageBox.confirm(
-                        type === 'license' ? '确定要删除设备 ' + id + ' 的授权吗？' : '确定要删除这条破解记录吗？',
-                        '警告',
-                        { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
-                    ).then(async () => {
-                        try {
-                            const res = await fetch('/admin/delete', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Authorization': 'Bearer ' + token.value
-                                },
-                                body: JSON.stringify({ device_id: id, type: type, key: type === 'log' ? id : undefined })
-                            });
-                            const data = await res.json();
-                            if(data.success) {
-                                ElementPlus.ElMessage.success('删除成功');
-                                if(type === 'license') fetchList();
-                                else fetchTamperLogs();
-                            } else {
-                                ElementPlus.ElMessage.error(data.error || '删除失败');
+                const generateUUID = () => {
+                    form.device_id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                        return v.toString(16);
+                    });
+                };
+
+                const submitForm = async () => {
+                    if (!formRef.value) return;
+                    await formRef.value.validate(async (valid) => {
+                        if (valid) {
+                            submitting.value = true;
+                            try {
+                                await apiCall('/admin/add', {
+                                    method: 'POST',
+                                    body: JSON.stringify(form)
+                                });
+                                ElementPlus.ElMessage.success('保存成功');
+                                dialogVisible.value = false;
+                                fetchList();
+                            } catch(e) {
+                                // handled
+                            } finally {
+                                submitting.value = false;
                             }
-                        } catch(e) {
-                            ElementPlus.ElMessage.error('删除出错: ' + e.message);
                         }
+                    });
+                };
+
+                const handleDeleteLicense = (row) => {
+                    ElementPlus.ElMessageBox.confirm(
+                        '确定要删除设备 ' + row.device_id + ' 的授权吗？该操作不可恢复。',
+                        '危险操作',
+                        { confirmButtonText: '删除', cancelButtonText: '取消', type: 'error' }
+                    ).then(async () => {
+                        await apiCall('/admin/delete', {
+                            method: 'POST',
+                            body: JSON.stringify({ device_id: row.device_id, type: 'license' })
+                        });
+                        ElementPlus.ElMessage.success('删除成功');
+                        fetchList();
                     }).catch(() => {});
                 };
+                
+                const handleDeleteLog = (row) => {
+                     ElementPlus.ElMessageBox.confirm('确定要删除这条日志吗？', '提示', { type: 'warning' })
+                     .then(async () => {
+                        await apiCall('/admin/delete', {
+                            method: 'POST',
+                            body: JSON.stringify({ key: row.key, type: 'log' })
+                        });
+                        ElementPlus.ElMessage.success('已删除');
+                        fetchLogs();
+                     }).catch(() => {});
+                }
 
-                const getStatusType = (row) => {
-                    if(row.status !== 'active') return 'danger';
-                    if(new Date(row.expires_at) < new Date()) return 'warning';
-                    return 'success';
+                // Utils
+                const isExpired = (dateStr) => new Date(dateStr) < new Date();
+                const formatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleDateString() : '-';
+                const copyToClipboard = (text) => {
+                    navigator.clipboard.writeText(text).then(() => {
+                        ElementPlus.ElMessage.success('已复制: ' + text);
+                    });
                 };
 
+                // Init
                 onMounted(() => {
-                    loading.value = false;
-                    if(token.value) {
+                    if (token.value) {
                         fetchList();
-                        fetchTamperLogs();
+                        fetchLogs();
+                    }
+                     // Register icons
+                    for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+                        app.component(key, component)
                     }
                 });
 
                 return {
-                    loading, token, inputToken, login, logout,
-                    licenses, tamperLogs, loadingData, loadingLogs,
-                    showAddDialog, submitting, form, submit, edit,
-                    getStatusType, fetchList, fetchTamperLogs, confirmDelete
+                    token, inputToken, login, logout, activeTab,
+                    loading, loadingData, loadingLogs, submitting,
+                    searchQuery, filteredLicenses, logs,
+                    dialogVisible, isEdit, form, formRef, rules,
+                    openAddDialog, openEditDialog, submitForm,
+                    handleDeleteLicense, handleDeleteLog,
+                    isExpired, formatDate, copyToClipboard, generateUUID
                 };
             }
         });
-        
+
         app.use(ElementPlus);
         app.mount('#app');
     </script>
