@@ -38,11 +38,6 @@
             >
               <template #prefix><el-icon><Connection /></el-icon></template>
             </el-input>
-            <div class="model-tips">
-              推荐: <el-tag size="small" effect="plain" @click="form.model='gpt-3.5-turbo'">gpt-3.5-turbo</el-tag>
-              <el-tag size="small" effect="plain" @click="form.model='gpt-4o'">gpt-4o</el-tag>
-              <el-tag size="small" effect="plain" @click="form.model='gemini-2.0-flash'">gemini-2.0-flash</el-tag>
-            </div>
           </el-form-item>
 
           <div class="action-buttons">

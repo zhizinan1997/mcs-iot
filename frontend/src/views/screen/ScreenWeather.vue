@@ -7,8 +7,11 @@
         </div>
         <div class="title-info">
           <h3>天气设置</h3>
-          <p class="subtitle">配置大屏显示的天气地区和数据源</p>
+          <p class="subtitle">配置大屏显示的天气数据源</p>
         </div>
+        <el-tag :type="weatherConfig.enabled ? 'success' : 'info'" effect="dark" round>
+          {{ weatherConfig.enabled ? "已启用" : "未启用" }}
+        </el-tag>
       </div>
 
       <el-divider class="glass-divider" />
@@ -17,50 +20,45 @@
         <el-form 
           :model="weatherConfig" 
           label-width="120px" 
-          label-position="top"
+          label-position="left"
           class="mac-form"
         >
-          <div class="form-grid">
-            <div class="form-col">
-              <el-form-item label="城市/地区">
-                <el-cascader
-                  v-model="weatherConfig.region_code"
-                  :options="regionOptions"
-                  :props="{ expandTrigger: 'hover' }"
-                  placeholder="选择要显示的城市"
-                  class="mac-cascader"
-                />
-                <p class="form-tip">支持省/市/区三级联动选择</p>
-              </el-form-item>
+          <el-form-item label="启用天气">
+            <el-switch v-model="weatherConfig.enabled" />
+          </el-form-item>
 
-              <el-form-item label="刷新间隔 (分钟)">
-                 <el-input-number 
-                   v-model="weatherConfig.interval" 
-                   :min="10" 
-                   :max="1440"
-                   controls-position="right"
-                   class="mac-input-number"
-                 />
-                 <p class="form-tip">建议设置为 60 分钟以上，避免触发 API 限制</p>
-              </el-form-item>
-            </div>
+          <el-form-item label="所在地区">
+            <el-cascader
+              v-model="selectedRegion"
+              :options="provinceAndCityData"
+              :props="{ value: 'label' }"
+              placeholder="请选择省/市"
+              @change="handleRegionChange"
+              style="width: 100%"
+              class="mac-cascader"
+            />
+          </el-form-item>
 
-            <div class="form-col tips-col">
-              <div class="info-card glass-inset">
-                <h4><el-icon><InfoFilled /></el-icon> 天气源说明</h4>
-                <p>系统默认使用高德地图天气 API。</p>
-                <div class="api-status">
-                   <span class="label">API 状态</span>
-                   <el-tag type="success" size="small" effect="dark" round>正常</el-tag>
-                </div>
-                <p class="last-update">上次更新: {{ lastUpdate || '从未' }}</p>
-              </div>
+          <el-form-item label="城市拼音">
+            <el-input v-model="weatherConfig.city_pinyin" disabled placeholder="自动生成" />
+            <p class="form-tip">根据所选城市自动生成，用于天气 API 查询</p>
+          </el-form-item>
+
+          <el-form-item label="API 私钥">
+            <el-input 
+              v-model="weatherConfig.api_key" 
+              placeholder="请输入 Seniverse API Key" 
+              type="password" 
+              show-password 
+            />
+            <div class="form-tip">
+              请前往 <a href="https://www.seniverse.com/" target="_blank" style="color: #0071e3">心知天气 (Seniverse)</a> 申请免费 API Key
             </div>
-          </div>
+          </el-form-item>
 
           <div class="form-actions">
-            <el-button @click="resetConfig" round>重置</el-button>
-            <el-button type="primary" @click="saveConfig" :loading="saving" round>保存设置</el-button>
+            <el-button @click="loadWeatherConfig" round>重置</el-button>
+            <el-button type="primary" @click="saveWeatherConfig" :loading="saving" round>保存配置</el-button>
           </div>
         </el-form>
       </div>
@@ -69,78 +67,80 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { PartlyCloudy, InfoFilled } from '@element-plus/icons-vue'
-import { configApi } from '../../api'
-// Note: Assuming regionOptions data is imported or simulated. 
-// For this rewrite, I will simulate simplified data or try to fetch if API exists.
-// Based on previous files, 'regionOptions' was used. I'll mock it if not available, but usually it's a large json.
-// I'll keep it as a reactive variable.
+import { ref, reactive, onMounted } from "vue";
+import { ElMessage } from "element-plus";
+import { PartlyCloudy } from "@element-plus/icons-vue";
+import { configApi } from "../../api";
+import { provinceAndCityData } from 'element-china-area-data';
+import { pinyin } from 'pinyin-pro';
 
-const saving = ref(false)
-const lastUpdate = ref('')
+const saving = ref(false);
+
 const weatherConfig = reactive({
-  region_code: [] as string[],
-  interval: 60
-})
+  enabled: true,
+  province: '',
+  city: '',
+  city_pinyin: '',
+  api_key: ''
+});
 
-// Simplified Region Options (Example) - In real app this might be huge
-// I will just use a placeholder text or fetch if I knew where it came from.
-// In the viewed file it was imported from '@/utils/city-data' presumably or similar.
-// I will rely on the existing variable name hoping auto-import or standard method was used.
-// Wait, I am overwriting the file. I MUST include the regions data or import it.
-// I will import it from local json if possible, but I don't see one.
-// Let's assume it's fetched or I'll provide a basic set.
-const regionOptions = ref([
- {
-   value: '110000', label: '北京市',
-   children: [
-     { value: '110100', label: '北京市', children: [{ value: '110101', label: '东城区' }, { value: '110105', label: '朝阳区' }] }
-   ]
- },
- {
-   value: '310000', label: '上海市',
-   children: [{ value: '310100', label: '上海市', children: [{ value: '310115', label: '浦东新区' }] }]
- }
- // ... User can add more via code if needed or I should import the original library if known.
-])
+const selectedRegion = ref<string[]>([]);
 
-async function loadConfig() {
+async function loadWeatherConfig() {
   try {
-    const res = await configApi.getWeather()
-    if (res.data) {
-      weatherConfig.region_code = res.data.code ? res.data.code.split(',') : []
-      weatherConfig.interval = res.data.interval || 60
-      lastUpdate.value = res.data.last_update
+    const res = await configApi.getWeather();
+    Object.assign(weatherConfig, res.data);
+    if (weatherConfig.province && weatherConfig.city) {
+      selectedRegion.value = [weatherConfig.province, weatherConfig.city];
     }
-  } catch (err) {
-    console.error(err)
+  } catch (error) {
+    console.error("Failed to load weather config:", error);
   }
 }
 
-async function saveConfig() {
-  saving.value = true
+async function saveWeatherConfig() {
+  saving.value = true;
   try {
-    await configApi.updateWeather({
-      code: weatherConfig.region_code.join(','),
-      interval: weatherConfig.interval
-    })
-    ElMessage.success('天气配置已更新')
-  } catch (err) {
-    ElMessage.error('保存失败')
+    await configApi.updateWeather(weatherConfig);
+    ElMessage.success("天气配置已保存");
+  } catch (error) {
+    ElMessage.error("保存失败");
   } finally {
-    saving.value = false
+    saving.value = false;
   }
 }
 
-function resetConfig() {
-  loadConfig()
-}
+const handleRegionChange = (value: string[]) => {
+  if (value && value.length === 2) {
+    weatherConfig.province = value[0] || '';
+    weatherConfig.city = value[1] || '';
+
+    let cityName = value[1] || '';
+    if (cityName.endsWith('市')) cityName = cityName.slice(0, -1);
+    else if (cityName.endsWith('地区')) cityName = cityName.slice(0, -2);
+    else if (cityName.endsWith('盟')) cityName = cityName.slice(0, -1);
+    else if (cityName.endsWith('自治州')) cityName = cityName.slice(0, -3);
+
+    // Special case: Direct-controlled municipalities
+    const municipalities = ['北京市', '上海市', '天津市', '重庆市'];
+    if (municipalities.includes(value[0] || '')) {
+        cityName = value[0] || '';
+        if (cityName.endsWith('市')) cityName = cityName.slice(0, -1);
+    } else if (cityName === '市辖区' || cityName === '县') {
+        cityName = value[0] || '';
+        if (cityName.endsWith('市')) cityName = cityName.slice(0, -1);
+    }
+
+    if (cityName) {
+      const py = pinyin(cityName, { toneType: 'none', type: 'array' }) as string[];
+      weatherConfig.city_pinyin = py.join('');
+    }
+  }
+};
 
 onMounted(() => {
-  loadConfig()
-})
+  loadWeatherConfig();
+});
 </script>
 
 <style scoped>
@@ -150,17 +150,16 @@ onMounted(() => {
   box-sizing: border-box;
   display: flex;
   justify-content: center;
+  align-items: flex-start;
 }
 
 .glass-panel {
-  width: 800px;
-  height: fit-content;
+  width: 600px;
   border-radius: 24px;
   border: 1px solid rgba(255, 255, 255, 0.6);
   background: rgba(255, 255, 255, 0.65);
   backdrop-filter: blur(20px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
-  padding: 0;
   overflow: hidden;
 }
 
@@ -179,6 +178,11 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+}
+
+.title-info {
+  flex: 1;
 }
 
 .title-info h3 {
@@ -201,12 +205,6 @@ onMounted(() => {
   padding: 40px;
 }
 
-.form-grid {
-  display: grid;
-  grid-template-columns: 1.5fr 1fr;
-  gap: 40px;
-}
-
 .mac-form .el-form-item {
   margin-bottom: 24px;
 }
@@ -224,42 +222,6 @@ onMounted(() => {
   color: #86868b;
   margin-top: 6px;
   line-height: 1.4;
-}
-
-.info-card {
-  background: rgba(255,255,255,0.4);
-  border-radius: 16px;
-  padding: 24px;
-  border: 1px solid rgba(255,255,255,0.5);
-}
-
-.info-card h4 {
-  margin: 0 0 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #1d1d1f;
-}
-
-.api-status {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin: 16px 0;
-  padding: 12px;
-  background: rgba(255,255,255,0.5);
-  border-radius: 8px;
-}
-.label {
-  font-size: 13px;
-  color: #606266;
-}
-
-.last-update {
-  font-size: 12px;
-  color: #909399;
-  text-align: right;
-  margin-top: 12px;
 }
 
 .form-actions {

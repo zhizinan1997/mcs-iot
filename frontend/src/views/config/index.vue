@@ -285,8 +285,25 @@ function scrollToSection(id: string) {
   }
 }
 
-function handleScroll() {
-  // Simple scroll spy logic could go here
+function handleScroll(e: Event) {
+  const container = e.target as HTMLElement;
+  const scrollTop = container.scrollTop;
+  
+  // Iterate through sections to find which one is currently in view
+  // We use a threshold (e.g., 100px) to determine "active" area
+  let currentId = 'section-site';
+  
+  for (const item of navItems) {
+    const el = document.getElementById(item.id);
+    if (!el) continue;
+    
+    // Check if the section top is above the "trigger line" (viewport top + offset)
+    if (el.offsetTop - 180 <= scrollTop) {
+      currentId = item.id;
+    }
+  }
+  
+  activeSection.value = currentId;
 }
 
 /* --- Loaders --- */
