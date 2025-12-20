@@ -18,7 +18,7 @@ services:
       - "9001:9001" # WS (Optional)
     volumes:
       - ./mosquitto/config:/mosquitto/config
-      - ./nginx/ssl:/mosquitto/certs:ro
+      - ./nginx/ssl:/mosquitto/certs
       - ./mosquitto/log:/mosquitto/log
       - ./mosquitto/data:/mosquitto/data
     networks:

@@ -16,10 +16,10 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # 全局变量
-VERSION="v1.0.2"
+VERSION="v1.0.3"
 INSTALL_DIR="/opt/mcs-iot"
 REPO_URL="https://github.com/zhizinan1997/mcs-iot.git"
-REPO_URL_CN="https://ghproxy.com/https://github.com/zhizinan1997/mcs-iot.git"
+REPO_URL_CN="https://gh-proxy.com/https://github.com/zhizinan1997/mcs-iot.git"
 COMPOSE_VERSION="2.24.0"
 USE_CHINA_MIRROR=false
 
@@ -209,10 +209,23 @@ perform_update() {
     # 步骤1: 备份数据库
     log_info "[1/6] 备份数据库..."
     BACKUP_FILE="backup_$(date +%Y%m%d_%H%M%S).sql"
-    if docker exec mcs_db pg_dump -U postgres mcs_iot > "$BACKUP_FILE" 2>/dev/null; then
-        log_info "✓ 数据库已备份到: $INSTALL_DIR/$BACKUP_FILE"
+    
+    # 检查数据库容器是否运行且健康
+    if docker ps --filter "name=mcs_db" --filter "health=healthy" -q 2>/dev/null | grep -q .; then
+        if docker exec mcs_db pg_dump -U postgres mcs_iot > "$BACKUP_FILE" 2>/dev/null; then
+            log_info "✓ 数据库已备份到: $INSTALL_DIR/$BACKUP_FILE"
+        else
+            log_warn "数据库备份失败，继续更新..."
+        fi
+    elif docker ps --filter "name=mcs_db" -q 2>/dev/null | grep -q .; then
+        # 容器运行中但可能健康检查未通过，尝试备份
+        if docker exec mcs_db pg_dump -U postgres mcs_iot > "$BACKUP_FILE" 2>/dev/null; then
+            log_info "✓ 数据库已备份到: $INSTALL_DIR/$BACKUP_FILE"
+        else
+            log_warn "数据库备份失败，继续更新..."
+        fi
     else
-        log_warn "数据库备份失败，继续更新..."
+        log_warn "数据库容器未运行，跳过备份"
     fi
     
     # 步骤2: 拉取最新代码
@@ -426,9 +439,9 @@ configure_china_mirror() {
         cat > /etc/docker/daemon.json << 'EOF'
 {
     "registry-mirrors": [
-        "https://docker.m.daocloud.io",
-        "https://dockerhub.icu",
-        "https://docker.1panel.live"
+        "https://docker.1panel.live",
+        "https://hub.rat.dev",
+        "https://docker.kejilion.pro"
     ],
     "log-driver": "json-file",
     "log-opts": {
@@ -462,13 +475,10 @@ check_ports() {
     log_info "检测以下端口: ${REQUIRED_PORTS[*]}"
     
     for port in "${REQUIRED_PORTS[@]}"; do
-        # 使用更精确的模式匹配，支持 IPv4 和 IPv6
-        if ss -tuln 2>/dev/null | grep -E "(:${port}\s|:${port}$)" > /dev/null 2>&1; then
-            # 二次验证：确保端口确实在监听
-            if ss -tuln 2>/dev/null | awk -v p="$port" '$5 ~ ":"p"$" || $5 ~ ":"p"[^0-9]" {found=1} END {exit !found}'; then
-                PORTS_IN_USE+=($port)
-                log_warn "端口 $port 已被占用"
-            fi
+        # 简化端口检测逻辑，直接匹配 :端口 模式
+        if ss -tuln 2>/dev/null | grep -qE "[[:space:]].*:${port}[[:space:]]"; then
+            PORTS_IN_USE+=($port)
+            log_warn "端口 $port 已被占用"
         fi
     done
     
@@ -586,7 +596,9 @@ install_dependencies() {
     esac
     
     # 安装 Python 依赖 (用于模拟器)
-    pip3 install paho-mqtt --quiet 2>/dev/null || true
+    # 兼容不同版本的 pip
+    pip3 install paho-mqtt requests --quiet --break-system-packages 2>/dev/null || \
+    pip3 install paho-mqtt requests --quiet 2>/dev/null || true
     
     log_info "✓ 依赖安装完成"
 }
@@ -598,20 +610,7 @@ install_dependencies() {
 configure_domains() {
     log_step "第七步：配置域名"
     
-    echo ""
-    echo -e "${CYAN}╔═══════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║                      域名配置说明                             ║${NC}"
-    echo -e "${CYAN}╠═══════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${CYAN}║ 本系统需要配置 4 个域名，请确保已将它们解析到本服务器 IP      ║${NC}"
-    echo -e "${CYAN}║                                                               ║${NC}"
-    echo -e "${CYAN}║ 1. 主域名/管理后台  - 例如: iot.example.com                   ║${NC}"
-    echo -e "${CYAN}║ 2. API 接口域名      - 例如: api.example.com                  ║${NC}"
-    echo -e "${CYAN}║ 3. MQTT 服务域名     - 例如: mqtt.example.com                 ║${NC}"
-    echo -e "${CYAN}║ 4. 大屏展示域名      - 例如: screen.example.com               ║${NC}"
-    echo -e "${CYAN}╚═══════════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-    
-    # 获取服务器 IP (忽略错误)
+    # 获取服务器 IP
     SERVER_IP=$(curl -s --connect-timeout 5 ifconfig.me 2>/dev/null) || SERVER_IP=""
     if [[ -z "$SERVER_IP" ]]; then
         SERVER_IP=$(curl -s --connect-timeout 5 ip.sb 2>/dev/null) || SERVER_IP=""
@@ -619,43 +618,260 @@ configure_domains() {
     if [[ -z "$SERVER_IP" ]]; then
         SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}') || SERVER_IP="无法获取"
     fi
-    log_info "当前服务器 IP: $SERVER_IP"
-    echo ""
-    log_warn "请确保以下 4 个域名都已解析到此 IP 地址!"
-    echo ""
-    
-    echo -e "${YELLOW}按 Enter 键继续输入域名...${NC}"
-    read -r DUMMY || true
-    
-    # 输入域名
-    echo ""
-    read -r -p "请输入主域名/管理后台域名 (例如 iot.example.com): " DOMAIN_MAIN
-    read -r -p "请输入 API 接口域名 (例如 api.example.com): " DOMAIN_API
-    read -r -p "请输入 MQTT 服务域名 (例如 mqtt.example.com): " DOMAIN_MQTT
-    read -r -p "请输入大屏展示域名 (例如 screen.example.com): " DOMAIN_SCREEN
-    
-    # 验证域名
-    if [[ -z "$DOMAIN_MAIN" || -z "$DOMAIN_API" || -z "$DOMAIN_MQTT" || -z "$DOMAIN_SCREEN" ]]; then
-        log_error "所有域名都是必填项!"
-        exit 1
-    fi
     
     echo ""
-    log_info "您配置的域名:"
-    log_info "  主域名/管理后台: $DOMAIN_MAIN"
-    log_info "  API 接口:        $DOMAIN_API"
-    log_info "  MQTT 服务:       $DOMAIN_MQTT"
-    log_info "  大屏展示:        $DOMAIN_SCREEN"
+    echo -e "${CYAN}╔═══════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║                        域名配置说明                               ║${NC}"
+    echo -e "${CYAN}╠═══════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${CYAN}║  本系统需要使用 4 个子域名，您只需输入一级域名即可               ║${NC}"
+    echo -e "${CYAN}║                                                                   ║${NC}"
+    echo -e "${CYAN}║  例如输入: zhizinan.top                                           ║${NC}"
+    echo -e "${CYAN}║  系统将自动使用以下子域名:                                        ║${NC}"
+    echo -e "${CYAN}║    • iot.zhizinan.top    - 主站/管理后台                          ║${NC}"
+    echo -e "${CYAN}║    • api.zhizinan.top    - API 接口                               ║${NC}"
+    echo -e "${CYAN}║    • mqtt.zhizinan.top   - MQTT 服务                              ║${NC}"
+    echo -e "${CYAN}║    • screen.zhizinan.top - 大屏展示                               ║${NC}"
+    echo -e "${CYAN}╚═══════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    log_info "当前服务器 IP: ${GREEN}$SERVER_IP${NC}"
     echo ""
     
-    if ! confirm "以上域名配置正确吗?"; then
-        log_info "请重新运行脚本配置域名"
+    # 输入一级域名
+    while true; do
+        read -r -p "请输入您的一级域名 (例如 zhizinan.top): " BASE_DOMAIN
+        
+        # 验证域名格式
+        if [[ -z "$BASE_DOMAIN" ]]; then
+            log_warn "域名不能为空，请重新输入"
+            continue
+        fi
+        
+        # 去除可能的 http/https 前缀和末尾斜杠
+        BASE_DOMAIN=$(echo "$BASE_DOMAIN" | sed 's|^https\?://||' | sed 's|/$||')
+        
+        # 检查是否已经是子域名
+        if [[ "$BASE_DOMAIN" =~ ^(iot|api|mqtt|screen)\. ]]; then
+            log_warn "请输入一级域名，不要输入子域名"
+            continue
+        fi
+        
+        break
+    done
+    
+    # 自动生成 4 个子域名
+    DOMAIN_MAIN="iot.${BASE_DOMAIN}"
+    DOMAIN_API="api.${BASE_DOMAIN}"
+    DOMAIN_MQTT="mqtt.${BASE_DOMAIN}"
+    DOMAIN_SCREEN="screen.${BASE_DOMAIN}"
+    
+    echo ""
+    echo -e "${GREEN}将使用以下域名:${NC}"
+    echo -e "  ${YELLOW}主站/管理后台:${NC} $DOMAIN_MAIN  →  反代到 ${CYAN}127.0.0.1:3000${NC}"
+    echo -e "  ${YELLOW}API 接口:${NC}      $DOMAIN_API   →  反代到 ${CYAN}127.0.0.1:8000${NC}"
+    echo -e "  ${YELLOW}MQTT 服务:${NC}     $DOMAIN_MQTT  →  (仅需 DNS 解析，无需反代)"
+    echo -e "  ${YELLOW}大屏展示:${NC}      $DOMAIN_SCREEN →  反代到 ${CYAN}127.0.0.1:3000${NC}"
+    echo ""
+    
+    if ! confirm "域名配置正确吗?"; then
+        log_info "请重新运行脚本"
         exit 1
     fi
 }
 
+guide_bt_panel_setup() {
+    log_step "第八步：在宝塔面板配置域名"
+    
+    echo ""
+    echo -e "${RED}╔═══════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${RED}║                    ⚠️  重要：请先完成以下操作  ⚠️                  ║${NC}"
+    echo -e "${RED}╚═══════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${YELLOW}【步骤 1】在 DNS 服务商处添加解析记录${NC}"
+    echo -e "  请将以下 4 个子域名的 A 记录指向本服务器 IP: ${GREEN}$SERVER_IP${NC}"
+    echo ""
+    echo -e "    ${CYAN}iot.${BASE_DOMAIN}${NC}    →  $SERVER_IP"
+    echo -e "    ${CYAN}api.${BASE_DOMAIN}${NC}    →  $SERVER_IP"
+    echo -e "    ${CYAN}mqtt.${BASE_DOMAIN}${NC}   →  $SERVER_IP"
+    echo -e "    ${CYAN}screen.${BASE_DOMAIN}${NC} →  $SERVER_IP"
+    echo ""
+    echo -e "${YELLOW}【步骤 2】在宝塔面板中创建网站并配置反向代理${NC}"
+    echo ""
+    echo -e "  打开宝塔面板 → 网站 → 添加站点，分别创建以下 3 个网站:"
+    echo ""
+    echo -e "  ┌─────────────────────────────────────────────────────────────────┐"
+    echo -e "  │  域名                    │  反向代理目标                        │"
+    echo -e "  ├─────────────────────────────────────────────────────────────────┤"
+    echo -e "  │  ${GREEN}iot.${BASE_DOMAIN}${NC}        │  http://127.0.0.1:3000              │"
+    echo -e "  │  ${GREEN}api.${BASE_DOMAIN}${NC}        │  http://127.0.0.1:8000              │"
+    echo -e "  │  ${GREEN}screen.${BASE_DOMAIN}${NC}     │  http://127.0.0.1:3000              │"
+    echo -e "  └─────────────────────────────────────────────────────────────────┘"
+    echo ""
+    echo -e "  ${CYAN}提示: mqtt.${BASE_DOMAIN} 不需要创建网站，只需 DNS 解析即可${NC}"
+    echo ""
+    echo -e "${YELLOW}【步骤 3】为每个网站申请 SSL 证书${NC}"
+    echo ""
+    echo -e "  在宝塔面板中，点击每个网站 → SSL → Let's Encrypt → 申请证书"
+    echo -e "  ${RED}⚠️ 特别注意: iot.${BASE_DOMAIN} 的证书将用于 MQTT TLS 加密${NC}"
+    echo ""
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    
+    read -r -p "请完成以上操作后按 Enter 键继续..." DUMMY
+    echo ""
+    
+    if ! confirm "您是否已完成 DNS 解析、反向代理配置和 SSL 证书申请?"; then
+        log_warn "请完成配置后重新运行脚本"
+        exit 1
+    fi
+}
+
+verify_bt_panel_config() {
+    log_step "第九步：验证宝塔面板配置"
+    
+    log_info "正在检查 Nginx 配置和 SSL 证书..."
+    echo ""
+    
+    # 宝塔 SSL 证书可能的路径
+    BT_SSL_PATHS=(
+        "/www/server/panel/vhost/ssl/${DOMAIN_MAIN}"
+        "/www/server/panel/vhost/cert/${DOMAIN_MAIN}"
+        "/etc/letsencrypt/live/${DOMAIN_MAIN}"
+    )
+    
+    SSL_FOUND=false
+    SSL_PATH=""
+    
+    for path in "${BT_SSL_PATHS[@]}"; do
+        if [[ -d "$path" ]]; then
+            # 检查证书文件是否存在
+            if [[ -f "$path/fullchain.pem" || -f "$path/server.crt" || -f "$path/cert.pem" ]]; then
+                SSL_FOUND=true
+                SSL_PATH="$path"
+                log_info "✓ 找到 SSL 证书目录: $path"
+                break
+            fi
+        fi
+    done
+    
+    # 检查 Nginx 配置
+    NGINX_CONF_PATHS=(
+        "/www/server/panel/vhost/nginx/${DOMAIN_MAIN}.conf"
+        "/www/server/nginx/conf/vhost/${DOMAIN_MAIN}.conf"
+    )
+    
+    NGINX_FOUND=false
+    for conf in "${NGINX_CONF_PATHS[@]}"; do
+        if [[ -f "$conf" ]]; then
+            NGINX_FOUND=true
+            log_info "✓ 找到 Nginx 配置: $conf"
+            break
+        fi
+    done
+    
+    if [[ "$SSL_FOUND" == "false" ]]; then
+        log_warn "未找到 iot.${BASE_DOMAIN} 的 SSL 证书"
+        echo ""
+        echo -e "${YELLOW}请检查是否已在宝塔面板中申请 SSL 证书${NC}"
+        echo -e "${YELLOW}证书应该位于以下路径之一:${NC}"
+        for path in "${BT_SSL_PATHS[@]}"; do
+            echo -e "  - $path"
+        done
+        echo ""
+        
+        if confirm "是否跳过证书检查，使用自签名证书?"; then
+            log_info "将生成自签名证书..."
+            USE_SELF_SIGNED=true
+        else
+            log_error "请先申请 SSL 证书后重新运行脚本"
+            exit 1
+        fi
+    fi
+    
+    if [[ "$NGINX_FOUND" == "false" ]]; then
+        log_warn "未找到 iot.${BASE_DOMAIN} 的 Nginx 配置"
+        log_warn "请确保已在宝塔面板中创建网站并配置反向代理"
+        echo ""
+        if ! confirm "是否继续安装? (反向代理需要在部署后手动配置)"; then
+            exit 1
+        fi
+    fi
+    
+    echo ""
+    log_info "✓ 配置验证完成"
+}
+
+copy_ssl_certificates() {
+    log_step "第十步：配置 SSL 证书"
+    
+    local SSL_DIR="$INSTALL_DIR/nginx/ssl"
+    mkdir -p "$SSL_DIR"
+    
+    if [[ "${USE_SELF_SIGNED:-false}" == "true" ]]; then
+        # 生成自签名证书
+        log_info "生成临时自签名证书..."
+        
+        if openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+            -keyout "$SSL_DIR/server.key" \
+            -out "$SSL_DIR/server.crt" \
+            -subj "/CN=${DOMAIN_MQTT}/O=MCS-IoT/C=CN" 2>/dev/null; then
+            
+            cp "$SSL_DIR/server.crt" "$SSL_DIR/ca.crt"
+            chmod 644 "$SSL_DIR/server.crt" "$SSL_DIR/ca.crt"
+            chmod 600 "$SSL_DIR/server.key"
+            
+            log_info "✓ 自签名证书已生成"
+            log_warn "注意: 生产环境建议使用正式 SSL 证书"
+        else
+            log_error "证书生成失败"
+            return 1
+        fi
+    else
+        # 从宝塔复制证书
+        log_info "从宝塔面板复制 SSL 证书..."
+        
+        # 确定证书文件名
+        if [[ -f "$SSL_PATH/fullchain.pem" ]]; then
+            CERT_FILE="fullchain.pem"
+            KEY_FILE="privkey.pem"
+        elif [[ -f "$SSL_PATH/server.crt" ]]; then
+            CERT_FILE="server.crt"
+            KEY_FILE="server.key"
+        elif [[ -f "$SSL_PATH/cert.pem" ]]; then
+            CERT_FILE="cert.pem"
+            KEY_FILE="key.pem"
+        else
+            log_warn "未找到标准证书文件，尝试生成自签名证书"
+            USE_SELF_SIGNED=true
+            copy_ssl_certificates
+            return $?
+        fi
+        
+        # 复制并重命名证书
+        if cp "$SSL_PATH/$CERT_FILE" "$SSL_DIR/server.crt" && \
+           cp "$SSL_PATH/$KEY_FILE" "$SSL_DIR/server.key"; then
+            
+            # 创建 ca.crt (用于 MQTT)
+            cp "$SSL_DIR/server.crt" "$SSL_DIR/ca.crt"
+            
+            chmod 644 "$SSL_DIR/server.crt" "$SSL_DIR/ca.crt"
+            chmod 600 "$SSL_DIR/server.key"
+            
+            log_info "✓ SSL 证书已复制到 $SSL_DIR/"
+            log_info "  - server.crt (来自 $CERT_FILE)"
+            log_info "  - server.key (来自 $KEY_FILE)"
+            log_info "  - ca.crt (MQTT 使用)"
+        else
+            log_error "证书复制失败"
+            log_warn "尝试生成自签名证书..."
+            USE_SELF_SIGNED=true
+            copy_ssl_certificates
+            return $?
+        fi
+    fi
+}
+
 configure_credentials() {
-    log_step "第八步：配置密码和 API 密钥"
+    log_step "第十一步：配置密码和 API 密钥"
     
     echo ""
     echo -e "${CYAN}接下来需要设置一些密码和 API 密钥${NC}"
@@ -753,7 +969,7 @@ configure_credentials() {
 # =============================================================================
 
 clone_repository() {
-    log_step "第九步：下载项目代码"
+    log_step "第八步：下载项目代码"
     
     # 确保不在安装目录内
     cd /root || cd /tmp || cd /
@@ -780,11 +996,19 @@ clone_repository() {
         git clone "$REPO_URL" "$INSTALL_DIR"
     fi
     
+    # 创建必要的目录
+    mkdir -p "$INSTALL_DIR/nginx/ssl"
+    mkdir -p "$INSTALL_DIR/mosquitto/config"
+    mkdir -p "$INSTALL_DIR/mosquitto/data"
+    mkdir -p "$INSTALL_DIR/mosquitto/log"
+    
     log_info "✓ 项目代码下载完成"
 }
 
+# generate_ssl_certificates 已移除，现使用 copy_ssl_certificates 函数
+
 generate_env_file() {
-    log_step "第十步：生成配置文件"
+    log_step "第十二步：生成配置文件"
     
     cat > "$INSTALL_DIR/.env" << EOF
 # =============================================================================
@@ -812,7 +1036,8 @@ REDIS_PORT=6379
 # MQTT 配置
 MQTT_HOST=mosquitto
 MQTT_PORT=1883
-MQTT_PASSWORD=${MQTT_PASSWORD}
+MQTT_USER=admin
+MQTT_PASS=${MQTT_PASSWORD}
 
 # 后台管理员密码
 ADMIN_INITIAL_PASSWORD=${ADMIN_PASSWORD}
@@ -838,163 +1063,67 @@ EOF
 # Nginx 配置改由宝塔面板管理，Docker 内使用 nginx-simple.conf
 
 deploy_containers() {
-    log_step "第十二步：启动 Docker 容器"
+    log_step "第十三步：拉取镜像并启动 Docker 容器"
     
     cd "$INSTALL_DIR"
     
-    # 检查是否使用预构建镜像
-    if [[ -f "docker-compose.ghcr.yml" ]]; then
-        echo ""
-        echo -e "${CYAN}请选择部署方式:${NC}"
-        echo "  1. 使用预构建镜像 (推荐，快速稳定)"
-        echo "  2. 本地构建镜像 (需要更多内存和时间)"
-        read -r -p "请选择 [1/2]，默认 1: " deploy_mode
-        deploy_mode=${deploy_mode:-1}
-        
-        if [[ "$deploy_mode" == "1" ]]; then
-            log_info "使用预构建镜像部署..."
-            log_info "正在拉取镜像，首次可能需要几分钟..."
-            echo ""
-            
-            if docker compose -f docker-compose.ghcr.yml pull 2>&1; then
-                log_info "✓ 镜像拉取成功"
-            else
-                log_warn "部分镜像拉取失败，尝试继续..."
-            fi
-            
-            log_info "启动服务..."
-            if docker compose -f docker-compose.ghcr.yml up -d 2>&1; then
-                log_info "✓ 服务启动成功"
-            else
-                log_error "服务启动失败"
-                return 1
-            fi
-            
-            # 等待服务启动
-            log_info "等待服务就绪..."
-            sleep 15
-            
-            if docker compose -f docker-compose.ghcr.yml ps | grep -q "healthy"; then
-                log_info "✓ 所有服务已就绪"
-            else
-                log_warn "部分服务可能还在启动中，请稍后检查"
-            fi
-            
-            return 0
-        fi
+    # 只使用 ghcr 预构建镜像
+    if [[ ! -f "docker-compose.ghcr.yml" ]]; then
+        log_error "未找到 docker-compose.ghcr.yml 文件"
+        return 1
     fi
     
-    # 本地构建模式
-    # 检查内存，决定构建方式
-    TOTAL_MEM=$(free -m | awk '/^Mem:/{print $2}')
-    
-    if [[ $TOTAL_MEM -lt 4096 ]]; then
-        log_info "检测到低内存环境(${TOTAL_MEM}MB)，使用顺序构建模式..."
-        log_info "这可能需要较长时间，请耐心等待..."
-        echo ""
-        
-        # 带重试的 Docker 拉取函数
-        docker_pull_retry() {
-            local image=$1
-            local max_attempts=5
-            local attempt=1
-            
-            while [[ $attempt -le $max_attempts ]]; do
-                log_info "  拉取 $image (尝试 $attempt/$max_attempts)..."
-                if docker pull "$image" 2>&1; then
-                    log_info "  ✓ $image 拉取成功"
-                    return 0
-                fi
-                
-                if [[ $attempt -lt $max_attempts ]]; then
-                    local wait_time=$((attempt * 10))
-                    log_warn "  拉取失败，${wait_time}秒后重试..."
-                    sleep $wait_time
-                fi
-                ((attempt++))
-            done
-            
-            log_warn "  ✗ $image 拉取失败，将在构建时重试"
-            return 1
-        }
-        
-        # 带重试的 Docker 构建函数
-        docker_build_retry() {
-            local service=$1
-            local max_attempts=3
-            local attempt=1
-            
-            while [[ $attempt -le $max_attempts ]]; do
-                log_info "  构建 $service (尝试 $attempt/$max_attempts)..."
-                if docker compose version &> /dev/null; then
-                    if docker compose build --no-cache "$service" 2>&1; then
-                        log_info "  ✓ $service 构建成功"
-                        return 0
-                    fi
-                else
-                    if docker-compose build --no-cache "$service" 2>&1; then
-                        log_info "  ✓ $service 构建成功"
-                        return 0
-                    fi
-                fi
-                
-                if [[ $attempt -lt $max_attempts ]]; then
-                    local wait_time=$((attempt * 15))
-                    log_warn "  构建失败，${wait_time}秒后重试..."
-                    sleep $wait_time
-                fi
-                ((attempt++))
-            done
-            
-            log_error "  ✗ $service 构建失败"
-            return 1
-        }
-        
-        # 顺序拉取基础镜像
-        log_info "[1/6] 拉取基础镜像..."
-        docker_pull_retry "timescale/timescaledb:latest-pg15"
-        docker_pull_retry "redis:7-alpine"
-        docker_pull_retry "eclipse-mosquitto:2"
-        
-        # 顺序构建自定义镜像
-        log_info "[2/6] 构建 Worker 服务..."
-        docker_build_retry "worker"
-        
-        log_info "[3/6] 构建 Backend 服务..."
-        docker_build_retry "backend"
-        
-        log_info "[4/6] 构建 Frontend 服务..."
-        docker_build_retry "frontend"
-        
-        log_info "[5/6] 启动所有服务..."
-        if docker compose version &> /dev/null; then
-            docker compose up -d
-        else
-            docker-compose up -d
-        fi
-    else
-        log_info "正在构建并启动容器，这可能需要几分钟..."
-        log_info "首次构建需要下载镜像，请耐心等待..."
-        echo ""
-        
-        # 正常并行构建
-        if docker compose version &> /dev/null; then
-            docker compose up -d --build
-        else
-            docker-compose up -d --build
-        fi
-    fi
-    
+    log_info "使用预构建镜像部署..."
+    log_info "正在拉取镜像，首次可能需要几分钟..."
     echo ""
-    log_info "[6/6] 等待服务启动..."
-    sleep 10
+    
+    # 带重试的镜像拉取
+    local max_attempts=3
+    local attempt=1
+    
+    while [[ $attempt -le $max_attempts ]]; do
+        log_info "[1/3] 拉取镜像 (尝试 $attempt/$max_attempts)..."
+        if docker compose -f docker-compose.ghcr.yml pull 2>&1; then
+            log_info "✓ 镜像拉取成功"
+            break
+        else
+            if [[ $attempt -lt $max_attempts ]]; then
+                log_warn "部分镜像拉取失败，30 秒后重试..."
+                sleep 30
+            else
+                log_warn "镜像拉取失败，尝试继续启动..."
+            fi
+        fi
+        ((attempt++))
+    done
+    
+    log_info "[2/3] 启动服务..."
+    if docker compose -f docker-compose.ghcr.yml up -d 2>&1; then
+        log_info "✓ 服务启动成功"
+        # 创建标记文件，供 mcs-iot.sh 识别部署方式
+        touch "$INSTALL_DIR/.deployed_with_ghcr"
+    else
+        log_error "服务启动失败"
+        log_info "请检查错误信息并尝试手动运行:"
+        log_info "  cd $INSTALL_DIR && docker compose -f docker-compose.ghcr.yml up -d"
+        return 1
+    fi
+    
+    # 等待服务启动
+    log_info "[3/3] 等待服务就绪..."
+    sleep 20
     
     # 检查容器状态
     log_info "检查容器运行状态..."
-    if docker compose version &> /dev/null; then
-        docker compose ps
+    docker compose -f docker-compose.ghcr.yml ps
+    
+    # 检查健康状态
+    local healthy_count=$(docker compose -f docker-compose.ghcr.yml ps --format json 2>/dev/null | grep -c '"healthy"' || echo "0")
+    if [[ $healthy_count -gt 0 ]]; then
+        log_info "✓ 所有服务已就绪"
     else
-        docker-compose ps
+        log_warn "部分服务可能还在启动中"
+        log_info "可使用 'mcs-iot status' 检查服务状态"
     fi
     
     log_info "✓ Docker 容器启动完成"
@@ -1077,31 +1206,53 @@ EOF
 # 元芯物联网平台管理脚本
 cd /opt/mcs-iot
 
+# 自动检测使用的 compose 文件
+if [[ -f ".deployed_with_ghcr" ]]; then
+    COMPOSE_FILE="docker-compose.ghcr.yml"
+elif [[ -f "docker-compose.ghcr.yml" ]] && docker ps --format '{{.Image}}' 2>/dev/null | grep -q "ghcr.io"; then
+    COMPOSE_FILE="docker-compose.ghcr.yml"
+else
+    COMPOSE_FILE="docker-compose.yml"
+fi
+
+compose_cmd() {
+    if docker compose version &>/dev/null; then
+        docker compose -f "$COMPOSE_FILE" "$@"
+    else
+        docker-compose -f "$COMPOSE_FILE" "$@"
+    fi
+}
+
 case "$1" in
     start)
-        echo "启动服务..."
-        docker compose up -d 2>/dev/null || docker-compose up -d
+        echo "启动服务 (使用 $COMPOSE_FILE)..."
+        compose_cmd up -d
         ;;
     stop)
         echo "停止服务..."
-        docker compose down 2>/dev/null || docker-compose down
+        compose_cmd down
         ;;
     restart)
         echo "重启服务..."
-        docker compose restart 2>/dev/null || docker-compose restart
+        compose_cmd restart
         ;;
     status)
-        docker compose ps 2>/dev/null || docker-compose ps
+        compose_cmd ps
         ;;
     logs)
-        docker compose logs -f ${2:-} 2>/dev/null || docker-compose logs -f ${2:-}
+        compose_cmd logs -f ${2:-}
         ;;
     rebuild)
         echo "重新构建并启动..."
-        docker compose up -d --build 2>/dev/null || docker-compose up -d --build
+        compose_cmd up -d --build
+        ;;
+    update)
+        echo "更新镜像并重启..."
+        compose_cmd pull
+        compose_cmd up -d
         ;;
     *)
-        echo "用法: mcs-iot {start|stop|restart|status|logs|rebuild}"
+        echo "用法: mcs-iot {start|stop|restart|status|logs|rebuild|update}"
         echo ""
         echo "  start   - 启动所有服务"
         echo "  stop    - 停止所有服务"
@@ -1109,6 +1260,7 @@ case "$1" in
         echo "  status  - 查看服务状态"
         echo "  logs    - 查看日志 (可指定服务名)"
         echo "  rebuild - 重新构建并启动"
+        echo "  update  - 更新镜像并重启"
         exit 1
         ;;
 esac
@@ -1213,11 +1365,13 @@ main() {
     log_info "此脚本将自动完成以下任务:"
     echo "  1. 检测操作系统和服务器资源"
     echo "  2. 安装 Docker 和必要依赖"
-    echo "  3. 配置域名和 API 密钥"
-    echo "  4. 部署物联网平台"
-    echo "  5. 可选导入演示数据"
+    echo "  3. 克隆项目代码"
+    echo "  4. 引导您在宝塔面板配置域名和 SSL 证书"
+    echo "  5. 验证配置并复制证书"
+    echo "  6. 配置密码和 API 密钥"
+    echo "  7. 拉取镜像并部署服务"
     echo ""
-    log_warn "注意: SSL 证书需要在宝塔面板中手动申请和配置"
+    log_warn "重要: 本脚本需要您的宝塔面板已安装 Nginx"
     echo ""
     
     if ! confirm "是否继续安装?" "Y"; then
@@ -1225,7 +1379,7 @@ main() {
         exit 0
     fi
     
-    # 执行安装步骤
+    # ===== 第一阶段: 环境准备 =====
     detect_os
     check_resources
     setup_swap
@@ -1234,12 +1388,22 @@ main() {
     install_dependencies
     install_docker
     install_docker_compose
-    configure_domains
-    configure_credentials
-    clone_repository
-    generate_env_file
-    deploy_containers
-    # import_demo_data  # 已禁用 - 不再自动导入模拟数据
+    
+    # ===== 第二阶段: 域名配置和代码克隆 =====
+    configure_domains           # 第七步: 输入一级域名
+    clone_repository            # 第八步调整为: 下载项目代码
+    
+    # ===== 第三阶段: 宝塔配置引导 =====
+    guide_bt_panel_setup        # 第九步调整为: 引导用户在宝塔面板配置
+    verify_bt_panel_config      # 第十步调整为: 验证宝塔配置
+    copy_ssl_certificates       # 第十一步调整为: 复制/生成 SSL 证书
+    
+    # ===== 第四阶段: 密码配置和部署 =====
+    configure_credentials       # 第十二步调整为: 配置密码和 API 密钥
+    generate_env_file           # 第十三步调整为: 生成配置文件
+    deploy_containers           # 第十四步调整为: 拉取镜像并启动容器
+    
+    # ===== 第五阶段: 完成 =====
     create_management_scripts
     print_success
 }

@@ -11,7 +11,7 @@ services:
       - "8883:8883" # MQTTS only in production
     volumes:
       - ./mosquitto/config:/mosquitto/config
-      - ./nginx/ssl:/mosquitto/certs:ro
+      - ./nginx/ssl:/mosquitto/certs
       - mosquitto_data:/mosquitto/data
       - mosquitto_log:/mosquitto/log
     networks:
