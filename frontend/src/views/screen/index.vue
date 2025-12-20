@@ -1,4 +1,29 @@
 <template>
+  <!-- Splash Screen Overlay -->
+  <div v-if="showSplash" class="splash-overlay">
+    <div class="splash-content">
+      <!-- Circular Progress Bar -->
+      <div class="splash-progress-ring">
+        <svg viewBox="0 0 200 200">
+          <circle 
+            class="ring-progress" 
+            cx="100" 
+            cy="100" 
+            r="90"
+            :style="{ strokeDashoffset: progressOffset }"
+          />
+        </svg>
+        <!-- Logo in Center -->
+        <div class="splash-logo-container">
+          <img v-if="splashLogoUrl" :src="splashLogoUrl" alt="Logo" class="splash-logo" />
+          <div v-else class="splash-logo-placeholder">
+            <span>MCS</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="dashboard">
     <!-- Header Bar -->
     <header class="header">
@@ -1333,6 +1358,36 @@ async function fetchScreenBg() {
 const dashboardTitle = ref('元芯物联网智慧云平台')
 const refreshRate = ref(5) // default 5 seconds
 
+// Splash Screen
+const showSplash = ref(true)
+const splashProgress = ref(0)
+const splashLogoUrl = ref('')
+const SPLASH_DURATION = 10000 // 10 seconds
+const RING_CIRCUMFERENCE = 2 * Math.PI * 90 // 2πr where r=90
+
+const progressOffset = computed(() => {
+  // Progress goes from 0% to 100%, offset goes from full to 0
+  const progress = splashProgress.value / 100
+  return RING_CIRCUMFERENCE * (1 - progress)
+})
+
+function startSplashAnimation() {
+  const startTime = Date.now()
+  const interval = setInterval(() => {
+    const elapsed = Date.now() - startTime
+    const progress = Math.min((elapsed / SPLASH_DURATION) * 100, 100)
+    splashProgress.value = Math.round(progress)
+    
+    if (progress >= 100) {
+      clearInterval(interval)
+      // Fade out splash screen
+      setTimeout(() => {
+        showSplash.value = false
+      }, 300)
+    }
+  }, 50) // Update every 50ms for smooth animation
+}
+
 function updateFavicon(url: string) {
   let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement
   if (!link) {
@@ -1401,12 +1456,95 @@ onMounted(async () => {
   })
 
   aiTimer = setInterval(fetchAI, 60000) // Refresh AI summary every minute
+  
+  // Start splash screen animation and fetch logo
+  startSplashAnimation()
+  configApi.getSite().then(res => {
+    if (res.data?.logo_url) {
+      splashLogoUrl.value = res.data.logo_url
+    }
+  }).catch(() => {})
 })
 onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer); stopCarouselTimer() })
 </script>
 
 <style scoped>
 * { box-sizing: border-box; }
+
+/* ========== SPLASH SCREEN ========== */
+.splash-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #ffffff;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.5s ease-out;
+}
+
+.splash-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+}
+
+.splash-progress-ring {
+  position: relative;
+  width: 200px;
+  height: 200px;
+}
+
+.splash-progress-ring svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.splash-progress-ring .ring-progress {
+  fill: none;
+  stroke: #1f2937;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 565.48; /* 2 * PI * 90 */
+  stroke-dashoffset: 565.48;
+  transition: stroke-dashoffset 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.splash-logo-container {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.splash-logo {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.splash-logo-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  border-radius: 50%;
+  color: #fff;
+  font-size: 32px;
+  font-weight: 700;
+  font-family: 'Chakra Petch', sans-serif;
+  letter-spacing: 2px;
+}
+
+
 
 /* ========== GLOBAL: Deep Space Blue with Grid Texture ========== */
 .dashboard {
