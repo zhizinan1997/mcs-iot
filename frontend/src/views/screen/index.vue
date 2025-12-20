@@ -156,11 +156,40 @@
                           <!-- Left: Gauge -->
                           <div class="safety-left">
                             <div class="gauge-container" :style="{ '--score-color': scoreColor.end, '--score-shadow': scoreColor.shadow }">
-                              <!-- Rotating Tech Ring -->
-                              <div class="tech-ring"></div>
-                              <v-chart class="gauge-chart" :option="gaugeOption" autoresize />
+                              <div class="tech-gauge-visual">
+                                <svg viewBox="0 0 200 200" class="gauge-svg">
+                                  <defs>
+                                    <filter id="gauge-glow" x="-50%" y="-50%" width="200%" height="200%">
+                                      <feGaussianBlur stdDeviation="3" result="blur" />
+                                      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                                    </filter>
+                                    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                      <stop offset="0%" stop-color="#22d3ee" stop-opacity="0" />
+                                      <stop offset="50%" stop-color="#22d3ee" stop-opacity="0.8" />
+                                      <stop offset="100%" stop-color="#22d3ee" stop-opacity="0" />
+                                    </linearGradient>
+                                  </defs>
+                                  
+                                  <!-- Background Base -->
+                                  <circle cx="100" cy="100" r="90" fill="none" stroke="#1e293b" stroke-width="1" opacity="0.5" />
+                                  <circle cx="100" cy="100" r="65" fill="#0f172a" fill-opacity="0.5" stroke="none" />
+                                  
+                                  <!-- Outer Ring: Blue Tech (CW) -->
+                                  <circle cx="100" cy="100" r="86" fill="none" stroke="url(#ringGrad)" stroke-width="2" stroke-dasharray="60 30 10 30" class="spin-cw" />
+                                  <circle cx="100" cy="100" r="86" fill="none" stroke="#22d3ee" stroke-width="1" stroke-dasharray="2 15" class="spin-cw" style="opacity: 0.3; animation-duration: 15s" />
+
+                                  <!-- Inner Ring: Dynamic Score Color (CCW) -->
+                                  <!-- Using a path for a partial arc effect that rotates -->
+                                  <circle cx="100" cy="100" r="74" fill="none" :stroke="scoreColor.end" stroke-width="3" stroke-dasharray="120 60 20 60" class="spin-ccw" filter="url(#gauge-glow)" style="opacity: 0.9" />
+                                  
+                                  <!-- Tick Marks (Static) -->
+                                  <g transform="translate(100,100)">
+                                    <line v-for="i in 12" :key="i" x1="0" y1="-55" x2="0" y2="-62" stroke="#475569" stroke-width="2" :transform="`rotate(${i * 30})`" />
+                                  </g>
+                                </svg>
+                              </div>
                               <div class="gauge-overlay">
-                                <span class="g-val" :style="{ color: scoreColor.end }">{{ overallScore }}<small>分</small></span>
+                                <span class="g-val" :style="{ color: scoreColor.end, textShadow: '0 0 20px ' + scoreColor.end }">{{ overallScore }}<small>分</small></span>
                                 <span class="g-label">综合评分</span>
                               </div>
                             </div>
@@ -965,88 +994,7 @@ const scoreColor = computed(() => {
 })
 
 
-const gaugeOption = computed(() => ({
-  backgroundColor: 'transparent',
-  series: [
-    // Outer breathing glow ring (blue, subtle)
-    {
-      type: 'gauge',
-      startAngle: 90, endAngle: -270, radius: '98%',
-      pointer: { show: false }, progress: { show: false }, detail: { show: false },
-      axisLine: { lineStyle: { width: 2, color: [[1, 'rgba(59,130,246,0.3)']] } },
-      splitLine: { show: false },
-      axisTick: { show: true, splitNumber: 1, length: 6, lineStyle: { width: 1, color: 'rgba(59,130,246,0.5)' } },
-      axisLabel: { show: false },
-      data: []
-    },
-    // Second outer ring (darker blue)
-    {
-      type: 'gauge',
-      startAngle: 90, endAngle: -270, radius: '92%',
-      pointer: { show: false }, progress: { show: false }, detail: { show: false },
-      axisLine: { lineStyle: { width: 1, color: [[1, 'rgba(30,64,175,0.4)']] } },
-      splitLine: { show: false },
-      axisTick: { show: true, splitNumber: 2, length: 3, lineStyle: { width: 1, color: 'rgba(59,130,246,0.3)' } },
-      axisLabel: { show: false },
-      data: []
-    },
-    // Inner tick bars (gradient based on score)
-    {
-      type: 'gauge',
-      startAngle: 90, endAngle: -270, radius: '75%',
-      pointer: { show: false }, progress: { show: false }, detail: { show: false },
-      axisLine: { show: false },
-      splitLine: { 
-        show: true, 
-        length: 15, 
-        distance: 2,
-        lineStyle: { 
-          width: 3, 
-          color: {
-            type: 'linear',
-            x: 0, y: 0, x2: 0, y2: 1,
-            colorStops: [
-              { offset: 0, color: scoreColor.value.stop1 },
-              { offset: 1, color: scoreColor.value.stop2 }
-            ]
-          }
-        } 
-      },
-      axisTick: { show: false },
-      axisLabel: { show: false },
-      data: [{ value: overallScore.value }]
-    },
-    // Main progress ring (gradient based on score)
-    {
-      type: 'gauge',
-      startAngle: 90, endAngle: -270, radius: '85%',
-      pointer: { show: false },
-      progress: { 
-        show: true, 
-        width: 6, 
-        roundCap: true, 
-        itemStyle: { 
-          color: {
-            type: 'linear',
-            x: 0, y: 0, x2: 1, y2: 0,
-            colorStops: [
-              { offset: 0, color: scoreColor.value.start },
-              { offset: 1, color: scoreColor.value.end }
-            ]
-          },
-          shadowColor: scoreColor.value.shadow,
-          shadowBlur: 15
-        } 
-      },
-      axisLine: { lineStyle: { width: 6, color: [[1, 'rgba(30,64,175,0.2)']] } },
-      splitLine: { show: false },
-      axisTick: { show: false },
-      axisLabel: { show: false },
-      data: [{ value: overallScore.value }],
-      detail: { show: false }
-    }
-  ]
-}))
+
 
 
 
@@ -1967,25 +1915,28 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer); stopCarouselTi
   z-index: 10;
   display: flex; align-items: center; justify-content: center;
 }
-.tech-ring {
-  position: absolute;
-  top: 50%; left: 50%;
-  width: 110%; height: 110%;
-  transform: translate(-50%, -50%);
-  border: 1px dashed var(--score-shadow, rgba(34,211,238,0.3));
-  border-radius: 50%;
-  animation: spin 10s linear infinite;
+
+.tech-gauge-visual {
+  position: absolute; width: 100%; height: 100%;
+  top: 0; left: 0;
   pointer-events: none;
 }
-.tech-ring::before {
-  content: ''; position: absolute; top: -2px; left: 50%;
-  width: 10px; height: 4px; background: var(--score-color, #22d3ee);
-  transform: translateX(-50%);
-  box-shadow: 0 0 10px var(--score-color, #22d3ee);
+.gauge-svg {
+  width: 100%; height: 100%;
 }
-@keyframes spin { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
+.spin-cw {
+  transform-origin: center;
+  animation: spin 10s linear infinite;
+}
+.spin-ccw {
+  transform-origin: center;
+  animation: spin-ccw 8s linear infinite;
+}
 
-.gauge-chart { width: 100%; height: 100%; background: transparent !important; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes spin-ccw { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+
+/* Removed old v-chart styles */
 .gauge-overlay {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
