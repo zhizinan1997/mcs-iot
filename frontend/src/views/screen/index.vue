@@ -5,25 +5,68 @@
       <div class="header-bg-deco"></div>
       <div class="header-left"></div>
       <div class="header-center">
-        <div class="title-deco-left">
-          <div class="deco-line-1"></div>
-          <div class="deco-line-2"></div>
-          <div class="deco-block"></div>
-        </div>
-        <div class="title-box">
-          <div class="chip-lines"></div>
-          <h1>{{ dashboardTitle }}</h1>
-          <div class="chip-light"></div>
-        </div>
-        <div class="title-deco-right">
-          <div class="deco-block"></div>
-          <div class="deco-line-1"></div>
-          <div class="deco-line-2"></div>
+        <div class="header-title-wrapper">
+          <!-- Complex Wave Background behind text -->
+          <div class="header-wave-bg"></div>
+          
+          <!-- Title -->
+          <div class="header-title-content">
+            <h1>{{ dashboardTitle }}</h1>
+          </div>
+
+          <!-- Fluid SVG Curves -->
+          <div class="header-svg-container">
+            <svg viewBox="0 0 1920 100" preserveAspectRatio="none">
+              <!-- Background dim fill -->
+              <path d="M0,0 L1920,0 L1920,60 Q960,110 0,60 Z" fill="url(#headerGrad)" opacity="0.4"></path>
+              
+              <!-- Gold/Orange curved lines (static base) -->
+              <path class="curve-gold-left" d="M400,20 Q600,90 900,95" fill="none" stroke="url(#goldGrad)" stroke-width="2" />
+              <path class="curve-gold-right" d="M1520,20 Q1320,90 1020,95" fill="none" stroke="url(#goldGrad)" stroke-width="2" />
+              
+              <!-- FLOWING LIGHT: Gold (Center to Sides) -->
+              <!-- Reversing path definition so dashoffset animates outwards -->
+              <path class="flow-gold" d="M900,95 Q600,90 400,20" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="20 300" />
+              <path class="flow-gold" d="M1020,95 Q1320,90 1520,20" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="20 300" />
+              
+              <!-- Main Blue Bottom Curve (Static Base) -->
+              <path class="curve-blue" d="M0,65 Q960,115 1920,65" fill="none" stroke="#22d3ee" stroke-width="2" filter="url(#glow)" />
+              
+              <!-- FLOWING LIGHT: Blue (Center to Sides) -->
+              <!-- Split into two paths starting from center (960, 90) -->
+              <path class="flow-blue-out" d="M960,90 Q480,90 0,65" fill="none" stroke="#a5f3fc" stroke-width="3" stroke-dasharray="100 800" filter="url(#glow)" stroke-linecap="round" />
+              <path class="flow-blue-out" d="M960,90 Q1440,90 1920,65" fill="none" stroke="#a5f3fc" stroke-width="3" stroke-dasharray="100 800" filter="url(#glow)" stroke-linecap="round" />
+              
+              <!-- Center Highlight -->
+              <path d="M860,95 L1060,95" stroke="#fff" stroke-width="3" filter="url(#glow)" stroke-linecap="round" />
+
+              <defs>
+                <linearGradient id="headerGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stop-color="rgba(15,23,42,0.9)" />
+                  <stop offset="100%" stop-color="rgba(30,41,59,0.8)" />
+                </linearGradient>
+                <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="transparent" />
+                  <stop offset="50%" stop-color="#fbbf24" />
+                  <stop offset="100%" stop-color="transparent" />
+                </linearGradient>
+                <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="2" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+              </defs>
+            </svg>
+          </div>
         </div>
       </div>
       <div class="header-right">
-        <span class="loc">📍 {{ weather.location || '定位中...' }}</span>
-        <span class="date">{{ currentDate }}</span>
+        <div class="status-pill">
+          <svg class="icon-location" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+          </svg>
+          <span class="loc-text">{{ weather.location || '定位中...' }}</span>
+        </div>
+        <div class="time-text">{{ currentDate }}</div>
       </div>
     </header>
 
@@ -147,10 +190,10 @@
                         </div>
                         <div class="ai-content">
                           <div class="ai-summary">
-                            <p v-if="aiLoading" class="ai-thinking">{{ aiThinking }}</p>
-                            <p v-else-if="aiSummary">{{ aiSummary }}</p>
-                            <p v-else class="ai-error">暂无分析数据</p>
+                             <p v-if="!aiLoading" v-html="formattedAiSummary"></p>
+                             <p v-else style="opacity: 0.7">正在分析数据...</p>
                           </div>
+                          <span class="ai-thinking" v-if="aiLoading">{{ aiThinking }}</span>
                         </div>
                       </div>
                     </Pane>
@@ -1240,6 +1283,24 @@ async function fetchAI() {
   }
 }
 
+const formattedAiSummary = computed(() => {
+  if (!aiSummary.value) return ''
+  let text = aiSummary.value
+  
+  // Highlight timestamps (e.g., 12:00-17:00)
+  text = text.replace(/(\d{1,2}:\d{2}(?:-\d{1,2}:\d{2})?)/g, '<span class="ai-key-time">$1</span>')
+  
+  // Highlight numbers with context (e.g., 40次, 4台)
+  text = text.replace(/(\d+)(?=次|台|个|条)/g, '<span class="ai-key-num">$1</span>')
+  
+  // Highlight specific keywords
+  text = text.replace(/(报警|故障|异常|错误)/g, '<span class="ai-key-danger">$1</span>')
+  text = text.replace(/(正常|稳定)/g, '<span class="ai-key-success">$1</span>')
+  text = text.replace(/(建议|排查|检查)/g, '<span class="ai-key-action">$1</span>')
+  
+  return text
+})
+
 let timer: ReturnType<typeof setInterval>
 let aiTimer: ReturnType<typeof setInterval>
 
@@ -1405,170 +1466,175 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer); stopCarouselTi
   background: linear-gradient(90deg, transparent 0%, rgba(34,211,238,0.3) 20%, rgba(34,211,238,0.3) 80%, transparent 100%);
 }
 
+
+
 .header-center {
   position: absolute;
-  left: 50%; top: 0;
-  transform: translateX(-50%);
-  height: 100%;
-  display: flex; align-items: center; justify-content: center;
+  left: 0; top: 0; width: 100%; height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  display: flex; justify-content: center;
 }
 
-/* Center Title Box */
-.title-box {
+.header-title-wrapper {
   position: relative;
-  padding: 0 40px;
-  height: 50px;
-  display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(to bottom, rgba(30,41,59,0.8), rgba(15,23,42,0.9));
-  transform: skewX(-15deg); /* Tech slant */
-  border: 1px solid rgba(34,211,238,0.3);
-  box-shadow: 0 0 20px rgba(15,23,42,0.8);
+  width: 100%; height: 100%;
+  display: flex; justify-content: center; align-items: flex-start;
 }
-.title-box h1 {
-  transform: skewX(15deg); /* Counter slant for text */
-  margin: 0; font-size: 32px; font-weight: 700; letter-spacing: 6px;
-  color: #fff;
-  text-shadow: 0 0 10px rgba(34,211,238,0.8), 0 0 20px rgba(34,211,238,0.4);
+
+.header-title-content {
+  position: relative;
+  margin-top: 10px;
+  z-index: 10;
+  text-align: center;
+}
+
+.header-title-content h1 {
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  margin: 0;
   font-family: 'Orbitron', sans-serif;
+  color: #fff;
   text-transform: uppercase;
-  z-index: 2;
-  background: linear-gradient(to bottom, #ffffff, #94a3b8);
+  background: linear-gradient(180deg, #fff 40%, #94a3b8 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 10px rgba(34,211,238,0.5));
+  position: relative;
+  z-index: 2;
 }
 
-/* Chip/PCB Decorations */
-.title-deco-left, .title-deco-right {
-  height: 100%; width: 200px;
-  position: relative;
-  display: flex; flex-direction: column;
-  justify-content: center;
+/* Background Wave Effect - "Complex colorful lines" */
+.header-wave-bg {
+  position: absolute;
+  top: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; height: 100%;
+  max-width: 1200px; /* Limit width of the wave effect */
+  opacity: 0.6;
+  z-index: 1;
+  background: 
+    radial-gradient(circle at 50% 0%, rgba(34,211,238,0.2) 0%, transparent 60%),
+    repeating-linear-gradient(90deg, transparent 0, transparent 50px, rgba(34,211,238,0.05) 50px, rgba(34,211,238,0.05) 51px);
+  mask-image: radial-gradient(ellipse at center top, black 40%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse at center top, black 40%, transparent 80%);
+}
+
+/* Add animated smoke/cloud effect behind text */
+.header-wave-bg::before {
+  content: ''; position: absolute; top: -50px; left: 0; width: 100%; height: 150px;
+  background-image: 
+    radial-gradient(ellipse at 30% 0%, rgba(59,130,246,0.3) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 0%, rgba(147,51,234,0.3) 0%, transparent 50%);
+  filter: blur(20px);
+  animation: nebula-pulse 8s ease-in-out infinite alternate;
+}
+@keyframes nebula-pulse {
+  0% { transform: scale(1); opacity: 0.5; }
+  100% { transform: scale(1.1); opacity: 0.8; }
+}
+
+/* Add subtle animated "data lines" */
+.header-wave-bg::after {
+  content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(34,211,238,0.05) 10px, rgba(34,211,238,0.05) 20px);
+  mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+}
+
+.header-svg-container {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 5;
   pointer-events: none;
 }
-.title-deco-left {
-  align-items: flex-end;
-  margin-right: -25px;
-  padding-right: 25px;
-}
-.title-deco-right {
-  align-items: flex-start;
-  margin-left: -25px;
-  padding-left: 25px;
+.header-svg-container svg {
+  width: 100%; height: 100%;
+  overflow: visible; /* Allow curves to go slightly out if needed */
 }
 
-/* Deco Block (The "Wings") */
-.deco-block {
-  width: 60px; height: 24px;
-  background: linear-gradient(180deg, rgba(34,211,238,0.05) 0%, rgba(34,211,238,0.15) 100%);
-  border-top: 1px solid rgba(34,211,238,0.4);
-  border-bottom: 1px solid rgba(34,211,238,0.4);
-  position: relative;
-  margin-bottom: 4px;
-  backdrop-filter: blur(2px);
+/* Animate the curves */
+.curve-gold-left, .curve-gold-right {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: draw-curve 3s ease-out forwards;
 }
-.title-deco-left .deco-block {
-  transform: skewX(-20deg);
-  border-left: 1px solid rgba(34,211,238,0.2);
-  margin-right: 5px;
-}
-.title-deco-right .deco-block {
-  transform: skewX(20deg);
-  border-right: 1px solid rgba(34,211,238,0.2);
-  margin-left: 5px;
+.curve-blue {
+  stroke-dasharray: 2000;
+  stroke-dashoffset: 2000;
+  animation: draw-curve 4s ease-out forwards;
 }
 
-/* Deco Block Accents */
-.deco-block::after {
-  content: ''; position: absolute; top: 50%; transform: translateY(-50%);
-  width: 4px; height: 12px;
-  background: #22d3ee;
-  box-shadow: 0 0 8px #22d3ee;
-}
-.title-deco-left .deco-block::after { right: 6px; }
-.title-deco-right .deco-block::after { left: 6px; }
-
-/* Lines */
-.deco-line-1, .deco-line-2 {
-  height: 2px;
-  background: #22d3ee;
-  position: relative;
-  margin: 3px 0;
+/* Base Flow Class */
+.flow-gold, .flow-blue-out {
+  animation: flow-outward 3s linear infinite;
+  opacity: 0.8;
 }
 
-/* Top Line (Long) */
-.deco-line-1 {
-  width: 100%;
+/* Specific timings */
+.flow-gold {
+  animation-duration: 4s;
   opacity: 0.6;
 }
-.title-deco-left .deco-line-1 {
-  background: linear-gradient(90deg, transparent 0%, rgba(34,211,238,0.5) 50%, #22d3ee 100%);
-}
-.title-deco-right .deco-line-1 {
-  background: linear-gradient(270deg, transparent 0%, rgba(34,211,238,0.5) 50%, #22d3ee 100%);
+.flow-blue-out {
+  animation-duration: 2.5s;
 }
 
-/* Bottom Line (Short) */
-.deco-line-2 {
-  width: 60%;
-  opacity: 0.3;
-}
-.title-deco-left .deco-line-2 {
-  background: linear-gradient(90deg, transparent, #22d3ee);
-}
-.title-deco-right .deco-line-2 {
-  background: linear-gradient(270deg, transparent, #22d3ee);
+@keyframes draw-curve {
+  to { stroke-dashoffset: 0; }
 }
 
-/* Add some floating particles/dots */
-.title-deco-left::before, .title-deco-right::before {
-  content: ''; position: absolute;
-  width: 120px; height: 1px;
-  bottom: 25px;
-  background-image: repeating-linear-gradient(90deg, #22d3ee, #22d3ee 2px, transparent 2px, transparent 10px);
-  opacity: 0.3;
+@keyframes flow-outward {
+  0% { stroke-dashoffset: 1000; }
+  100% { stroke-dashoffset: 0; }
 }
-.title-deco-left::before { right: 70px; }
-.title-deco-right::before { left: 70px; }
 
-/* Chip Lines inside Title Box */
-.chip-lines {
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  pointer-events: none;
-  overflow: hidden;
-}
-.chip-lines::before, .chip-lines::after {
-  content: ''; position: absolute; width: 20px; height: 100%;
-  border-left: 2px dashed rgba(34,211,238,0.2);
-  border-right: 2px dashed rgba(34,211,238,0.2);
-}
-.chip-lines::before { left: 10px; }
-.chip-lines::after { right: 10px; }
-
-/* Glowing Light Effect */
-.chip-light {
-  position: absolute; bottom: -2px; left: 50%;
-  transform: translateX(-50%);
-  width: 60%; height: 4px;
-  background: #22d3ee;
-  box-shadow: 0 0 20px #22d3ee, 0 0 40px #22d3ee;
-  border-radius: 50%;
-  opacity: 0.8;
-  animation: pulse-light 3s infinite ease-in-out;
-}
-@keyframes pulse-light {
-  0%, 100% { opacity: 0.5; width: 50%; }
-  50% { opacity: 1; width: 70%; }
-}
 
 .header p { display: none; }
 .header-right { 
-  display: flex; gap: 20px; font-size: 15px; color: #94a3b8; 
-  font-family: 'Chakra Petch', monospace; font-weight: 500; 
-  position: absolute; right: 30px; bottom: 15px; /* Adjust position */
+  display: flex; align-items: center; gap: 20px; 
+  position: absolute; right: 40px; top: 20px;
+  z-index: 20;
 }
-.header-right .loc { color: #22d3ee; text-shadow: 0 0 8px rgba(34,211,238,0.4); }
-.header-right .date { color: #64748b; }
-.header-right .weather { color: #22d3ee; text-shadow: 0 0 8px rgba(34,211,238,0.4); }
+
+.status-pill {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(15, 23, 42, 0.6);
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(34,211,238,0.2);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  transition: all 0.3s ease;
+}
+.status-pill:hover {
+  border-color: rgba(34,211,238,0.5);
+  background: rgba(15, 23, 42, 0.8);
+  box-shadow: 0 0 15px rgba(34,211,238,0.2);
+}
+
+.icon-location {
+  width: 18px; height: 18px;
+  color: #fbbf24; /* Apple-like warm accent or Gold */
+  filter: drop-shadow(0 0 5px rgba(251,191,36,0.5));
+}
+
+.loc-text {
+  font-size: 16px;
+  color: #e2e8f0;
+  font-family: 'Microsoft YaHei', sans-serif; /* Cleaner sans-serif */
+  font-weight: 500;
+  letter-spacing: 1px;
+}
+
+.time-text {
+  font-family: 'Chakra Petch', monospace;
+  font-size: 20px;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 1px;
+}
 
 /* ========== SPLITPANES LAYOUT ========== */
 .main-splitpanes {
@@ -1660,15 +1726,47 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer); stopCarouselTi
   justify-content: center; overflow-y: auto;
 }
 .ai-summary {
-  font-size: 15px; line-height: 1.7; color: #e2e8f0;
+  font-size: 15px; 
+  line-height: 1.8; /* More breathing room */
+  color: #f1f5f9; 
+  font-family: 'Inter', 'Microsoft YaHei', sans-serif;
+  letter-spacing: 1.2px; /* Improve readability */
+  text-align: justify; /* Clean edges */
+  font-weight: 300; /* Lighter weight looks more "tech" */
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5); /* Better contrast */
 }
 .ai-summary p { margin: 0; }
+
 .ai-thinking {
-  color: #22d3ee; font-style: italic;
+  color: #22d3ee; 
+  font-style: italic;
+  font-family: 'Chakra Petch', sans-serif;
+  letter-spacing: 1px;
   animation: pulse-text 1.5s ease-in-out infinite;
+  display: block;
+  text-align: center;
+  margin-top: 10px;
 }
-.ai-error { color: #94a3b8; }
-@keyframes pulse-text { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.ai-error { color: #94a3b8; font-style: italic; text-align: center; }
+@keyframes pulse-text { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+/* AI Summary Highlights (Injected via v-html) */
+:deep(.ai-key-num) {
+  color: #fbbf24; font-weight: 700; font-family: 'Chakra Petch', sans-serif;
+  margin: 0 2px;
+}
+:deep(.ai-key-time) {
+  color: #22d3ee; font-weight: 600;
+}
+:deep(.ai-key-danger) {
+  color: #ef4444; font-weight: 700; border-bottom: 1px dashed rgba(239,68,68,0.5);
+}
+:deep(.ai-key-success) {
+  color: #4ade80; font-weight: 700;
+}
+:deep(.ai-key-action) {
+  color: #38bdf8; font-weight: 600; text-decoration: underline; text-underline-offset: 3px;
+}
 
 /* ========== Safety Supervision Panel ========== */
 .panel-safety { 
