@@ -434,8 +434,8 @@ const defaultSizes = {
   leftInner: 35, // left column within left+center (horizontal inner split)
   centerInner: 65, // center column within left+center (horizontal inner split)
   leftPanel1: 35, // instrument overview
-  leftPanel2: 45, // safety supervision
-  leftPanel3: 20 // ai analysis
+  leftPanel2: 34, // safety supervision
+  leftPanel3: 27 // ai analysis
 }
 const panelSizes = reactive({ ...defaultSizes })
 const layoutReady = ref(false)

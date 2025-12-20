@@ -139,8 +139,8 @@ const defaultLayoutSizes = {
   leftInner: 35,
   centerInner: 65,
   leftPanel1: 35,
-  leftPanel2: 45,
-  leftPanel3: 20
+  leftPanel2: 34,
+  leftPanel3: 27
 };
 
 const layoutConfig = reactive({ ...defaultLayoutSizes });

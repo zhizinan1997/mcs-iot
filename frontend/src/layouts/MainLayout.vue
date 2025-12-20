@@ -3,6 +3,12 @@
     <!-- Sidebar -->
     <el-aside width="240px" class="sidebar">
       <div class="sidebar-header">
+        <img 
+          v-if="siteConfig.logo_url" 
+          :src="siteConfig.logo_url" 
+          alt="Logo" 
+          class="site-logo"
+        />
         <span class="site-title">{{ siteConfig.site_name }}</span>
       </div>
       
@@ -218,7 +224,15 @@ function handleLogout() {
   height: 60px;
   display: flex;
   align-items: center;
+  gap: 12px;
   padding: 0 24px;
+}
+
+.site-logo {
+  height: 32px;
+  width: 32px;
+  object-fit: contain;
+  border-radius: 6px;
 }
 
 .site-title { font-weight: 600; color: #1d1d1f; font-size: 18px; }

@@ -38,11 +38,26 @@
                    <template #append>左上角显示</template>
                 </el-input>
                </el-form-item>
-               <el-form-item label="Logo URL">
-                <el-input v-model="siteConfig.logo_url" placeholder="https://example.com/logo.png" />
-                <div v-if="siteConfig.logo_url" class="logo-preview">
-                  <img :src="siteConfig.logo_url" alt="Logo Preview" />
-                </div>
+               <el-form-item label="Logo 图片">
+                 <div class="logo-upload-area">
+                   <el-button @click="triggerLogoInput" :loading="uploadingLogo" size="small">
+                     <el-icon><Upload /></el-icon> 上传Logo
+                   </el-button>
+                   <el-button @click="clearLogo" :disabled="!siteConfig.logo_url" size="small" type="danger" plain>
+                     清除
+                   </el-button>
+                   <input
+                     ref="logoInputRef"
+                     type="file"
+                     accept="image/*"
+                     style="display: none"
+                     @change="handleLogoSelect"
+                   />
+                 </div>
+                 <div v-if="siteConfig.logo_url" class="logo-preview">
+                   <img :src="siteConfig.logo_url" alt="Logo Preview" />
+                   <span class="preview-hint">此图片将用于左上角Logo和浏览器标签页图标</span>
+                 </div>
                </el-form-item>
                <el-form-item label="浏览器标题">
                 <el-input v-model="siteConfig.browser_title" placeholder="MCS-IoT Dashboard" @input="previewTitle">
@@ -254,10 +269,12 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from "vue";
 import { ElMessage } from "element-plus";
-import { Setting, Monitor, Message, Connection, Bell, Link } from '@element-plus/icons-vue'
-import { configApi } from "../../api";
+import { Setting, Monitor, Message, Connection, Bell, Link, Upload } from '@element-plus/icons-vue'
+import { configApi, uploadApi } from "../../api";
 
 const saving = ref(false);
+const uploadingLogo = ref(false);
+const logoInputRef = ref<HTMLInputElement | null>(null);
 const activeSection = ref("section-site");
 const alarmTimeRange = ref<[Date, Date] | null>(null);
 
@@ -408,6 +425,35 @@ function handleTimeRangeChange(val: [Date, Date] | null) {
     alarmGeneralConfig.time_restriction_start = val[0].toTimeString().slice(0, 5);
     alarmGeneralConfig.time_restriction_end = val[1].toTimeString().slice(0, 5);
   }
+}
+
+/* --- Logo Upload --- */
+function triggerLogoInput() {
+  logoInputRef.value?.click();
+}
+
+async function handleLogoSelect(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file) return;
+  
+  uploadingLogo.value = true;
+  try {
+    const res = await uploadApi.uploadImage(file);
+    siteConfig.logo_url = res.data.url;
+    ElMessage.success("Logo 上传成功");
+  } catch (error: any) {
+    const detail = error.response?.data?.detail || "上传失败";
+    ElMessage.error(detail);
+  } finally {
+    uploadingLogo.value = false;
+    if (target) target.value = "";
+  }
+}
+
+function clearLogo() {
+  siteConfig.logo_url = "";
+  ElMessage.success("Logo 已清除");
 }
 
 onMounted(() => {
@@ -596,6 +642,19 @@ onMounted(() => {
   height: 40px;
   margin-top: 8px;
   border-radius: 4px;
+}
+
+.logo-upload-area {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.preview-hint {
+  display: block;
+  font-size: 12px;
+  color: #86868b;
+  margin-top: 4px;
 }
 
 .spacer {

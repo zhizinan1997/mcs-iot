@@ -78,8 +78,8 @@ class ScreenLayoutConfig(BaseModel):
     leftInner: float = 35
     centerInner: float = 65
     leftPanel1: float = 35
-    leftPanel2: float = 45
-    leftPanel3: float = 20
+    leftPanel2: float = 34
+    leftPanel3: float = 27
 
 # AI 接口配置
 AI_API_URL = "https://newapi2.zhizinan.top/v1"  # 固定 API 地址
@@ -363,8 +363,9 @@ async def get_storage_stats(redis = Depends(get_redis), db = Depends(get_db)):
     # 获取本地数据库大小
     try:
         async with db.acquire() as conn:
+            # Use pg_database_size for total database size (more accurate)
             size_result = await conn.fetchrow("""
-                SELECT pg_total_relation_size('sensor_data') as size,
+                SELECT pg_database_size(current_database()) as size,
                        (SELECT COUNT(*) FROM sensor_data) as count
             """)
             if size_result:
