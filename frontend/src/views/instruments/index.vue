@@ -1,9 +1,8 @@
 <template>
   <div class="instruments-page">
-    <el-card>
+    <el-card class="full-card">
       <template #header>
         <div class="card-header">
-          <span>仪表管理</span>
           <el-button type="primary" @click="showAddDialog">
             <el-icon><Plus /></el-icon> 添加仪表
           </el-button>
@@ -318,16 +317,103 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.instruments-page {
+  padding: 0;
+  height: 100%;
+  padding: 24px;
+}
+
+:deep(.full-card) {
+  height: 100%;
+  border-radius: 24px !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  background: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04) !important;
+  display: flex;
+  flex-direction: column;
+}
+
+:deep(.full-card .el-card__header) {
+  padding: 20px 32px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  background: transparent;
+  flex-shrink: 0;
+}
+
+:deep(.full-card .el-card__body) {
+  padding: 0;
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 .card-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
+}
+
+/* Glass Table Styling */
+:deep(.el-table) {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: rgba(255, 255, 255, 0.5);
+  background: transparent !important;
+}
+
+:deep(.el-table th.el-table__cell) {
+  background-color: rgba(255, 255, 255, 0.5);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  color: #86868b;
+  font-weight: 600;
+  padding: 12px 0;
+}
+
+:deep(.el-table td.el-table__cell) {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+  padding: 16px 0;
+}
+
+:deep(.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell) {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+:deep(.el-table--enable-row-hover .el-table__body tr:hover > td.el-table__cell) {
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Dialog Glass */
+:deep(.el-dialog) {
+  border-radius: 24px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+}
+
+:deep(.el-dialog__header) {
+  margin-right: 0;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+:deep(.el-dialog__title) {
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+:deep(.el-dialog__body) {
+  padding: 24px;
 }
 
 .instrument-name {
   display: flex;
   align-items: center;
   gap: 8px;
+  font-weight: 600;
+  color: #1d1d1f;
 }
 
 .color-dot {
@@ -335,5 +421,6 @@ onMounted(() => {
   height: 14px;
   border-radius: 50%;
   flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 </style>

@@ -1,327 +1,379 @@
 <template>
-  <div class="screen-background-page">
-    <el-card class="full-card">
-      <template #header>
-        <div class="card-header">
-          <span>大屏背景与仪表位置配置</span>
-          <el-tag type="info">拖拽仪表标记调整位置</el-tag>
+  <div class="screen-bg-page full-height">
+    <div class="glass-panel main-layout">
+      <!-- Left Panel: Settings -->
+      <div class="side-panel glass-inset-light">
+        <div class="panel-header">
+           <h3><el-icon><Picture /></el-icon> 背景图设置</h3>
         </div>
-      </template>
+        
+        <div class="upload-area">
+          <el-upload
+            class="mac-upload"
+            action="#"
+            :http-request="customUpload"
+            :show-file-list="false"
+            :before-upload="beforeUpload"
+            drag
+          >
+            <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+            <div class="el-upload__text">
+              拖拽图片到此处或 <em>点击上传</em>
+            </div>
+            <template #tip>
+              <div class="el-upload__tip">
+                支持 JPG/PNG 格式，建议分辨率 1920x1080
+              </div>
+            </template>
+          </el-upload>
+        </div>
 
-      <el-form :model="screenBgConfig" label-width="120px" class="main-form">
-        <el-form-item label="上传背景图">
-          <div class="upload-area">
-            <input 
-              type="file" 
-              ref="fileInputRef" 
-              accept="image/*" 
-              style="display: none" 
-              @change="handleFileSelect"
-            />
-            <el-button type="primary" @click="triggerFileInput" :loading="uploading">
-              {{ uploading ? '上传中...' : '选择图片' }}
-            </el-button>
-            <el-button v-if="screenBgConfig.image_url" type="danger" @click="clearScreenBg">
-              清除背景
-            </el-button>
+        <div class="settings-group">
+          <h4><el-icon><Location /></el-icon> 仪器点位</h4>
+          <p class="hint">拖拽右侧预览图中的点位调整位置</p>
+          
+          <el-button class="mac-btn-block" @click="addMarker">
+            <el-icon><Plus /></el-icon> 添加新点位
+          </el-button>
+
+          <div class="markers-list custom-scroll">
+            <div v-for="(marker, index) in markers" :key="index" class="marker-item">
+              <span class="marker-idx">{{ index + 1 }}</span>
+              <el-input v-model="marker.name" placeholder="点位名称" size="small" />
+              <el-button type="danger" link @click="removeMarker(index)">
+                <el-icon><Close /></el-icon>
+              </el-button>
+            </div>
           </div>
-        </el-form-item>
+        </div>
+        
+        <div class="panel-footer">
+          <el-button type="primary" size="large" round class="save-btn" @click="saveConfig" :loading="saving">
+            保存布局配置
+          </el-button>
+        </div>
+      </div>
 
-        <el-form-item label="位置编辑器" class="editor-form-item">
-          <div class="position-editor">
+      <!-- Right Panel: Editor -->
+      <div class="editor-panel">
+         <div class="editor-wrapper glass-inset-dark">
             <div 
               class="preview-container" 
               ref="previewRef"
-              @mousedown="handleMouseDown"
-              @mousemove="handleMouseMove"
-              @mouseup="handleMouseUp"
-              @mouseleave="handleMouseUp"
+              :style="{ backgroundImage: `url(${bgUrl})` }"
+              @drop="handleDrop"
+              @dragover.prevent
             >
-              <img 
-                v-if="screenBgConfig.image_url" 
-                :src="screenBgConfig.image_url" 
-                alt="背景预览" 
-                class="preview-bg"
-                draggable="false"
-              />
-              <div v-else class="no-bg">请先上传背景图</div>
-              
-              <!-- Instrument markers -->
-              <div
-                v-for="inst in displayedInstruments"
-                :key="inst.id"
-                class="marker"
-                :class="{ dragging: draggingId === inst.id }"
-                :style="{ left: inst.pos_x + '%', top: inst.pos_y + '%' }"
-                @mousedown.stop="startDrag($event, inst)"
-              >
-                <span class="dot"></span>
-                <span class="label">{{ inst.name }}</span>
-              </div>
+               <div 
+                 v-for="(marker, index) in markers" 
+                 :key="index"
+                 class="marker"
+                 :style="{ left: marker.x + '%', top: marker.y + '%' }"
+                 @mousedown="startDrag($event, index)"
+               >
+                 <div class="dot"></div>
+                 <div class="label">{{ marker.name || `点位 ${index+1}` }}</div>
+               </div>
+               
+               <div v-if="!bgUrl" class="empty-bg">
+                 <el-icon :size="48"><Picture /></el-icon>
+                 <span>请先上传背景图片</span>
+               </div>
             </div>
-            <div class="editor-hint">
-              <el-icon><InfoFilled /></el-icon>
-              点击并拖拽绿色标记调整仪表在大屏上的位置
-            </div>
-          </div>
-        </el-form-item>
-
-        <el-form-item>
-          <el-button type="primary" @click="saveAllConfig" :loading="saving">
-            保存所有配置
-          </el-button>
-          <el-button @click="loadAll">
-            刷新
-          </el-button>
-        </el-form-item>
-      </el-form>
-
-      <el-divider />
-      <div class="tips">
-        <h4>使用说明:</h4>
-        <ul>
-          <li><strong>拖拽标记</strong>调整仪表在大屏地图上的位置</li>
-          <li>只有设置了<strong>大屏显示</strong>的仪表才会显示</li>
-          <li>位置按百分比保存，适应任意屏幕尺寸</li>
-        </ul>
+         </div>
+         <div class="editor-toolbar">
+           <span>画布操作提示：直接拖动点位即可调整位置，右键可删除。</span>
+           <el-button link type="primary" @click="loadConfig"><el-icon><Refresh /></el-icon> 重置</el-button>
+         </div>
       </div>
-    </el-card>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from "vue";
-import { ElMessage } from "element-plus";
-import { InfoFilled } from "@element-plus/icons-vue";
-import { configApi, uploadApi, instrumentsApi } from "../../api";
+import { ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
+import { Picture, UploadFilled, Location, Plus, Close, Refresh } from '@element-plus/icons-vue'
+import { configApi, uploadApi } from '../../api'
 
-interface Instrument {
-  id: number;
-  name: string;
-  is_displayed: boolean;
-  pos_x: number;
-  pos_y: number;
-}
-
+const bgUrl = ref('')
+const markers = ref<any[]>([])
 const saving = ref(false)
-const uploading = ref(false)
-const fileInputRef = ref<HTMLInputElement | null>(null)
-const previewRef = ref<HTMLDivElement | null>(null)
+const previewRef = ref<HTMLElement | null>(null)
 
-const screenBgConfig = reactive({
-  image_url: ""
-})
+// Drag state
+let isDragging = false
+let currentMarkerIndex = -1
 
-const instruments = ref<Instrument[]>([])
-const draggingId = ref<number | null>(null)
-const dragOffset = reactive({ x: 0, y: 0 })
-
-const displayedInstruments = computed(() => {
-  return instruments.value.filter(i => i.is_displayed === true)
-})
-
-function triggerFileInput() {
-  fileInputRef.value?.click()
+async function customUpload(options: any) {
+  try {
+    const res = await uploadApi.uploadImage(options.file)
+    handleUploadSuccess(res.data)
+  } catch (error) {
+    ElMessage.error('上传失败')
+    options.onError(error)
+  }
 }
 
-async function loadScreenBgConfig() {
+function handleUploadSuccess(res: any) {
+  bgUrl.value = res.url
+  ElMessage.success('背景图上传成功')
+}
+
+function beforeUpload(file: any) {
+  const isImg = file.type.startsWith('image/')
+  if (!isImg) ElMessage.error('只能上传图片文件')
+  return isImg
+}
+
+function addMarker() {
+  markers.value.push({
+    x: 50,
+    y: 50,
+    name: `新点位 ${markers.value.length + 1}`
+  })
+}
+
+function removeMarker(index: number) {
+  markers.value.splice(index, 1)
+}
+
+// Drag Logic
+function startDrag(e: MouseEvent, index: number) {
+  isDragging = true
+  currentMarkerIndex = index
+  e.preventDefault()
+  
+  document.addEventListener('mousemove', onMouseMove)
+  document.addEventListener('mouseup', onMouseUp)
+}
+
+function onMouseMove(e: MouseEvent) {
+  if (!isDragging || !previewRef.value) return
+  
+  const rect = previewRef.value.getBoundingClientRect()
+  let x = ((e.clientX - rect.left) / rect.width) * 100
+  let y = ((e.clientY - rect.top) / rect.height) * 100
+  
+  // Clamp
+  x = Math.max(0, Math.min(100, x))
+  y = Math.max(0, Math.min(100, y))
+  
+  if (currentMarkerIndex !== -1) {
+    markers.value[currentMarkerIndex].x = x
+    markers.value[currentMarkerIndex].y = y
+  }
+}
+
+function onMouseUp() {
+  isDragging = false
+  currentMarkerIndex = -1
+  document.removeEventListener('mousemove', onMouseMove)
+  document.removeEventListener('mouseup', onMouseUp)
+}
+
+function handleDrop() {
+  // Optional: handle drop specific logic
+}
+
+async function loadConfig() {
   try {
     const res = await configApi.getScreenBg()
-    screenBgConfig.image_url = res.data.image_url || ""
-  } catch (error) {
-    console.error("Failed to load screen bg config:", error)
+    if (res.data) {
+      bgUrl.value = res.data.background_url || ''
+      markers.value = res.data.markers || []
+    }
+  } catch (err) {
+    console.error(err)
   }
 }
 
-async function loadInstruments() {
-  try {
-    const res = await instrumentsApi.list()
-    instruments.value = res.data.data.map((i: any) => ({
-      id: i.id,
-      name: i.name,
-      is_displayed: i.is_displayed,
-      pos_x: i.pos_x ?? 50,
-      pos_y: i.pos_y ?? 50
-    }))
-  } catch (error) {
-    console.error("Failed to load instruments:", error)
-  }
-}
-
-async function loadAll() {
-  await Promise.all([loadScreenBgConfig(), loadInstruments()])
-}
-
-async function saveScreenBgConfig() {
-  await configApi.updateScreenBg(screenBgConfig)
-}
-
-async function saveInstrumentPositions() {
-  const promises = displayedInstruments.value.map(inst => 
-    instrumentsApi.updatePosition(inst.id, inst.pos_x, inst.pos_y)
-  )
-  await Promise.all(promises)
-}
-
-async function saveAllConfig() {
+async function saveConfig() {
   saving.value = true
   try {
-    await Promise.all([saveScreenBgConfig(), saveInstrumentPositions()])
-    ElMessage.success("配置已保存")
-  } catch (error: any) {
-    ElMessage.error("保存失败")
+    await configApi.updateScreenBg({
+      background_url: bgUrl.value,
+      markers: markers.value
+    })
+    ElMessage.success('布局配置已保存')
+  } catch (err) {
+    ElMessage.error('保存失败')
   } finally {
     saving.value = false
   }
 }
 
-async function handleFileSelect(event: Event) {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (!file) return
-  
-  uploading.value = true
-  try {
-    const res = await uploadApi.uploadImage(file)
-    screenBgConfig.image_url = res.data.url
-    ElMessage.success("图片上传成功")
-  } catch (error: any) {
-    const detail = error.response?.data?.detail || "上传失败"
-    ElMessage.error(detail)
-  } finally {
-    uploading.value = false
-    if (target) target.value = ""
-  }
-}
-
-function clearScreenBg() {
-  screenBgConfig.image_url = ""
-}
-
-// Drag and drop handlers
-function startDrag(event: MouseEvent, inst: Instrument) {
-  draggingId.value = inst.id
-  const rect = previewRef.value?.getBoundingClientRect()
-  if (rect) {
-    const currentX = (inst.pos_x / 100) * rect.width
-    const currentY = (inst.pos_y / 100) * rect.height
-    dragOffset.x = event.clientX - rect.left - currentX
-    dragOffset.y = event.clientY - rect.top - currentY
-  }
-}
-
-function handleMouseDown() {
-  // Only start drag if clicking directly on a marker
-}
-
-function handleMouseMove(event: MouseEvent) {
-  if (draggingId.value === null) return
-  
-  const rect = previewRef.value?.getBoundingClientRect()
-  if (!rect) return
-  
-  const x = event.clientX - rect.left - dragOffset.x
-  const y = event.clientY - rect.top - dragOffset.y
-  
-  const posX = Math.max(0, Math.min(100, (x / rect.width) * 100))
-  const posY = Math.max(0, Math.min(100, (y / rect.height) * 100))
-  
-  const inst = instruments.value.find(i => i.id === draggingId.value)
-  if (inst) {
-    inst.pos_x = Math.round(posX * 10) / 10
-    inst.pos_y = Math.round(posY * 10) / 10
-  }
-}
-
-function handleMouseUp() {
-  draggingId.value = null
-}
-
 onMounted(() => {
-  loadAll()
+  loadConfig()
 })
 </script>
 
 <style scoped>
-.screen-background-page {
-  /* Remove height: 100% to allow scrolling */
-  width: 100%;
+.screen-bg-page {
+  padding: 24px;
+  height: 100%;
   box-sizing: border-box;
 }
 
-:deep(.full-card) {
-  /* Allow card to extend naturally */
-  min-height: 100%;
+.full-height {
+  height: 100%;
 }
 
-:deep(.full-card .el-card__body) {
-  /* Remove flex:1 and overflow:hidden which blocked scrolling */
-  padding-bottom: 24px;
+.glass-panel {
+  height: 100%;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
+  display: flex;
+  overflow: hidden;
 }
 
-.main-form {
-  /* Allow form to flow */
+.main-layout {
+  display: flex;
 }
 
-.editor-form-item {
-  /* Give the editor a fixed workable height instead of stretching */
-  height: 60vh; 
-  min-height: 500px;
+/* Left Panel */
+.side-panel {
+  width: 320px;
+  flex-shrink: 0;
+  border-right: 1px solid rgba(0,0,0,0.05);
   display: flex;
   flex-direction: column;
+  padding: 24px;
+  background: rgba(255,255,255,0.4);
+}
+
+.panel-header h3 {
+  margin: 0 0 24px;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1d1d1f;
+}
+
+/* Upload */
+.mac-upload {
   margin-bottom: 24px;
 }
-
-:deep(.editor-form-item .el-form-item__content) {
-  height: 100%;
-  align-items: stretch;
+:deep(.el-upload-dragger) {
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 12px;
+  border: 1px dashed #dcdfe6;
+}
+:deep(.el-upload-dragger:hover) {
+  border-color: #0071e3;
+  background: rgba(0, 113, 227, 0.05);
 }
 
-.card-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.upload-area {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.position-editor {
-  width: 100%;
-  height: 100%;
+/* Settings Group */
+.settings-group {
+  flex: 1;
   display: flex;
   flex-direction: column;
-}
-
-.preview-container {
-  position: relative;
-  width: 100%;
-  flex: 1;
-  border: 2px solid #409eff;
-  border-radius: 8px;
-  background: #1a1a2e;
   overflow: hidden;
-  cursor: default;
+}
+.settings-group h4 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.hint {
+  font-size: 12px;
+  color: #86868b;
+  margin: 0 0 16px;
 }
 
-.preview-bg {
+.mac-btn-block {
   width: 100%;
-  height: 100%;
-  object-fit: fill;
-  pointer-events: none;
-  user-select: none;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  border-style: dashed;
 }
 
-.no-bg {
+.markers-list {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.marker-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  background: rgba(255,255,255,0.5);
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.marker-idx {
+  width: 20px;
+  height: 20px;
+  background: #0071e3;
+  color: white;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.panel-footer {
+  margin-top: 24px;
+  text-align: center;
+}
+.save-btn {
+  width: 100%;
+  font-weight: 600;
+}
+
+/* Right Panel */
+.editor-panel {
+  flex: 1;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255,255,255,0.2);
+}
+
+.editor-wrapper {
+  flex: 1;
+  background: #1e1e1e;
+  border-radius: 16px;
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.2);
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.preview-container {
+  width: 100%;
   height: 100%;
-  color: #666;
-  font-size: 16px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  position: relative;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.empty-bg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: rgba(255,255,255,0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
 }
 
 .marker {
@@ -329,73 +381,50 @@ onMounted(() => {
   transform: translate(-50%, -50%);
   cursor: grab;
   z-index: 10;
-  transition: transform 0.1s ease;
 }
-
-.marker:hover {
-  transform: translate(-50%, -50%) scale(1.2);
-}
-
-.marker.dragging {
+.marker:active {
   cursor: grabbing;
-  transform: translate(-50%, -50%) scale(1.3);
-  z-index: 20;
 }
 
-.marker .dot {
-  display: block;
+.dot {
   width: 16px;
   height: 16px;
   background: radial-gradient(circle, #4ade80 0%, #22c55e 40%, rgba(34,197,94,0.4) 80%);
   border-radius: 50%;
   box-shadow: 0 0 12px #4ade80, 0 0 24px #22c55e;
-  animation: pulse 2s ease-in-out infinite;
+  border: 2px solid #fff;
 }
 
-@keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 0.9; }
-  50% { transform: scale(1.3); opacity: 1; }
-}
-
-.marker .label {
+.label {
   position: absolute;
-  top: -22px;
+  top: 20px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 11px;
-  white-space: nowrap;
-  background: rgba(0,0,0,0.8);
-  color: #fff;
+  background: rgba(0,0,0,0.7);
+  color: white;
   padding: 2px 6px;
-  border-radius: 3px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
   pointer-events: none;
 }
 
-.editor-hint {
+.editor-toolbar {
+  height: 40px;
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 10px;
-  color: #909399;
+  justify-content: space-between;
+  padding: 0 8px;
   font-size: 13px;
-}
-
-.tips {
-  color: #909399;
-  font-size: 14px;
-}
-
-.tips h4 {
-  margin: 0 0 8px;
   color: #606266;
 }
 
-.tips ul {
-  margin: 0;
-  padding-left: 20px;
+/* Scrollbar */
+.custom-scroll::-webkit-scrollbar {
+  width: 6px;
 }
-
-.tips li {
-  margin-bottom: 4px;
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
 }
 </style>

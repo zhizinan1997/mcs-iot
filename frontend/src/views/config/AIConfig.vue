@@ -1,30 +1,22 @@
 <template>
-  <div class="ai-config-container">
-    <el-card class="box-card">
-      <template #header>
-        <div class="card-header">
-          <span>AI 接口配置</span>
-          <div>
-            <el-button type="warning" @click="testConnection" :loading="testing">测试连接</el-button>
-            <el-button type="primary" @click="saveConfig" :loading="loading">保存配置</el-button>
-          </div>
+  <div class="ai-config-page">
+    <div class="ai-container">
+      <!-- Hero Section -->
+      <div class="hero-section">
+        <div class="ai-icon-wrapper">
+          <el-icon class="ai-icon"><Cpu /></el-icon>
         </div>
-      </template>
+        <h2 class="hero-title">AI 智能助手</h2>
+        <p class="hero-subtitle">启用 AI 能力，自动生成平台运行状况的智能总结与洞察。</p>
+      </div>
 
-      <div class="config-content">
-        <el-alert
-          title="AI 助手说明"
-          type="info"
-          description="配置 API Key 后，大屏将自动在每天 8:00、12:00、17:00、20:00 生成平台运行状况的智能总结。"
-          show-icon
-          :closable="false"
-          style="margin-bottom: 20px"
-        />
-
-        <el-form :model="form" label-width="120px">
+      <!-- Config Card -->
+      <div class="config-card glass-panel">
+        <el-form :model="form" label-position="top" size="large">
           <el-form-item label="API 接口地址">
-            <el-input :value="fixedApiUrl" disabled />
-            <div class="form-tip">接口地址已固定，无需修改</div>
+            <el-input :value="fixedApiUrl" disabled>
+              <template #prefix><el-icon><Link /></el-icon></template>
+            </el-input>
           </el-form-item>
           
           <el-form-item label="API Key">
@@ -34,28 +26,50 @@
               show-password 
               placeholder="sk-..." 
               autocomplete="new-password"
-            />
-            <div class="form-tip">请前往下方链接购买或获取 API Key</div>
+            >
+              <template #prefix><el-icon><Key /></el-icon></template>
+            </el-input>
           </el-form-item>
           
           <el-form-item label="模型名称">
             <el-input 
               v-model="form.model" 
-              placeholder="如: gpt-3.5-turbo, gpt-4o, claude-3-5-sonnet"
-            />
-            <div class="form-tip">输入模型名称，如 gpt-3.5-turbo、gpt-4o、gemini-2.0-flash 等</div>
+              placeholder="gpt-3.5-turbo"
+            >
+              <template #prefix><el-icon><Connection /></el-icon></template>
+            </el-input>
+            <div class="model-tips">
+              推荐: <el-tag size="small" effect="plain" @click="form.model='gpt-3.5-turbo'">gpt-3.5-turbo</el-tag>
+              <el-tag size="small" effect="plain" @click="form.model='gpt-4o'">gpt-4o</el-tag>
+              <el-tag size="small" effect="plain" @click="form.model='gemini-2.0-flash'">gemini-2.0-flash</el-tag>
+            </div>
           </el-form-item>
 
-          <el-form-item>
-            <el-button type="success" size="large" @click="goToPurchase">
-              <el-icon><ShoppingCart /></el-icon>
-              购买 AI API Key
+          <div class="action-buttons">
+            <el-button @click="testConnection" :loading="testing" round>
+              <el-icon><MagicStick /></el-icon> 测试连接
             </el-button>
-            <span class="purchase-tip">推荐前往 Ryan AI 获取稳定高速的 API 服务</span>
-          </el-form-item>
+            <el-button type="primary" @click="saveConfig" :loading="loading" round>
+              保存配置
+            </el-button>
+          </div>
         </el-form>
       </div>
-    </el-card>
+
+      <!-- Purchase Section -->
+      <div class="purchase-section" @click="goToPurchase">
+        <div class="purchase-content">
+          <div class="purchase-icon">
+            <el-icon><ShoppingCart /></el-icon>
+          </div>
+          <div class="purchase-text">
+            <div class="purchase-title">获取 API Key</div>
+            <div class="purchase-desc">前往 Ryan AI 获取稳定高速的 API 服务</div>
+          </div>
+          <el-icon><ArrowRight /></el-icon>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -63,7 +77,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { configApi } from '../../api'
 import { ElMessage } from 'element-plus'
-import { ShoppingCart } from '@element-plus/icons-vue'
+import { Cpu, Link, Key, Connection, MagicStick, ShoppingCart, ArrowRight } from '@element-plus/icons-vue'
 
 const loading = ref(false)
 const testing = ref(false)
@@ -131,24 +145,167 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.ai-config-container {
-  max-width: 800px;
-}
-.card-header {
+.ai-config-page {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
+  padding: 40px 20px;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+.ai-container {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+/* Hero Section */
+.hero-section {
+  text-align: center;
+}
+
+.ai-icon-wrapper {
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 20px;
+  display: flex;
   align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  box-shadow: 0 10px 25px rgba(118, 75, 162, 0.3);
 }
-.form-tip {
-  font-size: 12px;
-  color: #909399;
+
+.ai-icon {
+  font-size: 32px;
+  color: white;
+}
+
+.hero-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1d1d1f;
+  margin: 0 0 8px;
+}
+
+.hero-subtitle {
+  font-size: 14px;
+  color: #86868b;
+  margin: 0;
   line-height: 1.5;
-  margin-top: 4px;
 }
-.purchase-tip {
-  margin-left: 10px;
-  font-size: 12px;
-  color: #67c23a;
+
+/* Glass Panel */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+  padding: 32px;
+}
+
+/* Form Styles */
+:deep(.el-form-item__label) {
+  font-weight: 500;
+  color: #1d1d1f !important;
+}
+
+:deep(.el-input__wrapper) {
+  border-radius: 12px;
+  padding: 8px 12px;
+  background-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1) inset !important;
+}
+
+:deep(.el-input__wrapper:hover) {
+  background-color: #fff;
+}
+
+:deep(.el-input__wrapper.is-focus) {
+  background-color: #fff;
+  box-shadow: 0 0 0 2px #0071e3 inset !important;
+}
+
+.model-tips {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.model-tips .el-tag {
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.model-tips .el-tag:hover {
+  transform: translateY(-1px);
+  background: #f5f7fa;
+}
+
+.action-buttons {
+  margin-top: 32px;
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 16px;
+}
+
+:deep(.el-button) {
+  height: 44px;
+  font-weight: 500;
+  font-size: 15px;
+}
+
+/* Purchase Section */
+.purchase-section {
+  background: white;
+  border-radius: 20px;
+  padding: 20px;
+  cursor: pointer;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all 0.2s;
+}
+
+.purchase-section:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+}
+
+.purchase-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.purchase-icon {
+  width: 40px;
+  height: 40px;
+  background: #fdf6ec;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #e6a23c;
+  font-size: 20px;
+}
+
+.purchase-text {
+  flex: 1;
+}
+
+.purchase-title {
+  font-weight: 600;
+  color: #1d1d1f;
+  margin-bottom: 4px;
+}
+
+.purchase-desc {
+  font-size: 13px;
+  color: #86868b;
 }
 </style>
 

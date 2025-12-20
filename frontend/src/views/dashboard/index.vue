@@ -370,29 +370,39 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* Global Styles for Dashboard */
 .dashboard {
+  height: 100%;
+  padding: 24px;
+  overflow-y: auto;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 24px; /* Increased gap */
+  gap: 24px;
+  /* background: transparent; handled by layout */
 }
 
 .stats-row {
   margin-bottom: 0;
 }
 
+/* Glass Stat Card */
 .stat-card {
   display: flex;
   align-items: center;
   padding: 24px;
-  border-radius: 20px !important; /* Force rounded */
-  border: none;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border-radius: 20px !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  background: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04) !important;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08) !important;
+  background: rgba(255, 255, 255, 0.8) !important;
 }
 
 .stat-card :deep(.el-card__body) {
@@ -400,19 +410,19 @@ onMounted(() => {
   align-items: center;
   gap: 20px;
   width: 100%;
-  padding: 0; /* Let card padding handle it */
+  padding: 0;
 }
 
 .stat-icon {
   width: 64px;
   height: 64px;
-  border-radius: 18px; /* Squircle */
+  border-radius: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 28px;
   color: white;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
 }
 
 .stat-icon.blue { background: linear-gradient(135deg, #0071e3, #47a1ff); }
@@ -425,10 +435,11 @@ onMounted(() => {
 }
 
 .stat-value {
-  font-size: 32px;
+  font-size: 36px;
   font-weight: 700;
   color: #1d1d1f;
-  line-height: 1.2;
+  line-height: 1.1;
+  letter-spacing: -1px;
 }
 
 .stat-label {
@@ -438,17 +449,30 @@ onMounted(() => {
   margin-top: 4px;
 }
 
-/* Device List Card */
+/* Glass Device List Card */
 .device-card {
-  border-radius: 20px !important;
-  border: none !important;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04) !important;
+  border-radius: 24px !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  background: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04) !important;
   overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 :deep(.device-card .el-card__header) {
-  padding: 20px 24px;
+  padding: 20px 32px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  background: transparent;
+}
+
+:deep(.device-card .el-card__body) {
+  padding: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .card-header {
@@ -458,9 +482,39 @@ onMounted(() => {
 }
 
 .card-header span {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   color: #1d1d1f;
+  letter-spacing: -0.5px;
+}
+
+/* Table Styling Override */
+:deep(.el-table) {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: rgba(255, 255, 255, 0.5);
+  background: transparent !important;
+}
+
+:deep(.el-table th.el-table__cell) {
+  background-color: rgba(255, 255, 255, 0.5);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  color: #86868b;
+  font-weight: 600;
+  padding: 12px 0;
+}
+
+:deep(.el-table td.el-table__cell) {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+  padding: 16px 0;
+}
+
+:deep(.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell) {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+:deep(.el-table--enable-row-hover .el-table__body tr:hover > td.el-table__cell) {
+  background-color: rgba(255, 255, 255, 0.5);
 }
 
 .alarm-value {
@@ -478,6 +532,7 @@ onMounted(() => {
 :deep(.el-radio-button__inner) {
   border-radius: 0;
   border: 1px solid #dcdfe6;
+  background: transparent;
 }
 
 :deep(.el-radio-button:first-child .el-radio-button__inner) {
@@ -491,16 +546,16 @@ onMounted(() => {
 .charts-container {
   max-height: 65vh;
   overflow-y: auto;
-  padding: 4px; /* Prevent shadow cutout */
+  padding: 4px;
 }
 
 .chart-card {
-  background: #fff;
+  background: rgba(255, 255, 255, 0.8);
   border-radius: 16px;
   padding: 20px;
   margin-bottom: 20px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(0, 0, 0, 0.03);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .chart-card h4 {
@@ -528,8 +583,11 @@ onMounted(() => {
 }
 
 :deep(.history-dialog .el-dialog) {
-  border-radius: 20px;
+  border-radius: 24px;
   overflow: hidden;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
 }
 
 :deep(.history-dialog .el-dialog__header) {

@@ -1,909 +1,602 @@
 <template>
-  <div class="config-page">
-    <el-tabs v-model="activeTab">
-      <!-- Email Config -->
-      <!-- Site Branding Config -->
-      <el-tab-pane label="系统设置" name="site">
-        <el-card>
-          <template #header>
-            <div class="card-header">
-              <span>系统品牌设置</span>
-              <el-tag type="success">实时生效</el-tag>
+  <div class="config-page-wrapper">
+    <!-- Sidebar Navigation -->
+    <div class="config-sidebar glass-panel">
+      <div class="sidebar-header">
+        <h3><el-icon><Setting /></el-icon> 系统配置</h3>
+      </div>
+      <div class="nav-menu">
+        <div 
+          v-for="item in navItems" 
+          :key="item.id"
+          class="nav-item"
+          :class="{ active: activeSection === item.id }"
+          @click="scrollToSection(item.id)"
+        >
+          <el-icon><component :is="item.icon" /></el-icon>
+          <span>{{ item.label }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="config-content full-scroll" @scroll="handleScroll">
+      
+      <!-- Site Branding Section -->
+      <div id="section-site" class="config-section">
+        <div class="section-card glass-panel">
+           <div class="card-header">
+             <div class="header-title">
+               <el-icon><Monitor /></el-icon> 站点设置
+             </div>
+             <el-button type="primary" size="small" @click="saveSiteConfig" :loading="saving">保存配置</el-button>
+           </div>
+           <div class="card-body">
+             <el-form :model="siteConfig" label-width="120px" label-position="left">
+               <el-form-item label="站点名称">
+                <el-input v-model="siteConfig.site_name" placeholder="MCS-IoT" @input="previewTitle">
+                   <template #append>左上角显示</template>
+                </el-input>
+               </el-form-item>
+               <el-form-item label="Logo URL">
+                <el-input v-model="siteConfig.logo_url" placeholder="https://example.com/logo.png" />
+                <div v-if="siteConfig.logo_url" class="logo-preview">
+                  <img :src="siteConfig.logo_url" alt="Logo Preview" />
+                </div>
+               </el-form-item>
+               <el-form-item label="浏览器标题">
+                <el-input v-model="siteConfig.browser_title" placeholder="MCS-IoT Dashboard" @input="previewTitle">
+                  <template #append>标签页标题</template>
+                </el-input>
+               </el-form-item>
+             </el-form>
+           </div>
+        </div>
+      </div>
+
+      <!-- Email Section -->
+      <div id="section-email" class="config-section">
+        <div class="section-card glass-panel">
+          <div class="card-header">
+            <div class="header-title">
+              <el-icon><Message /></el-icon> 邮件通知
             </div>
-          </template>
-
-          <el-form :model="siteConfig" label-width="120px">
-            <el-form-item label="站点名称">
-              <el-input 
-                v-model="siteConfig.site_name" 
-                placeholder="MCS-IoT"
-                @input="previewTitle"
-              >
-                <template #append>左上角显示</template>
-              </el-input>
-            </el-form-item>
-
-            <el-form-item label="Logo URL">
-              <el-input 
-                v-model="siteConfig.logo_url" 
-                placeholder="https://example.com/logo.png"
-              />
-              <div v-if="siteConfig.logo_url" class="logo-preview">
-                <img :src="siteConfig.logo_url" alt="Logo Preview" />
-              </div>
-            </el-form-item>
-
-            <el-form-item label="浏览器标题">
-              <el-input 
-                v-model="siteConfig.browser_title" 
-                placeholder="MCS-IoT Dashboard"
-                @input="previewTitle"
-              >
-                <template #append>浏览器标签页标题</template>
-              </el-input>
-            </el-form-item>
-
-            <el-form-item>
-              <el-button 
-                type="primary" 
-                @click="saveSiteConfig" 
-                :loading="saving"
-              >保存配置</el-button>
-            </el-form-item>
-          </el-form>
-        </el-card>
-      </el-tab-pane>
-
-      <!-- Alarm Email Config -->
-      <el-tab-pane label="邮件通知" name="email">
-        <el-card>
-          <el-form :model="emailConfig" label-width="120px">
-            <el-form-item label="启用邮件通知">
-              <el-switch v-model="emailConfig.enabled" />
-            </el-form-item>
-            <el-form-item label="SMTP 服务器">
-              <el-input
-                v-model="emailConfig.smtp_host"
-                placeholder="smtp.qq.com"
-              />
-            </el-form-item>
-            <el-form-item label="SMTP 端口">
-              <el-input-number
-                v-model="emailConfig.smtp_port"
-                :min="1"
-                :max="65535"
-              />
-            </el-form-item>
-            <el-form-item label="发件人邮箱">
-              <el-input
-                v-model="emailConfig.sender"
-                placeholder="your@email.com"
-              />
-            </el-form-item>
-            <el-form-item label="邮箱密码/授权码">
-              <el-input
-                v-model="emailConfig.password"
-                type="password"
-                show-password
-              />
-            </el-form-item>
-            <el-form-item label="收件人">
-              <el-select
-                v-model="emailConfig.receivers"
-                multiple
-                filterable
-                allow-create
-                default-first-option
-                placeholder="输入邮箱后回车添加"
-                style="width: 100%"
-              />
-            </el-form-item>
-            <el-form-item>
-              <el-button
-                type="primary"
-                @click="saveEmailConfig"
-                :loading="saving"
-                >保存配置</el-button
-              >
-              <el-button @click="testNotification('email')">测试发送</el-button>
-            </el-form-item>
-          </el-form>
-        </el-card>
-      </el-tab-pane>
-
-      <!-- Webhook Config -->
-      <el-tab-pane label="Webhook通知" name="webhook">
-        <el-card>
-          <el-form :model="webhookConfig" label-width="120px">
-            <el-form-item label="启用Webhook">
-              <el-switch v-model="webhookConfig.enabled" />
-            </el-form-item>
-            <el-form-item label="平台类型">
-              <el-select v-model="webhookConfig.platform" style="width: 100%">
-                <el-option label="自动检测" value="custom" />
-                <el-option label="钉钉机器人" value="dingtalk" />
-                <el-option label="飞书机器人" value="feishu" />
-                <el-option label="企业微信机器人" value="wecom" />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="Webhook URL">
-              <el-input
-                v-model="webhookConfig.url"
-                placeholder="粘贴机器人 Webhook 地址"
-              />
-            </el-form-item>
-            <el-form-item
-              label="加签密钥"
-              v-if="webhookConfig.platform === 'dingtalk'"
-            >
-              <el-input
-                v-model="webhookConfig.secret"
-                placeholder="可选，钉钉机器人加签密钥"
-                show-password
-              />
-              <div class="form-tip">
-                如果机器人设置了加签安全，请填写 SEC 开头的密钥
-              </div>
-            </el-form-item>
-            <el-form-item label="触发关键词">
-              <el-input
-                v-model="webhookConfig.keyword"
-                placeholder="如：报警、告警、MCS-IoT"
-              />
-              <div class="form-tip">
-                ⚠️ 重要：钉钉机器人设置了「自定义关键词」安全策略时，消息必须包含该关键词才能发送成功。请将机器人设置的关键词填写在此处。
-              </div>
-            </el-form-item>
-            <el-form-item>
-              <el-button
-                type="primary"
-                @click="saveWebhookConfig"
-                :loading="saving"
-                >保存配置</el-button
-              >
-              <el-button @click="testNotification('webhook')"
-                >测试发送</el-button
-              >
-            </el-form-item>
-          </el-form>
-
-          <el-divider />
-
-          <div class="tips">
-            <h4>支持的平台:</h4>
-            <ul>
-              <li>
-                <strong>钉钉机器人</strong> - 群设置 → 智能群助手 → 添加机器人
-              </li>
-              <li>
-                <strong>飞书机器人</strong> - 群设置 → 群机器人 → 添加机器人
-              </li>
-              <li><strong>企业微信机器人</strong> - 群设置 → 添加群机器人</li>
-            </ul>
-            <p style="color: #e6a23c; margin-top: 10px">
-              💡 提示：选择"自动检测"会根据 URL 自动识别平台类型
-            </p>
-          </div>
-        </el-card>
-      </el-tab-pane>
-
-      <!-- Alarm General Config -->
-      <el-tab-pane label="报警设置" name="alarm">
-        <el-card>
-          <template #header>
-            <div class="card-header">
-              <span>报警通用配置</span>
-              <el-tag type="info">消抖时间 + 时段限制</el-tag>
+            <div class="header-actions">
+              <button class="mac-action-btn" @click="testNotification('email')">测试发送</button>
+              <el-button type="primary" size="small" @click="saveEmailConfig" :loading="saving">保存配置</el-button>
             </div>
-          </template>
-
-          <el-form :model="alarmGeneralConfig" label-width="120px">
-            <el-divider content-position="left">消抖时间</el-divider>
-            <el-form-item label="消抖时间">
-              <el-input-number
-                v-model="alarmGeneralConfig.debounce_minutes"
-                :min="1"
-                :max="60"
-                :step="1"
-              />
-              <span style="margin-left: 12px; color: #86868b">分钟（同一设备相同报警类型的最小间隔）</span>
-            </el-form-item>
-
-            <el-divider content-position="left">报警时段限制</el-divider>
-            <el-form-item label="启用时段限制">
-              <el-switch v-model="alarmGeneralConfig.time_restriction_enabled" />
-              <span style="margin-left: 12px; color: #86868b">仅在指定时段内发送通知</span>
-            </el-form-item>
-
-            <el-form-item label="生效日期" v-if="alarmGeneralConfig.time_restriction_enabled">
-              <el-checkbox-group v-model="alarmGeneralConfig.time_restriction_days">
-                <el-checkbox :value="1">周一</el-checkbox>
-                <el-checkbox :value="2">周二</el-checkbox>
-                <el-checkbox :value="3">周三</el-checkbox>
-                <el-checkbox :value="4">周四</el-checkbox>
-                <el-checkbox :value="5">周五</el-checkbox>
-                <el-checkbox :value="6">周六</el-checkbox>
-                <el-checkbox :value="7">周日</el-checkbox>
-              </el-checkbox-group>
-            </el-form-item>
-
-            <el-form-item label="通知时段" v-if="alarmGeneralConfig.time_restriction_enabled">
-              <el-time-picker
-                v-model="alarmTimeStart"
-                format="HH:mm"
-                placeholder="开始时间"
-                @change="updateTimeRestriction"
-              />
-              <span style="margin: 0 12px; color: #86868b">至</span>
-              <el-time-picker
-                v-model="alarmTimeEnd"
-                format="HH:mm"
-                placeholder="结束时间"
-                @change="updateTimeRestriction"
-              />
-            </el-form-item>
-
-            <el-form-item>
-              <el-button
-                type="primary"
-                @click="saveAlarmGeneralConfig"
-                :loading="saving"
-                >保存配置</el-button
-              >
-            </el-form-item>
-          </el-form>
-
-          <el-divider />
-
-          <div class="tips">
-            <h4>💡 配置说明:</h4>
-            <ul>
-              <li>
-                <strong>消抖时间</strong> - 同一设备的相同报警类型在此时间内仅触发一次通知
-              </li>
-              <li>
-                <strong>时段限制</strong> - 仅在指定日期和时间段内发送报警通知，其他时间报警仍会记录但不会推送
-              </li>
-            </ul>
           </div>
-        </el-card>
-      </el-tab-pane>
+          <div class="card-body">
+            <el-form :model="emailConfig" label-width="120px" label-position="left">
+              <el-form-item label="启用邮件通知">
+                <el-switch v-model="emailConfig.enabled" />
+              </el-form-item>
+              
+              <div v-if="emailConfig.enabled" class="expanded-form">
+                <el-form-item label="快速配置">
+                  <el-button-group>
+                    <el-button size="small" @click="apply163Preset">163邮箱</el-button>
+                    <el-button size="small" @click="applyQQPreset">QQ邮箱</el-button>
+                  </el-button-group>
+                </el-form-item>
+                <div class="form-row">
+                  <el-form-item label="SMTP 服务器" class="half-width">
+                    <el-input v-model="emailConfig.smtp_host" placeholder="smtp.qq.com" />
+                  </el-form-item>
+                  <el-form-item label="SMTP 端口" class="half-width">
+                    <el-input-number v-model="emailConfig.smtp_port" :min="1" :max="65535" controls-position="right" />
+                  </el-form-item>
+                </div>
+                <div class="form-row">
+                  <el-form-item label="发件人邮箱" class="half-width">
+                    <el-input v-model="emailConfig.sender" placeholder="your@email.com" />
+                  </el-form-item>
+                  <el-form-item label="授权码/密码" class="half-width">
+                    <el-input v-model="emailConfig.password" type="password" show-password />
+                  </el-form-item>
+                </div>
+                <el-form-item label="收件人列表">
+                  <el-select
+                    v-model="emailConfig.receivers"
+                    multiple
+                    filterable
+                    allow-create
+                    default-first-option
+                    placeholder="输入邮箱后回车添加"
+                    style="width: 100%"
+                  />
+                </el-form-item>
+              </div>
+            </el-form>
+          </div>
+        </div>
+      </div>
 
-      <!-- MQTT Account Config -->
-      <el-tab-pane label="MQTT账号" name="mqtt">
-        <el-card>
-          <template #header>
-            <div class="card-header">
-              <span>MQTT 账号管理</span>
-              <el-tag type="info">所有设备使用统一账号</el-tag>
+      <!-- Webhook Section -->
+      <div id="section-webhook" class="config-section">
+        <div class="section-card glass-panel">
+          <div class="card-header">
+            <div class="header-title">
+              <el-icon><Connection /></el-icon> Webhook 机器人
             </div>
-          </template>
-
-          <el-form :model="mqttConfig" label-width="120px">
-            <el-divider content-position="left">管理员账号</el-divider>
-            <el-row :gutter="20">
-              <el-col :span="12">
-                <el-form-item label="用户名">
-                  <el-input
-                    v-model="mqttConfig.admin_user"
-                    placeholder="admin"
-                  />
-                </el-form-item>
-              </el-col>
-              <el-col :span="12">
-                <el-form-item label="密码">
-                  <el-input
-                    v-model="mqttConfig.admin_pass"
-                    type="password"
-                    show-password
-                    placeholder="管理员密码"
-                  />
-                </el-form-item>
-              </el-col>
-            </el-row>
-
-            <el-divider content-position="left">Worker 服务账号</el-divider>
-            <el-row :gutter="20">
-              <el-col :span="12">
-                <el-form-item label="用户名">
-                  <el-input
-                    v-model="mqttConfig.worker_user"
-                    placeholder="worker"
-                  />
-                </el-form-item>
-              </el-col>
-              <el-col :span="12">
-                <el-form-item label="密码">
-                  <el-input
-                    v-model="mqttConfig.worker_pass"
-                    type="password"
-                    show-password
-                    placeholder="Worker 密码"
-                  />
-                </el-form-item>
-              </el-col>
-            </el-row>
-
-            <el-divider content-position="left">设备统一账号</el-divider>
-            <el-row :gutter="20">
-              <el-col :span="12">
-                <el-form-item label="用户名">
-                  <el-input
-                    v-model="mqttConfig.device_user"
-                    placeholder="device"
-                  />
-                </el-form-item>
-              </el-col>
-              <el-col :span="12">
-                <el-form-item label="密码">
-                  <el-input
-                    v-model="mqttConfig.device_pass"
-                    type="password"
-                    show-password
-                    placeholder="设备统一密码"
-                  />
-                </el-form-item>
-              </el-col>
-            </el-row>
-
-            <el-form-item>
-              <el-button
-                type="primary"
-                @click="saveMqttConfig"
-                :loading="saving"
-                >保存并重载</el-button
-              >
-              <el-button @click="reloadMqtt">仅重载配置</el-button>
-            </el-form-item>
-          </el-form>
-
-          <el-divider />
-
-          <div class="tips">
-            <h4>使用说明:</h4>
-            <ul>
-              <li><strong>管理员账号</strong> - 用于 MQTT 调试工具连接</li>
-              <li><strong>Worker 账号</strong> - 后台服务连接使用</li>
-              <li>
-                <strong>设备账号</strong> - 所有硬件设备使用此统一账号连接
-              </li>
-            </ul>
-
-            <el-alert
-              title="重要提示"
-              type="warning"
-              :closable="false"
-              style="margin-top: 10px"
-            >
-              <template #default>
-                <p>
-                  修改
-                  <strong>Worker 账号密码</strong>
-                  后，需要管理员执行以下命令重启 Worker 容器：
-                </p>
-                <code
-                  style="
-                    background: #f5f5f5;
-                    padding: 4px 8px;
-                    border-radius: 4px;
-                  "
-                  >docker-compose restart worker</code
-                >
-              </template>
-            </el-alert>
-
-            <p style="color: #e6a23c; margin-top: 10px">
-              ⚠️ 修改设备密码后，所有硬件设备也需要更新固件配置
-            </p>
+            <div class="header-actions">
+              <button class="mac-action-btn" @click="testNotification('webhook')">测试发送</button>
+              <el-button type="primary" size="small" @click="saveWebhookConfig" :loading="saving">保存配置</el-button>
+            </div>
           </div>
-        </el-card>
-      </el-tab-pane>
-    </el-tabs>
+          <div class="card-body">
+            <el-form :model="webhookConfig" label-width="120px" label-position="left">
+               <el-form-item label="启用 Webhook">
+                 <el-switch v-model="webhookConfig.enabled" />
+               </el-form-item>
+               
+               <div v-if="webhookConfig.enabled" class="expanded-form">
+                 <el-form-item label="平台类型">
+                   <el-radio-group v-model="webhookConfig.platform">
+                     <el-radio-button label="custom">自动检测</el-radio-button>
+                     <el-radio-button label="dingtalk">钉钉</el-radio-button>
+                     <el-radio-button label="feishu">飞书</el-radio-button>
+                     <el-radio-button label="wecom">企业微信</el-radio-button>
+                   </el-radio-group>
+                 </el-form-item>
+                 <el-form-item label="Webhook URL">
+                   <el-input v-model="webhookConfig.url" placeholder="粘贴机器人 Webhook 地址" />
+                 </el-form-item>
+                 <el-form-item label="加签密钥" v-if="webhookConfig.platform === 'dingtalk'">
+                   <el-input v-model="webhookConfig.secret" show-password placeholder="可选，钉钉机器人加签密钥" />
+                 </el-form-item>
+                 <el-form-item label="触发关键词">
+                   <el-input v-model="webhookConfig.keyword" placeholder="如果不涉及安全设置可留空" />
+                 </el-form-item>
+               </div>
+            </el-form>
+          </div>
+        </div>
+      </div>
 
+      <!-- Alarm Section -->
+      <div id="section-alarm" class="config-section">
+        <div class="section-card glass-panel">
+          <div class="card-header">
+            <div class="header-title">
+              <el-icon><Bell /></el-icon> 报警规则
+            </div>
+            <el-button type="primary" size="small" @click="saveAlarmGeneralConfig" :loading="saving">保存配置</el-button>
+          </div>
+          <div class="card-body">
+             <el-form :model="alarmGeneralConfig" label-width="120px" label-position="left">
+               <el-form-item label="报警消抖">
+                  <div class="control-row">
+                    <el-input-number v-model="alarmGeneralConfig.debounce_minutes" :min="1" :max="1440" />
+                    <span class="unit-text">分钟内不重复报警</span>
+                  </div>
+               </el-form-item>
+               
+               <el-divider class="glass-divider" />
+               
+               <el-form-item label="静默时段">
+                 <el-switch v-model="alarmGeneralConfig.time_restriction_enabled" inactive-text="全天接收通知" active-text="仅特定时段接收" />
+               </el-form-item>
+               
+               <div v-if="alarmGeneralConfig.time_restriction_enabled" class="expanded-form">
+                 <el-form-item label="接收日期">
+                   <el-checkbox-group v-model="alarmGeneralConfig.time_restriction_days">
+                      <el-checkbox-button v-for="day in 7" :key="day" :value="day">
+                        周{{ ['一','二','三','四','五','六','日'][day-1] }}
+                      </el-checkbox-button>
+                   </el-checkbox-group>
+                 </el-form-item>
+                 <el-form-item label="接收时间">
+                    <el-time-picker
+                      is-range
+                      v-model="alarmTimeRange"
+                      range-separator="至"
+                      start-placeholder="开始时间"
+                      end-placeholder="结束时间"
+                      format="HH:mm"
+                      @change="handleTimeRangeChange"
+                    />
+                 </el-form-item>
+               </div>
+             </el-form>
+          </div>
+        </div>
+      </div>
 
+      <!-- MQTT Section -->
+      <div id="section-mqtt" class="config-section">
+        <div class="section-card glass-panel">
+          <div class="card-header">
+            <div class="header-title">
+              <el-icon><Link /></el-icon> MQTT 服务
+            </div>
+            <div class="header-actions">
+              <button class="mac-action-btn" @click="reloadMqtt">重载服务</button>
+              <el-button type="primary" size="small" @click="saveMqttConfig" :loading="saving">保存配置</el-button>
+            </div>
+          </div>
+          <div class="card-body">
+             <el-form :model="mqttConfig" label-width="120px" label-position="left">
+               <div class="mqtt-grid">
+                 <div class="mqtt-group">
+                   <h5>管理员账号 (调试)</h5>
+                   <el-form-item label="用户名"><el-input v-model="mqttConfig.admin_user" /></el-form-item>
+                   <el-form-item label="密码"><el-input v-model="mqttConfig.admin_pass" type="password" show-password /></el-form-item>
+                 </div>
+                 
+                 <div class="mqtt-group">
+                   <h5>Worker 服务账号</h5>
+                   <el-form-item label="用户名"><el-input v-model="mqttConfig.worker_user" /></el-form-item>
+                   <el-form-item label="密码"><el-input v-model="mqttConfig.worker_pass" type="password" show-password /></el-form-item>
+                 </div>
+                 
+                 <div class="mqtt-group full-width">
+                   <h5>设备接入账号 (统一)</h5>
+                   <div class="form-row">
+                     <el-form-item label="用户名" class="half-width"><el-input v-model="mqttConfig.device_user" /></el-form-item>
+                     <el-form-item label="密码" class="half-width"><el-input v-model="mqttConfig.device_pass" type="password" show-password /></el-form-item>
+                   </div>
+                 </div>
+               </div>
+               
+               <el-alert title="注意：修改 Worker 账号密码后需要手动重启后端容器" type="warning" show-icon :closable="false" class="mac-alert" />
+             </el-form>
+          </div>
+        </div>
+      </div>
+
+      <div class="spacer"></div>
+
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from "vue";
 import { ElMessage } from "element-plus";
+import { Setting, Monitor, Message, Connection, Bell, Link } from '@element-plus/icons-vue'
 import { configApi } from "../../api";
 
-const activeTab = ref("site");
 const saving = ref(false);
+const activeSection = ref("section-site");
+const alarmTimeRange = ref<[Date, Date] | null>(null);
 
-const emailConfig = reactive({
-  enabled: false,
-  smtp_host: "smtp.qq.com",
-  smtp_port: 465,
-  sender: "",
-  password: "",
-  receivers: [] as string[],
-});
+const navItems = [
+  { id: 'section-site', label: '站点设置', icon: 'Monitor' },
+  { id: 'section-email', label: '邮件通知', icon: 'Message' },
+  { id: 'section-webhook', label: 'Webhook', icon: 'Connection' },
+  { id: 'section-alarm', label: '报警规则', icon: 'Bell' },
+  { id: 'section-mqtt', label: 'MQTT服务', icon: 'Link' },
+];
 
-const webhookConfig = reactive({
-  enabled: false,
-  url: "",
-  platform: "custom",
-  secret: "",
-  keyword: "",
-});
+/* --- Config Objects --- */
+const siteConfig = reactive({ site_name: "", logo_url: "", browser_title: "" });
+const emailConfig = reactive({ enabled: false, smtp_host: "smtp.qq.com", smtp_port: 465, sender: "", password: "", receivers: [] as string[] });
+const webhookConfig = reactive({ enabled: false, url: "", platform: "custom", secret: "", keyword: "" });
+const alarmGeneralConfig = reactive({ debounce_minutes: 10, time_restriction_enabled: false, time_restriction_days: [1, 2, 3, 4, 5], time_restriction_start: "08:00", time_restriction_end: "18:00" });
+const mqttConfig = reactive({ admin_user: "admin", admin_pass: "", worker_user: "worker", worker_pass: "", device_user: "device", device_pass: "" });
 
-const dashboardConfig = reactive({
-  title: "MCS-IoT Dashboard",
-  refresh_rate: 5,
-  background_image: "",
-});
-
-const mqttConfig = reactive({
-  admin_user: "admin",
-  admin_pass: "",
-  worker_user: "worker",
-  worker_pass: "",
-  device_user: "device",
-  device_pass: "",
-});
-
-// 报警通用配置
-const alarmGeneralConfig = reactive({
-  debounce_minutes: 10,
-  time_restriction_enabled: false,
-  time_restriction_days: [1, 2, 3, 4, 5] as number[],
-  time_restriction_start: "08:00",
-  time_restriction_end: "18:00",
-});
-
-// 时间选择器绑定值
-const alarmTimeStart = ref<Date | null>(null);
-const alarmTimeEnd = ref<Date | null>(null);
-
-// 时间字符串转Date对象
-function parseTimeString(timeStr: string): Date {
-  const parts = timeStr.split(':').map(Number);
-  const hours = parts[0] || 0;
-  const minutes = parts[1] || 0;
-  const date = new Date();
-  date.setHours(hours, minutes, 0, 0);
-  return date;
+/* --- Actions --- */
+function scrollToSection(id: string) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    activeSection.value = id;
+  }
 }
 
-// Date对象转时间字符串
-function formatTimeToString(date: Date | null): string {
-  if (!date) return "00:00";
-  const hours = date.getHours().toString().padStart(2, '0');
-  const minutes = date.getMinutes().toString().padStart(2, '0');
-  return `${hours}:${minutes}`;
+function handleScroll() {
+  // Simple scroll spy logic could go here
 }
 
-// 更新时间配置
-function updateTimeRestriction() {
-  alarmGeneralConfig.time_restriction_start = formatTimeToString(alarmTimeStart.value);
-  alarmGeneralConfig.time_restriction_end = formatTimeToString(alarmTimeEnd.value);
-}
-
-
-
-
-async function loadConfigs() {
+/* --- Loaders --- */
+async function loadAll() {
   try {
-    const [emailRes, webhookRes, dashboardRes] = await Promise.all([
+    const [site, email, webhook, alarm, mqtt] = await Promise.all([
+      configApi.getSite(),
       configApi.getEmail(),
       configApi.getWebhook(),
-      configApi.getDashboard(),
+      configApi.getAlarmGeneral(),
+      configApi.getMqtt()
     ]);
-    Object.assign(emailConfig, emailRes.data);
-    Object.assign(webhookConfig, webhookRes.data);
-    Object.assign(dashboardConfig, dashboardRes.data);
-  } catch (error) {
-    console.error("Failed to load configs:", error);
+    
+    Object.assign(siteConfig, site.data);
+    Object.assign(emailConfig, email.data);
+    Object.assign(webhookConfig, webhook.data);
+    Object.assign(alarmGeneralConfig, alarm.data);
+    Object.assign(mqttConfig, mqtt.data);
+    
+    // Parse time range
+    if (alarmGeneralConfig.time_restriction_start && alarmGeneralConfig.time_restriction_end) {
+      const today = new Date().toISOString().split('T')[0];
+      alarmTimeRange.value = [
+        new Date(`${today}T${alarmGeneralConfig.time_restriction_start}`),
+        new Date(`${today}T${alarmGeneralConfig.time_restriction_end}`)
+      ];
+    }
+  } catch (err) {
+    console.error(err);
   }
+}
+
+/* --- Savers --- */
+async function saveSiteConfig() {
+  await saveWrapper(() => configApi.updateSite(siteConfig), "站点设置已保存");
+  if (siteConfig.browser_title) document.title = siteConfig.browser_title;
 }
 
 async function saveEmailConfig() {
-  saving.value = true;
-  try {
-    await configApi.updateEmail(emailConfig);
-    ElMessage.success("邮件配置已保存");
-  } catch (error) {
-    ElMessage.error("保存失败");
-  } finally {
-    saving.value = false;
-  }
+  await saveWrapper(() => configApi.updateEmail(emailConfig), "邮件配置已保存");
 }
 
 async function saveWebhookConfig() {
-  saving.value = true;
-  try {
-    await configApi.updateWebhook(webhookConfig);
-    ElMessage.success("Webhook配置已保存");
-  } catch (error) {
-    ElMessage.error("保存失败");
-  } finally {
-    saving.value = false;
-  }
+  await saveWrapper(() => configApi.updateWebhook(webhookConfig), "Webhook配置已保存");
 }
 
-
-
-async function testNotification(channel: string) {
-  ElMessage.info(`正在发送 ${channel} 测试通知...`);
-  try {
-    const response = await configApi.testNotification(channel);
-    ElMessage.success(response.data.message || "测试通知发送成功");
-  } catch (error: any) {
-    const detail = error.response?.data?.detail || "发送失败，请检查配置";
-    ElMessage.error(detail);
-  }
+async function saveAlarmGeneralConfig() {
+  await saveWrapper(() => configApi.updateAlarmGeneral(alarmGeneralConfig), "报警规则已保存");
 }
 
 async function saveMqttConfig() {
+  await saveWrapper(() => configApi.updateMqtt(mqttConfig), "MQTT配置已保存");
+}
+
+/* --- Helpers --- */
+async function saveWrapper(apiCall: () => Promise<any>, successMsg: string) {
   saving.value = true;
   try {
-    await configApi.updateMqtt(mqttConfig);
-    ElMessage.success("MQTT 配置已保存并生效");
+    await apiCall();
+    ElMessage.success(successMsg);
   } catch (error: any) {
-    const detail = error.response?.data?.detail || "保存失败";
-    ElMessage.error(detail);
+    ElMessage.error(error.response?.data?.detail || "保存失败");
   } finally {
     saving.value = false;
+  }
+}
+
+function previewTitle() {
+  if (siteConfig.browser_title) document.title = siteConfig.browser_title;
+}
+
+function apply163Preset() {
+  emailConfig.smtp_host = "smtp.163.com";
+  emailConfig.smtp_port = 465;
+  ElMessage.success("已应用163邮箱配置");
+}
+
+function applyQQPreset() {
+  emailConfig.smtp_host = "smtp.qq.com";
+  emailConfig.smtp_port = 465;
+  ElMessage.success("已应用QQ邮箱配置");
+}
+
+async function testNotification(type: string) {
+  try {
+    const res = await configApi.testNotification(type);
+    ElMessage.success(res.data.message || "测试发送成功");
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.detail || "发送失败");
   }
 }
 
 async function reloadMqtt() {
   try {
     await configApi.reloadMqtt();
-    ElMessage.success("Mosquitto 配置已重载");
-  } catch (error: any) {
-    const detail = error.response?.data?.detail || "重载失败";
-    ElMessage.error(detail);
-  }
+    ElMessage.success("服务已重载");
+  } catch (e) { ElMessage.error("重载失败"); }
 }
 
-// 报警通用配置
-async function loadAlarmGeneralConfig() {
-  try {
-    const res = await configApi.getAlarmGeneral();
-    Object.assign(alarmGeneralConfig, res.data);
-    // 初始化时间选择器
-    alarmTimeStart.value = parseTimeString(alarmGeneralConfig.time_restriction_start);
-    alarmTimeEnd.value = parseTimeString(alarmGeneralConfig.time_restriction_end);
-  } catch (error) {
-    console.error("Failed to load alarm general config:", error);
-  }
-}
-
-async function saveAlarmGeneralConfig() {
-  saving.value = true;
-  try {
-    await configApi.updateAlarmGeneral(alarmGeneralConfig);
-    ElMessage.success("报警配置已保存");
-  } catch (error: any) {
-    const detail = error.response?.data?.detail || "保存失败";
-    ElMessage.error(detail);
-  } finally {
-    saving.value = false;
-  }
-}
-
-async function loadMqttConfig() {
-  try {
-    const res = await configApi.getMqtt();
-    Object.assign(mqttConfig, res.data);
-  } catch (error) {
-    console.error("Failed to load MQTT config:", error);
-  }
-}
-
-// Site Config
-const siteConfig = reactive({
-  site_name: "",
-  logo_url: "",
-  browser_title: ""
-})
-
-async function loadSiteConfig() {
-  try {
-    const res = await configApi.getSite()
-    Object.assign(siteConfig, res.data)
-  } catch (error) {
-    console.error("Failed to load site config:", error)
-  }
-}
-
-async function saveSiteConfig() {
-  saving.value = true
-  try {
-    const data = await configApi.updateSite(siteConfig)
-    ElMessage.success("站点设置已保存")
-    // Update document title immediately
-    if (data.data.browser_title) {
-      document.title = data.data.browser_title
-    }
-    // Update favicon if logo_url is set
-    if (data.data.logo_url) {
-      updateFavicon(data.data.logo_url)
-    }
-  } catch (error: any) {
-    ElMessage.error("保存失败")
-  } finally {
-    saving.value = false
-  }
-}
-
-function updateFavicon(url: string) {
-  let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement
-  if (!link) {
-    link = document.createElement('link')
-    link.rel = 'icon'
-    document.head.appendChild(link)
-  }
-  link.href = url
-}
-
-function previewTitle() {
-  if (siteConfig.browser_title) {
-    document.title = siteConfig.browser_title
+function handleTimeRangeChange(val: [Date, Date] | null) {
+  if (val) {
+    alarmGeneralConfig.time_restriction_start = val[0].toTimeString().slice(0, 5);
+    alarmGeneralConfig.time_restriction_end = val[1].toTimeString().slice(0, 5);
   }
 }
 
 onMounted(() => {
-  loadConfigs(); // This already loads email, webhook, dashboard  
-  loadMqttConfig();
-  loadSiteConfig();
-  loadAlarmGeneralConfig();
+  loadAll();
 });
 </script>
 
 <style scoped>
-.config-page {
-  width: 100%;
-  height: 100%;
-  padding: 0; /* Layout provides padding */
-}
-
-/* Tabs styling */
-:deep(.el-tabs__header) {
-  margin-bottom: 24px;
-}
-
-:deep(.el-tabs__item) {
-  font-size: 15px;
-  font-weight: 500;
-  padding: 0 20px;
-  color: #86868b;
-}
-
-:deep(.el-tabs__item.is-active) {
-  color: #0071e3;
-  font-weight: 600;
-}
-
-:deep(.el-tabs__active-bar) {
-  background-color: #0071e3;
-  height: 2px;
-}
-
-/* specific fix for element plus tabs nav wrap */
-:deep(.el-tabs__nav-wrap::after) {
-  height: 1px;
-  background-color: rgba(0,0,0,0.05);
-}
-
-/* Glass Card styling */
-:deep(.el-card) {
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
-  border-radius: 18px;
-  overflow: hidden;
-}
-
-:deep(.el-card__header) {
-  background: transparent;
-  padding: 16px 24px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-:deep(.el-card__body) {
-  padding: 24px;
-}
-
-/* Form styling */
-:deep(.el-form-item) {
-  margin-bottom: 24px;
-}
-
-:deep(.el-form-item__label) {
-  font-weight: 500;
-  color: #1d1d1f;
-}
-
-:deep(.el-input__wrapper),
-:deep(.el-select__wrapper) {
-  border-radius: 8px;
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.1) inset;
-}
-
-:deep(.el-input__wrapper.is-focus),
-:deep(.el-select__wrapper.is-focus) {
-  box-shadow: 0 0 0 1px #0071e3 inset !important;
-}
-
-:deep(.el-input-number) {
-  width: 100%;
-}
-
-:deep(.el-divider__text) {
-  font-weight: 500;
-  color: #0071e3;
-  background: transparent;
-}
-
-/* Card header */
-.card-header {
+.config-page-wrapper {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  height: 100%;
+  padding: 24px;
+  gap: 24px;
+  box-sizing: border-box;
 }
 
-.card-header span {
-  font-size: 17px;
-  font-weight: 600;
+/* Sidebar */
+.config-sidebar {
+  width: 200px;
+  flex-shrink: 0;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  padding: 20px 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header {
+  padding: 0 16px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  margin-bottom: 12px;
+}
+
+.sidebar-header h3 {
+  margin: 0;
+  font-size: 16px;
   color: #1d1d1f;
-}
-
-.card-header .el-tag {
-  border-radius: 12px;
-  border: none;
-  font-weight: 500;
-}
-
-/* Tips section */
-.tips {
-  background: rgba(0, 113, 227, 0.04);
-  border-radius: 12px;
-  padding: 20px 24px;
-  margin-top: 24px;
-  border: 1px solid rgba(0, 113, 227, 0.1);
-}
-
-.tips h4 {
-  margin: 0 0 12px;
-  color: #1d1d1f;
-  font-size: 14px;
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #6e6e73;
+  transition: all 0.2s;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.nav-item:hover {
+  background: rgba(0, 0, 0, 0.03);
+  color: #1d1d1f;
+}
+
+.nav-item.active {
+  background: #0071e3;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 113, 227, 0.2);
+}
+
+/* Main Content */
+.config-content {
+  flex: 1;
+  overflow-y: auto;
+  border-radius: 20px;
+  padding-right: 8px; /* Space for scrollbar */
+}
+
+.config-section {
+  margin-bottom: 32px;
+  scroll-margin-top: 20px; /* Offset for scrollIntoView */
+}
+
+/* Glass Panels */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
+}
+
+.card-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.header-title {
+  font-size: 16px;
   font-weight: 600;
+  color: #1d1d1f;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.tips ul {
-  margin: 0;
-  padding-left: 20px;
+.card-body {
+  padding: 24px;
 }
 
-.tips li {
-  margin-bottom: 8px;
-  color: #424245;
-  line-height: 1.5;
+/* Form Styles */
+.form-row {
+  display: flex;
+  gap: 20px;
+}
+
+.half-width {
+  flex: 1;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.expanded-form {
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 16px;
+}
+
+.mac-action-btn {
+  background: transparent;
+  border: 1px solid #dcdfe6;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #606266;
+  margin-right: 12px;
+}
+.mac-action-btn:hover {
+  border-color: #0071e3;
+  color: #0071e3;
+}
+
+.mqtt-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.mqtt-group {
+  background: rgba(255, 255, 255, 0.4);
+  padding: 16px;
+  border-radius: 12px;
+}
+
+.mqtt-group h5 {
+  margin: 0 0 16px;
+  color: #86868b;
   font-size: 13px;
 }
 
-.tips li strong {
-  color: #1d1d1f;
-  font-weight: 600;
-}
-
-/* Form tip */
-.form-tip {
-  font-size: 12px;
-  color: #86868b;
-  margin-top: 6px;
-  line-height: 1.4;
-}
-
-/* Logo preview */
-.logo-preview {
-  margin-top: 12px;
-  padding: 16px;
-  background: rgba(0, 0, 0, 0.02);
+.mac-alert {
+  margin-top: 24px;
   border-radius: 12px;
-  display: inline-block;
-  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-.logo-preview img {
-  max-height: 48px;
-  max-width: 200px;
-  display: block;
-}
-
-/* Zone color */
-.zone-color {
-  display: inline-block;
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  border: 1px solid rgba(0, 0, 0, 0.1); /* Softer border */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-/* Upload area */
-.upload-area {
+.control-row {
   display: flex;
   gap: 12px;
   align-items: center;
 }
 
-/* Background preview */
-.bg-preview {
-  border: 2px dashed rgba(0, 0, 0, 0.15);
-  border-radius: 12px;
-  padding: 20px;
-  background: rgba(250, 250, 250, 0.5);
-  transition: all 0.3s;
+.unit-text {
+  font-size: 13px;
+  color: #86868b;
 }
 
-.bg-preview:hover {
-  border-color: #0071e3;
-  background: rgba(0, 113, 227, 0.02);
+.logo-preview img {
+  height: 40px;
+  margin-top: 8px;
+  border-radius: 4px;
 }
 
-.bg-preview img {
-  max-width: 100%;
-  max-height: 225px;
-  display: block;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+.spacer {
+  height: 100px;
 }
 
-/* Color dot */
-.color-dot {
-  display: inline-block;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+/* Scrollbar */
+.full-scroll::-webkit-scrollbar {
+  width: 8px;
 }
-
-/* Button styling */
-:deep(.el-button--primary) {
-  background-color: #0071e3;
-  border-color: #0071e3;
-  border-radius: 18px;
-  font-weight: 500;
-  padding: 8px 20px;
-  height: 36px;
+.full-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
-
-:deep(.el-button--primary:hover) {
-  background-color: #0077ed;
-  border-color: #0077ed;
+.full-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
 }
-
-:deep(.el-button--default) {
-  border-radius: 18px;
-  height: 36px;
-  padding: 8px 20px;
-}
-
-/* Divider styling */
-:deep(.el-divider) {
-  margin: 32px 0;
-  border-color: rgba(0, 0, 0, 0.05);
-}
-
-/* Alert styling */
-:deep(.el-alert) {
-  border-radius: 10px;
-  padding: 12px 16px;
-}
-
-/* Switch styling */
-:deep(.el-switch) {
-  --el-switch-on-color: #34c759; /* Apple Green */
+.full-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
 }
 </style>

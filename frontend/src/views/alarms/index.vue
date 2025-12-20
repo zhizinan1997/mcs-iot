@@ -3,7 +3,6 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>报警记录</span>
           <div class="filter-area">
             <el-button type="danger" @click="ackAllAlarms">确认所有报警</el-button>
             <el-select v-model="filters.type" placeholder="报警类型" clearable @change="fetchAlarms">
@@ -213,13 +212,41 @@ onMounted(fetchAlarms)
 </script>
 
 <style scoped>
+/* Global Styles */
 .alarms-page {
-  padding: 0; /* Layout provides padding */
+  height: 100%;
+  padding: 24px;
+}
+
+/* Glass Card */
+:deep(.el-card) {
+  height: 100%;
+  border-radius: 24px !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  background: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04) !important;
+  display: flex;
+  flex-direction: column;
+}
+
+:deep(.el-card__header) {
+  padding: 20px 32px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  background: transparent;
+}
+
+:deep(.el-card__body) {
+  padding: 0;
+  height: calc(100% - 73px); /* Adjusted for header height */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .card-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
 }
 
@@ -244,23 +271,42 @@ onMounted(fetchAlarms)
   border-radius: 10px;
 }
 
-/* Table styling */
+/* Glass Table Styling */
 :deep(.el-table) {
-  border-radius: 12px;
-  overflow: hidden;
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: rgba(255, 255, 255, 0.5);
+  background: transparent !important;
+  border-radius: 0;
 }
 
 :deep(.el-table th.el-table__cell) {
-  background-color: #f5f5f7;
+  background-color: rgba(255, 255, 255, 0.5);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   color: #86868b;
   font-weight: 600;
   font-size: 13px;
+  padding: 12px 0;
+}
+
+:deep(.el-table td.el-table__cell) {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+  padding: 16px 0;
+}
+
+:deep(.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell) {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+:deep(.el-table--enable-row-hover .el-table__body tr:hover > td.el-table__cell) {
+  background-color: rgba(255, 255, 255, 0.5);
 }
 
 /* Tags rounded */
 :deep(.el-tag) {
   border-radius: 6px;
   font-weight: 500;
+  border: none;
 }
 
 .pagination {

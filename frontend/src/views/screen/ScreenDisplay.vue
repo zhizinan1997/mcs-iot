@@ -1,14 +1,11 @@
 <template>
   <div class="screen-display-page">
     <el-card>
-      <template #header>
-        <div class="card-header">
-          <span>大屏显示管理</span>
-          <el-button type="primary" size="small" @click="fetchInstruments">
-            <el-icon><Refresh /></el-icon> 刷新列表
-          </el-button>
-        </div>
-      </template>
+      <div class="toolbar" style="padding: 12px 24px; display: flex; justify-content: flex-end;">
+        <el-button type="primary" size="small" @click="fetchInstruments">
+          <el-icon><Refresh /></el-icon> 刷新列表
+        </el-button>
+      </div>
 
       <el-tabs type="border-card">
         <el-tab-pane label="显示仪表设置">
@@ -97,18 +94,81 @@ onMounted(() => {
 
 <style scoped>
 .screen-display-page {
-  padding: 20px;
+  padding: 24px;
+  height: 100%;
 }
 
-.card-header {
+:deep(.el-card) {
+  height: 100%;
+  border-radius: 24px !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  background: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04) !important;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+}
+
+/* Toolbar styling */
+.toolbar {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Tabs Styling */
+:deep(.el-tabs--border-card) {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+:deep(.el-tabs--border-card > .el-tabs__header) {
+  background: transparent;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+:deep(.el-tabs--border-card > .el-tabs__header .el-tabs__item.is-active) {
+  background: rgba(255, 255, 255, 0.5);
+  border-right: 1px solid rgba(0, 0, 0, 0.05);
+  border-left: 1px solid rgba(0, 0, 0, 0.05);
+  color: #0071e3;
+  font-weight: 600;
+}
+
+:deep(.el-tabs--border-card > .el-tabs__content) {
+  padding: 24px;
+}
+
+/* Table Styling */
+:deep(.el-table) {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: rgba(255, 255, 255, 0.5);
+  background: transparent !important;
+}
+
+:deep(.el-table th.el-table__cell) {
+  background-color: rgba(255, 255, 255, 0.5);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  color: #86868b;
+  font-weight: 600;
+}
+
+:deep(.el-table td.el-table__cell) {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+:deep(.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell) {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+:deep(.el-table--enable-row-hover .el-table__body tr:hover > td.el-table__cell) {
+  background-color: rgba(255, 255, 255, 0.5);
 }
 
 .section-desc {
   margin-bottom: 20px;
-  color: #606266;
+  color: #6e6e73;
+  font-size: 13px;
 }
 
 .color-dot {
@@ -117,5 +177,6 @@ onMounted(() => {
   height: 16px;
   border-radius: 50%;
   border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 </style>

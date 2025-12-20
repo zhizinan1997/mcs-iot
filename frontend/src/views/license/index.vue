@@ -1,208 +1,111 @@
 <template>
   <div class="license-page">
-    <el-card class="license-card">
-      <template #header>
-        <div class="card-header">
-          <span>授权管理</span>
-          <el-tag :type="statusTagType" size="large">{{ statusText }}</el-tag>
-        </div>
-      </template>
-
+    <el-card class="glass-card">
+      <!-- Header removed -->
+      
       <!-- Device ID Section -->
-      <div class="device-id-section">
-        <h3>设备编码</h3>
-        <div class="device-id-box">
-          <span class="device-id">{{ licenseInfo.device_id || '加载中...' }}</span>
-          <el-button type="primary" size="small" @click="copyDeviceId">
-            <el-icon><CopyDocument /></el-icon> 复制
-          </el-button>
+      <div class="device-section">
+        <div class="device-icon">
+          <el-icon :size="32" color="#0071e3"><Monitor /></el-icon>
         </div>
-        <p class="hint">请将此编码发送给管理员以获取授权</p>
+        <div class="device-info">
+          <h3>设备编码 (Device ID)</h3>
+          <p class="subtitle">请将此编码发送给管理员以获取授权</p>
+          <div class="code-box">
+            <span class="code">{{ licenseInfo.device_id || '加载中...' }}</span>
+            <el-button text bg circle @click="copyDeviceId">
+              <el-icon><CopyDocument /></el-icon>
+            </el-button>
+          </div>
+        </div>
+        <div class="status-badge">
+          <el-tag :type="statusTagType" size="large" effect="dark" round>
+            {{ statusText }}
+          </el-tag>
+        </div>
       </div>
 
-      <el-divider />
+      <!-- Detail Grid -->
+      <div class="detail-grid">
+        <div class="detail-item glass-inset">
+          <span class="label">客户名称</span>
+          <span class="value">{{ licenseInfo.customer || '-' }}</span>
+        </div>
+        <div class="detail-item glass-inset">
+          <span class="label">有效期至</span>
+          <span class="value">{{ licenseInfo.expires_at || '-' }}</span>
+        </div>
+        <div class="detail-item glass-inset">
+          <span class="label">上次验证</span>
+          <span class="value">{{ formatTime(licenseInfo.last_check) || '-' }}</span>
+        </div>
+      </div>
 
-      <!-- License Status Section -->
-      <div class="status-section">
-        <h3>授权状态</h3>
-        
-        <el-descriptions :column="1" border>
-          <el-descriptions-item label="状态">
-            <el-tag :type="statusTagType">{{ statusText }}</el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="客户名称" v-if="licenseInfo.customer">
-            {{ licenseInfo.customer }}
-          </el-descriptions-item>
-          <el-descriptions-item label="有效期至" v-if="licenseInfo.expires_at">
-            {{ licenseInfo.expires_at }}
-          </el-descriptions-item>
-          <el-descriptions-item label="上次验证" v-if="licenseInfo.last_check">
-            {{ formatTime(licenseInfo.last_check) }}
-          </el-descriptions-item>
-          <el-descriptions-item label="宽限期剩余" v-if="licenseInfo.grace_remaining_days">
-            <span class="grace-warning">{{ licenseInfo.grace_remaining_days }} 天</span>
-          </el-descriptions-item>
-        </el-descriptions>
-
+      <!-- Action Area -->
+      <div class="action-area">
         <el-button 
           type="primary" 
+          size="large" 
           @click="verifyLicense" 
           :loading="verifying" 
-          style="margin-top: 20px;"
+          round
+          class="verify-btn"
         >
-          <el-icon><Refresh /></el-icon> 立即验证
+          <el-icon><Refresh /></el-icon> 立即验证授权
         </el-button>
+        
+        <div class="grace-info" v-if="licenseInfo.grace_remaining_days">
+          <el-icon color="#e6a23c"><WarningFilled /></el-icon>
+          <span>宽限期还剩 <b>{{ licenseInfo.grace_remaining_days }}</b> 天</span>
+        </div>
       </div>
 
-      <!-- Code Integrity Status -->
-      <el-divider />
-      
-      <div class="integrity-section">
-        <h3>代码完整性状态</h3>
-        
-        <el-alert
-          v-if="!licenseInfo.tampered"
-          title="✓ 未检测到破解行为"
-          type="success"
-          :closable="false"
-          show-icon
-          style="margin-top: 12px;"
-        >
-          <template #default>
-            <p>系统代码完整性验证通过，未发现非法修改。</p>
-          </template>
-        </el-alert>
+      <!-- Alerts -->
+      <div class="alert-section">
+        <div class="mac-alert success" v-if="!licenseInfo.tampered">
+          <div class="icon-wrapper"><el-icon><Check /></el-icon></div>
+          <div class="alert-content">
+            <h4>代码完整性验证通过</h4>
+            <p>系统核心代码未被篡改，运行环境安全。</p>
+          </div>
+        </div>
 
-        <el-alert
-          v-else
-          title="⚠️ 检测到代码被非法修改"
-          type="error"
-          :closable="false"
-          show-icon
-          style="margin-top: 12px;"
-        >
-          <template #default>
-            <p><strong>严重警告：</strong>系统检测到授权验证代码被篡改！</p>
-            <ul style="margin: 10px 0; padding-left: 20px;">
-              <li>此行为已被记录并上报至授权服务器</li>
-              <li>您的设备 ID 和违规记录已被永久保存</li>
-              <li>此行为违反软件许可协议，可能导致法律责任</li>
-              <li>请立即停止使用并联系技术支持</li>
-            </ul>
-          </template>
-        </el-alert>
+        <div class="mac-alert danger" v-else>
+          <div class="icon-wrapper"><el-icon><WarningFilled /></el-icon></div>
+          <div class="alert-content">
+            <h4>代码完整性校验失败</h4>
+            <p>检测到核心代码被修改，请立即停止使用并联系技术支持。</p>
+          </div>
+        </div>
+
+        <div class="mac-alert warning" v-if="licenseInfo.status === 'unlicensed' || licenseInfo.status === 'expired'">
+          <div class="icon-wrapper"><el-icon><Lock /></el-icon></div>
+          <div class="alert-content">
+            <h4>功能受限</h4>
+            <p>当前处于未授权状态，高级功能（AI分析、云归档、报警通知）已禁用。</p>
+          </div>
+        </div>
       </div>
 
-      <!-- Grace Period Warning -->
-      <el-alert
-        v-if="licenseInfo.status === 'grace'"
-        title="宽限期警告"
-        type="warning"
-        :closable="false"
-        show-icon
-        style="margin-top: 20px;"
-      >
-        <template #default>
-          <p>
-            授权验证失败，系统正处于宽限期。
-            <strong>剩余 {{ licenseInfo.grace_remaining_days }} 天</strong> 后系统将进入限制模式。
-          </p>
-        </template>
-      </el-alert>
-
-      <!-- Unlicensed Warning -->
-      <el-alert
-        v-if="licenseInfo.status === 'unlicensed' || licenseInfo.status === 'expired'"
-        title="未授权"
-        type="error"
-        :closable="false"
-        show-icon
-        style="margin-top: 20px;"
-      >
-        <template #default>
-          <p>系统未授权或授权已过期。以下功能将被限制：</p>
-          <ul style="margin: 10px 0; padding-left: 20px;">
-            <li>MQTT 外网数据接收</li>
-            <li>AI 智能分析</li>
-            <li>R2 云存储归档</li>
-            <li>报警通知</li>
-            <li>设备数量限制为 10 台</li>
-          </ul>
-        </template>
-      </el-alert>
-
-      <el-divider />
-
-      <!-- Security Mechanism Section -->
-      <div class="mechanism-section">
-        <h3><el-icon><Warning /></el-icon> 授权机制说明</h3>
-        
-        <el-collapse>
-          <el-collapse-item title="设备唯一编码生成" name="device-id">
-            <p>设备编码基于以下硬件信息动态生成：</p>
-            <ul>
-              <li><strong>主机名</strong> - 服务器唯一标识</li>
-              <li><strong>MAC 地址</strong> - 网卡物理地址</li>
-              <li><strong>硬件特征</strong> - CPU/主板信息</li>
-            </ul>
-            <p class="security-note">
-              这些信息经 <code>SHA-256</code> 安全哈希后生成不可逆的设备编码。
-              更换硬件或迁移服务器将导致设备编码变化，需重新授权。
-            </p>
-          </el-collapse-item>
-          
-          <el-collapse-item title="动态激活验证" name="verification">
-            <p>系统采用 <strong>云端动态验证</strong> 机制：</p>
-            <ul>
-              <li>每次启动时自动连接授权服务器校验</li>
-              <li>每 24 小时自动重新验证</li>
-              <li>验证设备编码与授权数据库匹配</li>
-              <li>检查授权有效期和功能权限</li>
-            </ul>
-            <p class="security-note">
-              <el-icon><Lock /></el-icon>
-              授权服务器使用 TLS 加密通信，防止中间人攻击或伪造授权。
-            </p>
-          </el-collapse-item>
-          
-          <el-collapse-item title="宽限期与过期处理" name="grace">
-            <p>当授权验证失败时：</p>
-            <ul>
-              <li><strong>宽限期 (3天)</strong> - 系统继续运行，但会显示警告</li>
-              <li><strong>宽限期结束后</strong> - 高级功能被禁用</li>
-            </ul>
-            <el-alert type="info" :closable="false" style="margin-top: 10px;">
-              <p>过期后被限制的功能包括：外网数据接收、AI 分析、云归档、报警通知，且设备数量限制为 10 台。</p>
-            </el-alert>
-          </el-collapse-item>
-          
-          <el-collapse-item title="防破解声明" name="security">
-            <el-alert type="warning" :closable="false">
-              <p><strong>⚠️ 安全警告</strong></p>
-              <ul style="margin-top: 8px; padding-left: 20px;">
-                <li>设备编码与硬件绑定，无法通过修改配置文件伪造</li>
-                <li>授权状态由远程服务器实时验证，本地无有效授权数据</li>
-                <li>任何尝试绕过授权的行为将被服务器记录并可能导致永久封禁</li>
-                <li>未授权使用本系统属于违法行为，将追究法律责任</li>
+      <!-- Mechanism Collapse -->
+      <div class="mechanism-group">
+        <el-collapse class="mac-collapse">
+          <el-collapse-item name="1">
+            <template #title>
+              <span class="collapse-title"><el-icon><InfoFilled /></el-icon> 关于授权机制</span>
+            </template>
+            <div class="collapse-content">
+              <p>设备编码基于以下硬件信息动态生成：</p>
+              <ul>
+                <li><strong>主机名</strong> - 服务器唯一标识</li>
+                <li><strong>MAC 地址</strong> - 网卡物理地址</li>
+                <li><strong>硬件特征</strong> - CPU/主板信息</li>
               </ul>
-            </el-alert>
+            </div>
           </el-collapse-item>
         </el-collapse>
       </div>
 
-      <el-divider />
-
-      <!-- Contact Section -->
-      <div class="contact-section">
-        <h3>获取授权</h3>
-        <p>如需获取授权，请将上方设备编码发送至：</p>
-        <div class="contact-email">
-          <el-link type="primary" :href="'mailto:' + licenseInfo.contact">
-            <el-icon><Message /></el-icon>
-            {{ licenseInfo.contact || 'zinanzhi@gmail.com' }}
-          </el-link>
-        </div>
-      </div>
     </el-card>
   </div>
 </template>
@@ -210,7 +113,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { CopyDocument, Refresh, Message, Warning, Lock } from '@element-plus/icons-vue'
+import { CopyDocument, Refresh, WarningFilled, Check, Lock, InfoFilled, Monitor } from '@element-plus/icons-vue'
 import { configApi } from '../../api'
 
 interface LicenseInfo {
@@ -310,7 +213,7 @@ async function copyDeviceId() {
   }
 }
 
-function formatTime(isoString: string) {
+function formatTime(isoString?: string) {
   if (!isoString) return ''
   try {
     return new Date(isoString).toLocaleString('zh-CN')
@@ -327,187 +230,191 @@ onMounted(() => {
 
 <style scoped>
 .license-page {
-  padding: 0;
-  max-width: 900px;
-  margin: 0 auto;
+  padding: 24px;
+  height: 100%;
+  box-sizing: border-box;
 }
 
-.license-card {
-  border-radius: 20px !important;
-}
-
-.card-header {
+.glass-card {
+  height: 100%;
+  border-radius: 24px !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  background: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04) !important;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+}
+
+:deep(.el-card__body) {
+  padding: 32px !important;
+  overflow-y: auto;
+}
+
+/* Device Section */
+.device-section {
+  display: flex;
   align-items: center;
-  font-size: 18px;
-  font-weight: 600;
-  color: #1d1d1f;
+  gap: 24px;
+  padding: 24px;
+  background: white;
+  border-radius: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
 }
 
-.device-id-section {
-  text-align: center;
-  padding: 24px 0;
-}
-
-.device-id-section h3 {
-  margin-bottom: 16px;
-  color: #1d1d1f;
-  font-weight: 600;
-}
-
-.device-id-box {
+.device-icon {
+  width: 64px;
+  height: 64px;
+  background: rgba(0, 113, 227, 0.08);
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ed 100%);
-  padding: 24px;
-  border-radius: 16px;
-  margin-bottom: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-.device-id {
-  font-family: 'SF Mono', SFMono-Regular, ui-monospace, Menlo, monospace;
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: 3px;
-  color: #1d1d1f;
+.device-info {
+  flex: 1;
 }
 
-.hint {
-  color: #86868b;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.status-section h3,
-.contact-section h3,
-.mechanism-section h3 {
-  margin-bottom: 20px;
+.device-info h3 {
+  margin: 0;
+  font-size: 18px;
   color: #1d1d1f;
   font-weight: 600;
+}
+
+.subtitle {
+  margin: 4px 0 12px;
+  color: #86868b;
+  font-size: 13px;
+}
+
+.code-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f5f5f7;
+  padding: 8px 16px;
+  border-radius: 10px;
+  width: fit-content;
+}
+
+.code {
+  font-family: 'SF Mono', monospace;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1d1d1f;
+  letter-spacing: 1px;
+}
+
+/* Detail Grid */
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.detail-item .label {
+  font-size: 12px;
+  color: #86868b;
+  margin-bottom: 4px;
+}
+
+.detail-item .value {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+/* Action Area */
+.action-area {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+.verify-btn {
+  padding: 12px 32px;
+  font-size: 16px;
+  height: auto;
+  box-shadow: 0 4px 12px rgba(0, 113, 227, 0.2);
+}
+
+.grace-info {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.grace-warning {
   color: #e6a23c;
-  font-weight: 700;
-  font-size: 16px;
+  background: rgba(230, 162, 60, 0.1);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
 }
 
-.contact-section {
-  text-align: center;
-  padding: 16px 0;
-}
-
-.contact-email {
-  margin-top: 20px;
-  font-size: 18px;
-}
-
-.contact-email .el-link {
-  font-size: 18px;
-  font-weight: 600;
-}
-
-/* Mechanism Section */
-.mechanism-section {
-  padding: 16px 0;
-}
-
-.mechanism-section h3 {
-  color: #86868b;
-}
-
-:deep(.el-collapse) {
-  border: none;
-}
-
-:deep(.el-collapse-item__header) {
-  background: rgba(0, 0, 0, 0.02);
-  border-radius: 12px;
-  padding: 0 16px;
-  margin-bottom: 8px;
-  font-weight: 600;
-  color: #1d1d1f;
-  border: none;
-  height: 52px;
-}
-
-:deep(.el-collapse-item__wrap) {
-  border: none;
-}
-
-:deep(.el-collapse-item__content) {
-  padding: 16px 20px;
-  color: #424245;
-  line-height: 1.6;
-}
-
-.mechanism-section ul {
-  padding-left: 20px;
-  margin: 12px 0;
-}
-
-.mechanism-section li {
-  margin-bottom: 8px;
-}
-
-.security-note {
-  background: rgba(88, 86, 214, 0.05);
-  border-radius: 10px;
-  padding: 12px 16px;
-  margin-top: 12px;
-  color: #5856d6;
-  font-size: 13px;
+/* Mac Alerts */
+.mac-alert {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 16px;
+  margin-bottom: 16px;
 }
 
-.security-note code {
-  background: rgba(0, 0, 0, 0.05);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: 'SF Mono', monospace;
-  font-size: 12px;
-}
+.mac-alert.success { background: rgba(52, 199, 89, 0.1); }
+.mac-alert.danger { background: rgba(255, 59, 48, 0.1); }
+.mac-alert.warning { background: rgba(255, 149, 0, 0.1); }
 
-/* Button styling */
-:deep(.el-button--primary) {
-  background-color: #0071e3;
-  border-color: #0071e3;
-  border-radius: 14px;
+.icon-wrapper {
+  margin-top: 2px;
+  font-size: 18px;
+}
+.mac-alert.success .icon-wrapper { color: #34c759; }
+.mac-alert.danger .icon-wrapper { color: #ff3b30; }
+.mac-alert.warning .icon-wrapper { color: #ff9500; }
+
+.alert-content h4 {
+  margin: 0 0 4px;
+  font-size: 15px;
   font-weight: 600;
+  color: #1d1d1f;
 }
 
-:deep(.el-button--primary:hover) {
-  background-color: #0077ed;
+.alert-content p {
+  margin: 0;
+  font-size: 13px;
+  color: #424245;
+  line-height: 1.4;
 }
 
-/* Descriptions styling */
-:deep(.el-descriptions) {
-  border-radius: 12px;
-  overflow: hidden;
+/* Collapse Override */
+.mac-collapse {
+  border: none;
 }
-
-/* Tag styling */
-:deep(.el-tag) {
-  border-radius: 8px;
-  font-weight: 600;
+:deep(.el-collapse-item__header) {
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  color: #86868b;
 }
-
-/* Alert styling */
-:deep(.el-alert) {
-  border-radius: 14px;
+:deep(.el-collapse-item__wrap) {
+  background: transparent;
+  border: none;
 }
-
-/* Divider */
-:deep(.el-divider) {
-  margin: 28px 0;
+:deep(.el-collapse-item__content) {
+  color: #6e6e73;
+  font-size: 13px;
 }
 </style>

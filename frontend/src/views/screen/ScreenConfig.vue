@@ -1,11 +1,7 @@
 <template>
   <div class="screen-config-page">
     <el-card>
-      <template #header>
-        <div class="card-header">
-          <span>大屏配置</span>
-        </div>
-      </template>
+      <!-- Header removed -->
       <el-form :model="dashboardConfig" label-width="120px">
         <el-form-item label="大屏标题">
           <el-input v-model="dashboardConfig.title" />
@@ -71,12 +67,22 @@ onMounted(() => {
 
 <style scoped>
 .screen-config-page {
-  padding: 20px;
+  padding: 24px;
+  height: 100%;
 }
 
-.card-header {
+:deep(.el-card) {
+  height: 100%;
+  border-radius: 24px !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  background: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04) !important;
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+}
+
+:deep(.el-card__body) {
+  padding: 32px;
 }
 </style>

@@ -1,213 +1,190 @@
 <template>
-  <div class="archive-page">
-    <el-card>
-      <template #header>
-        <div class="card-header">
-          <span>Cloudflare R2 归档配置</span>
-          <el-tag :type="archiveConfig.enabled ? 'success' : 'info'" size="small">
-            {{ archiveConfig.enabled ? "已启用" : "未启用" }}
-          </el-tag>
+  <div class="archive-page full-scroll">
+    <div class="glass-panel">
+      <!-- Header -->
+      <div class="panel-header">
+        <div class="header-content">
+          <div class="icon-box">
+            <el-icon :size="24" color="#ff9f0a"><Box /></el-icon>
+          </div>
+          <div class="title-group">
+            <h3>Cloudflare R2 数据归档</h3>
+            <p class="subtitle">自动备份历史数据到云端对象存储</p>
+          </div>
         </div>
-      </template>
-
-      <el-form :model="archiveConfig" label-width="140px">
-        <el-form-item label="启用数据归档">
-          <el-switch v-model="archiveConfig.enabled" />
-        </el-form-item>
-
-        <el-form-item label="本地保留天数">
-          <el-slider
-            v-model="archiveConfig.local_retention_days"
-            :min="1"
-            :max="30"
-            show-input
-            style="width: 100%"
+        <div class="header-actions">
+           <el-switch 
+            v-model="archiveConfig.enabled" 
+            active-text="已启用" 
+            inactive-text="已禁用" 
+            inline-prompt
           />
-          <div class="form-tip" style="margin-top: 8px">
-            本地数据库保留最近 {{ archiveConfig.local_retention_days }} 天的数据
-          </div>
-        </el-form-item>
-
-        <el-form-item label="R2 保留天数">
-          <el-slider
-            v-model="archiveConfig.r2_retention_days"
-            :min="7"
-            :max="365"
-            show-input
-            style="width: 100%"
-          />
-          <div class="form-tip" style="margin-top: 8px">
-            R2 备份保留 {{ archiveConfig.r2_retention_days }} 天，超过后自动删除
-          </div>
-        </el-form-item>
-
-        <el-divider content-position="left">R2 存储配置</el-divider>
-
-        <el-form-item label="Endpoint URL">
-          <el-input
-            v-model="archiveConfig.r2_endpoint"
-            placeholder="https://<account-id>.r2.cloudflarestorage.com"
-          />
-          <div class="form-tip">Cloudflare R2 端点地址</div>
-        </el-form-item>
-
-        <el-form-item label="Bucket 名称">
-          <el-input
-            v-model="archiveConfig.r2_bucket"
-            placeholder="mcs-archive"
-          />
-        </el-form-item>
-
-        <el-form-item label="Access Key ID">
-          <el-input
-            v-model="archiveConfig.r2_access_key"
-            placeholder="R2 Access Key"
-          />
-        </el-form-item>
-
-        <el-form-item label="Secret Access Key">
-          <el-input
-            v-model="archiveConfig.r2_secret_key"
-            type="password"
-            show-password
-            placeholder="R2 Secret Key"
-          />
-        </el-form-item>
-
-        <el-form-item>
-          <el-button
-            type="primary"
-            @click="saveArchiveConfig"
-            :loading="saving"
-          >
-            保存配置
-          </el-button>
-          <el-button
-            @click="testArchiveConnection"
-            :loading="testingArchive"
-          >
-            测试连接
-          </el-button>
-          <el-button
-            type="info"
-            @click="fetchStorageStats"
-            :loading="loadingStats"
-          >
-            查看存储空间
-          </el-button>
-        </el-form-item>
-      </el-form>
-
-      <!-- Storage Stats Display -->
-      <el-card v-if="storageStats" class="storage-stats-card" style="margin-top: 20px;">
-        <template #header>
-          <span>存储空间统计</span>
-        </template>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-statistic title="本地数据库" :value="storageStats.local_db.size_human">
-              <template #suffix>
-                <span style="font-size: 12px; color: #909399;">({{ storageStats.local_db.row_count.toLocaleString() }} 条记录)</span>
-              </template>
-            </el-statistic>
-          </el-col>
-          <el-col :span="12">
-            <el-statistic title="R2 备份" :value="storageStats.r2.size_human">
-              <template #suffix>
-                <span style="font-size: 12px; color: #909399;">
-                  <template v-if="storageStats.r2.file_count">({{ storageStats.r2.file_count }} 个文件)</template>
-                  <template v-else-if="storageStats.r2.message">{{ storageStats.r2.message }}</template>
-                </span>
-              </template>
-            </el-statistic>
-          </el-col>
-        </el-row>
-      </el-card>
-
-      <!-- R2 Backup Files List -->
-      <el-card class="files-card" style="margin-top: 20px;">
-        <template #header>
-          <div class="card-header">
-            <span>R2 备份文件列表</span>
-            <el-button size="small" @click="fetchArchiveFiles" :loading="loadingFiles">
-              刷新列表
-            </el-button>
-          </div>
-        </template>
-        
-        <el-empty v-if="!archiveFiles.length && !loadingFiles" description="暂无备份文件" />
-        
-        <el-table v-else :data="archiveFiles" stripe v-loading="loadingFiles" style="width: 100%">
-          <el-table-column prop="name" label="文件名" min-width="200" />
-          <el-table-column prop="size_human" label="大小" width="100" />
-          <el-table-column prop="last_modified" label="修改时间" width="180">
-            <template #default="{ row }">
-              {{ formatTime(row.last_modified) }}
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="100" fixed="right">
-            <template #default="{ row }">
-              <el-button size="small" type="primary" @click="downloadFile(row)">
-                下载
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-card>
-
-      <el-divider />
-
-      <div class="tips">
-        <h4>🗄️ 数据归档功能说明</h4>
-        
-        <el-alert type="info" :closable="false" style="margin-bottom: 15px;">
-          <template #title>什么是数据归档？</template>
-          <template #default>
-            <p>数据归档功能将传感器历史数据备份到 Cloudflare R2 云存储，确保数据安全的同时减少本地数据库负担。</p>
-          </template>
-        </el-alert>
-        
-        <h5>📋 工作流程</h5>
-        <ul>
-          <li>每天 <strong>00:00</strong> 自动执行归档任务</li>
-          <li>将 <strong>{{ archiveConfig.local_retention_days }} 天前</strong>的 sensor_data 表数据导出为 CSV.GZ 压缩文件</li>
-          <li>文件命名格式：<code>archive/sensor_data_YYYYMMDD.csv.gz</code></li>
-          <li>上传成功后自动删除本地对应日期的数据</li>
-          <li>R2 中超过 <strong>{{ archiveConfig.r2_retention_days }} 天</strong>的备份会自动清理</li>
-        </ul>
-        
-        <h5>💾 归档文件内容</h5>
-        <ul>
-          <li>CSV 格式包含：时间戳、设备SN、电压原值、浓度值(PPM)、温度、湿度、电量、信号强度、序列号</li>
-          <li>使用 GZIP 压缩，通常可节省 80-90% 存储空间</li>
-          <li>文件按日期分隔，便于查找和恢复特定日期的数据</li>
-        </ul>
-        
-        <h5>📥 数据恢复</h5>
-        <ul>
-          <li>点击文件列表中的"下载"按钮获取备份文件</li>
-          <li>使用 <code>gunzip</code> 命令解压：<code>gunzip sensor_data_20241219.csv.gz</code></li>
-          <li>使用 PostgreSQL 的 <code>COPY</code> 命令导入：
-            <code>COPY sensor_data FROM '/path/to/file.csv' WITH CSV HEADER;</code>
-          </li>
-        </ul>
-        
-        <h5>💰 Cloudflare R2 费用说明</h5>
-        <el-alert type="warning" :closable="false">
-          <template #default>
-            <p><strong>免费额度：</strong>每月 10GB 存储 + 100万次读取 + 1000万次写入</p>
-            <p><strong>超出部分：</strong>$0.015/GB/月 存储费 (约每 GB 每月 0.1 元人民币)</p>
-            <p>对于大多数中小型部署，免费额度完全够用</p>
-          </template>
-        </el-alert>
+        </div>
       </div>
-    </el-card>
+
+      <el-divider class="glass-divider" />
+
+      <div class="panel-content">
+        <!-- Configuration Section -->
+        <div class="config-grid">
+           <!-- Retention Settings -->
+           <div class="config-card glass-inset">
+             <h4>数据保留策略</h4>
+             
+             <div class="setting-item">
+               <span class="label">本地数据库保留</span>
+               <div class="control">
+                 <el-slider
+                  v-model="archiveConfig.local_retention_days"
+                  :min="1"
+                  :max="30"
+                  show-input
+                  size="small"
+                />
+                <span class="unit">天</span>
+               </div>
+               <p class="hint">最近 {{ archiveConfig.local_retention_days }} 天的数据保留在本地，更早的数据将归档或删除</p>
+             </div>
+
+             <div class="setting-item">
+               <span class="label">云端 R2 保留</span>
+               <div class="control">
+                 <el-slider
+                  v-model="archiveConfig.r2_retention_days"
+                  :min="7"
+                  :max="365"
+                  show-input
+                  size="small"
+                />
+                <span class="unit">天</span>
+               </div>
+               <p class="hint">云端备份文件保留 {{ archiveConfig.r2_retention_days }} 天后自动清理</p>
+             </div>
+           </div>
+
+           <!-- Connection Settings -->
+           <div class="config-card glass-inset">
+             <h4>R2 存储桶连接</h4>
+             <el-form :model="archiveConfig" label-width="120px" label-position="left">
+               <el-form-item label="Bucket 名称">
+                  <el-input v-model="archiveConfig.r2_bucket" placeholder="mcs-archive" />
+               </el-form-item>
+               <el-form-item label="Endpoint URL">
+                  <el-input v-model="archiveConfig.r2_endpoint" placeholder="https://<account-id>.r2.cloudflarestorage.com" />
+               </el-form-item>
+               <el-form-item label="Access Key ID">
+                  <el-input v-model="archiveConfig.r2_access_key" placeholder="R2 Access Key" />
+               </el-form-item>
+               <el-form-item label="Secret Key">
+                  <el-input v-model="archiveConfig.r2_secret_key" type="password" show-password placeholder="R2 Secret Key" />
+               </el-form-item>
+             </el-form>
+             
+             <div class="form-actions">
+                <el-button type="primary" @click="saveArchiveConfig" :loading="saving" round>保存配置</el-button>
+                <el-button @click="testArchiveConnection" :loading="testingArchive" round>测试连接</el-button>
+             </div>
+           </div>
+        </div>
+
+        <!-- Stats & Files -->
+        <div class="data-section">
+          <!-- Stats Cards -->
+          <div class="stats-row">
+            <div class="stat-card glass-inset" v-loading="loadingStats">
+              <div class="stat-icon local"><el-icon><DataLine /></el-icon></div>
+              <div class="stat-info">
+                <span class="label">本地存储占用</span>
+                <span class="value">{{ storageStats?.local_db.size_human || '-' }}</span>
+                <span class="sub-text">{{ storageStats?.local_db.row_count.toLocaleString() || 0 }} 条记录</span>
+              </div>
+              <el-button link class="refresh-btn" @click="fetchStorageStats"><el-icon><Refresh /></el-icon></el-button>
+            </div>
+            
+            <div class="stat-card glass-inset" v-loading="loadingStats">
+              <div class="stat-icon cloud"><el-icon><UploadFilled /></el-icon></div>
+              <div class="stat-info">
+                <span class="label">R2 云端占用</span>
+                <span class="value">{{ storageStats?.r2.size_human || '-' }}</span>
+                <span class="sub-text">{{ storageStats?.r2.file_count || 0 }} 个文件</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- File List -->
+          <div class="files-list glass-inset">
+            <div class="list-header">
+              <h4>归档文件列表</h4>
+              <el-button size="small" @click="fetchArchiveFiles" :loading="loadingFiles" circle>
+                <el-icon><Refresh /></el-icon>
+              </el-button>
+            </div>
+            
+            <el-table 
+              :data="archiveFiles" 
+              style="width: 100%" 
+              height="300"
+              class="glass-table"
+              v-loading="loadingFiles"
+            >
+              <el-table-column prop="name" label="文件名" min-width="200">
+                <template #default="{ row }">
+                   <div class="file-name">
+                     <el-icon><Document /></el-icon> {{ row.name }}
+                   </div>
+                </template>
+              </el-table-column>
+              <el-table-column prop="size_human" label="大小" width="120" />
+              <el-table-column prop="last_modified" label="归档时间" width="180">
+                <template #default="{ row }">{{ formatTime(row.last_modified) }}</template>
+              </el-table-column>
+              <el-table-column label="操作" width="100" fixed="right" align="right">
+                <template #default="{ row }">
+                  <el-button link type="primary" @click="downloadFile(row)">下载</el-button>
+                </template>
+              </el-table-column>
+              <template #empty>
+                <el-empty description="暂无归档文件" :image-size="60" />
+              </template>
+            </el-table>
+          </div>
+        </div>
+
+        <!-- Help -->
+        <div class="help-section">
+          <el-collapse class="mac-collapse">
+            <el-collapse-item name="1">
+              <template #title>
+                 <span class="help-title"><el-icon><InfoFilled /></el-icon> 功能说明与费用提示</span>
+              </template>
+              <div class="help-content">
+                <div class="help-grid">
+                  <div class="help-item">
+                    <h5>📋 工作流程</h5>
+                    <p>每天 00:00 自动将 {{ archiveConfig.local_retention_days }} 天前的 sensor_data 导出为 CSV.GZ 上传至 R2，成功后删除本地数据。</p>
+                  </div>
+                  <div class="help-item">
+                    <h5>💰 费用说明</h5>
+                    <p>Cloudflare R2 提供每月 10GB 免费存储 + 100万次读取。超出后 $0.015/GB/月。</p>
+                  </div>
+                  <div class="help-item">
+                    <h5>📥 数据恢复</h5>
+                    <p>下载文件后使用 <code>gunzip</code> 解压，并使用 PostgreSQL <code>COPY</code> 命令导入。</p>
+                  </div>
+                </div>
+              </div>
+            </el-collapse-item>
+          </el-collapse>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from "vue";
 import { ElMessage } from "element-plus";
+import { Box, DataLine, UploadFilled, Document, Refresh, InfoFilled } from '@element-plus/icons-vue'
 import { configApi } from "../../api";
 
 const saving = ref(false);
@@ -251,7 +228,6 @@ async function saveArchiveConfig() {
 
 async function testArchiveConnection() {
   testingArchive.value = true;
-  ElMessage.info("正在测试 R2 连接...");
   try {
     await configApi.updateArchive(archiveConfig);
     const response = await configApi.testArchive();
@@ -269,10 +245,8 @@ async function fetchStorageStats() {
   try {
     const res = await configApi.getArchiveStats();
     storageStats.value = res.data;
-    ElMessage.success("存储统计已更新");
   } catch (error: any) {
-    const detail = error.response?.data?.detail || "获取存储统计失败";
-    ElMessage.error(detail);
+    /* Silent fail for init load */
   } finally {
     loadingStats.value = false;
   }
@@ -283,12 +257,8 @@ async function fetchArchiveFiles() {
   try {
     const res = await configApi.listArchiveFiles();
     archiveFiles.value = res.data.files || [];
-    if (res.data.message) {
-      ElMessage.info(res.data.message);
-    }
   } catch (error: any) {
-    const detail = error.response?.data?.detail || "获取文件列表失败";
-    ElMessage.error(detail);
+    console.error("Failed to list files:", error)
   } finally {
     loadingFiles.value = false;
   }
@@ -296,8 +266,11 @@ async function fetchArchiveFiles() {
 
 function formatTime(time: string) {
   if (!time) return '-';
-  const date = new Date(time);
-  return date.toLocaleString('zh-CN');
+  try {
+    return new Date(time).toLocaleString('zh-CN');
+  } catch {
+    return time
+  }
 }
 
 function downloadFile(file: any) {
@@ -310,62 +283,267 @@ function downloadFile(file: any) {
 
 onMounted(() => {
   loadArchiveConfig();
+  // Delay stats loading slightly to prioritize page render
+  setTimeout(() => {
+    fetchStorageStats();
+    fetchArchiveFiles();
+  }, 500)
 });
 </script>
 
 <style scoped>
 .archive-page {
-  padding: 20px;
+  padding: 24px;
+  height: 100%;
+  box-sizing: border-box;
 }
 
-.card-header {
+.full-scroll {
+  overflow-y: auto;
+}
+
+/* Common Glass Panel */
+.glass-panel {
+  min-height: 100%;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-header {
+  padding: 24px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-content {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 16px;
+}
+
+.icon-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(255, 159, 10, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.title-group h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+.title-group .subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #86868b;
+}
+
+.glass-divider {
+  margin: 0;
+  border-color: rgba(0,0,0,0.05);
+}
+
+.panel-content {
+  padding: 32px;
+  flex: 1;
+}
+
+/* Config Grid */
+.config-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.glass-inset {
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.config-card h4 {
+  margin: 0 0 20px;
+  font-size: 15px;
+  color: #1d1d1f;
+  font-weight: 600;
+}
+
+.setting-item {
+  margin-bottom: 24px;
+}
+
+.setting-item .label {
+  display: block;
+  font-size: 14px;
+  color: #1d1d1f;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.setting-item .control {
+  display: flex;
+  align-items: center;
   gap: 12px;
 }
 
-.form-tip {
-  color: #909399;
+.setting-item .unit {
+  font-size: 13px;
+  color: #86868b;
+  width: 24px;
+}
+
+.setting-item .hint {
+  margin: 6px 0 0;
   font-size: 12px;
+  color: #86868b;
 }
 
-.tips {
-  color: #606266;
-  font-size: 14px;
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
 }
 
-.tips h4 {
-  margin: 0 0 15px;
-  color: #303133;
-  font-size: 16px;
+/* Stats Row */
+.stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
 }
 
-.tips h5 {
-  margin: 15px 0 8px;
-  color: #409eff;
-  font-size: 14px;
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  position: relative;
 }
 
-.tips ul {
+.stat-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.stat-icon.local { background: rgba(0, 113, 227, 0.1); color: #0071e3; }
+.stat-icon.cloud { background: rgba(48, 209, 88, 0.1); color: #30d158; }
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-info .label {
+  font-size: 13px;
+  color: #86868b;
+  margin-bottom: 4px;
+}
+
+.stat-info .value {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1d1d1f;
+  font-family: 'SF Pro Display', sans-serif;
+}
+
+.stat-info .sub-text {
+  font-size: 12px;
+  color: #86868b;
+  margin-top: 2px;
+}
+
+.refresh-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
+/* File List */
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.list-header h4 {
   margin: 0;
-  padding-left: 20px;
 }
 
-.tips li {
-  margin-bottom: 6px;
-  line-height: 1.6;
+.file-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
 }
 
-.tips code {
-  background: #f5f7fa;
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-family: monospace;
-  color: #e6a23c;
+.glass-table {
+  background: transparent !important;
+}
+:deep(.el-table) {
+  background-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: rgba(0,0,0,0.02);
+}
+:deep(.el-table th.el-table__cell) {
+  background: rgba(0,0,0,0.02);
+}
+:deep(.el-table tr) {
+  background-color: transparent;
 }
 
-.tips p {
-  margin: 5px 0;
+/* Help */
+.help-section {
+  margin-top: 24px;
+}
+.mac-collapse {
+  border: none;
+  --el-collapse-header-bg-color: transparent;
+  --el-collapse-content-bg-color: transparent;
+}
+.help-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #86868b;
+}
+.help-content {
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 12px;
+  padding: 20px;
+}
+.help-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 24px;
+}
+.help-item h5 {
+  margin: 0 0 8px;
+  color: #1d1d1f;
+  font-weight: 600;
+}
+.help-item p {
+  margin: 0;
+  font-size: 13px;
+  color: #6e6e73;
+  line-height: 1.5;
 }
 </style>
