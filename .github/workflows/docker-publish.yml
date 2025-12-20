@@ -1,11 +1,9 @@
 name: Build and Push Docker Images
 
 on:
-  push:
-    tags: ["v*"] # 通过 git push 推送 tag 时触发
   release:
     types: [published] # 在 GitHub UI 创建/发布 Release 时触发
-  workflow_dispatch: # 保留手动触发
+  workflow_dispatch: # 手动触发（用于测试或紧急构建）
 
 env:
   REGISTRY: ghcr.io
