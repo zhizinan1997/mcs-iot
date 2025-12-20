@@ -21,6 +21,7 @@ from .instruments import router as instruments_router
 from .uploads import router as uploads_router
 from .ai import router as ai_router
 from .health import router as health_router
+from .logs import router as logs_router
 
 # Setup Logging
 logging.basicConfig(level=logging.INFO)
@@ -100,6 +101,7 @@ app.include_router(instruments_router, prefix="/api/instruments", tags=["Instrum
 app.include_router(uploads_router, prefix="/api/uploads", tags=["Uploads"])
 app.include_router(ai_router, prefix="/api/ai", tags=["AI"])
 app.include_router(health_router, prefix="/api/health-check", tags=["HealthCheck"])
+app.include_router(logs_router, prefix="/api", tags=["Logs"])
 
 @app.get("/api/health")
 async def health_check():

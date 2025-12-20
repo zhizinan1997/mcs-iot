@@ -77,6 +77,11 @@ const routes: RouteRecordRaw[] = [
                 path: 'license',
                 name: 'License',
                 component: () => import('../views/license/index.vue')
+            },
+            {
+                path: 'logs',
+                name: 'ServerLogs',
+                component: () => import('../views/serverlogs/index.vue')
             }
         ]
     },

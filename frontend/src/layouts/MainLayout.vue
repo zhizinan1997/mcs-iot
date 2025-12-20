@@ -50,6 +50,10 @@
           <el-icon><Folder /></el-icon>
           <span>数据归档</span>
         </el-menu-item>
+        <el-menu-item index="/logs">
+          <el-icon><Document /></el-icon>
+          <span>服务器日志</span>
+        </el-menu-item>
         <el-divider />
         <el-sub-menu index="/screen-group">
           <template #title>
