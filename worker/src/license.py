@@ -12,7 +12,7 @@ class LicenseGuard:
     def __init__(self, redis):
         self.redis = redis
         self.license_file = "/app/license.key"
-        self.host_id_file = "/app/host_id"
+        self.host_id_file = "/app/host_machine_id"
         self.verify_url = os.getenv("LICENSE_VERIFY_URL", "https://lic.zhizinan.cc/verify")
         self.grace_period_hours = 72
         self.is_valid = False

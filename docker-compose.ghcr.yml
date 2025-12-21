@@ -90,7 +90,7 @@ services:
       - DEV_MODE=false
     volumes:
       - ./mosquitto/config:/app/mosquitto
-      - /etc/machine-id:/app/host_id:ro
+      - /etc/machine-id:/app/host_machine_id:ro  # 宿主机唯一标识，用于授权
       - ./license.key:/app/license.key:ro
     depends_on:
       timescaledb:
@@ -102,6 +102,9 @@ services:
     networks:
       - mcs-net
     logging: *default-logging
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
 
   # 🟣 Backend API (预构建镜像)
   backend:
@@ -130,6 +133,7 @@ services:
     volumes:
       - ./mosquitto/config:/app/mosquitto
       - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/machine-id:/app/host_machine_id:ro  # 宿主机唯一标识，用于授权
       - uploads_data:/app/uploads
     depends_on:
       timescaledb:
@@ -145,6 +149,9 @@ services:
     networks:
       - mcs-net
     logging: *default-logging
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
 
   # 🟠 Frontend (预构建镜像)
   frontend:

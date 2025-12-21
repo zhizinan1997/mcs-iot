@@ -28,7 +28,7 @@ UNLICENSED_DEVICE_LIMIT = 10
 
 # Expected integrity hash (computed at build time)
 # This is the SHA-256 hash of critical source files
-EXPECTED_INTEGRITY_HASH = "cad58e7969ac3cba"
+EXPECTED_INTEGRITY_HASH = "4f7c37958ad8b983"
 
 
 def compute_integrity_hash() -> str:
