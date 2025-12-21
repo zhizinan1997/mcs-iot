@@ -253,17 +253,24 @@ perform_update() {
         COMPOSE_FILE="docker-compose.yml"
     fi
     
-    # 步骤4: 重启服务
-    log_info "[4/6] 重启服务..."
+    # 步骤4: 清除授权缓存（确保使用新的设备ID验证）
+    log_info "[4/7] 清除授权缓存..."
+    if docker ps --filter "name=mcs_redis" -q 2>/dev/null | grep -q .; then
+        docker exec mcs_redis redis-cli DEL license:status license:grace_start license:error license:tampered 2>/dev/null || true
+        log_info "✓ 授权缓存已清除"
+    fi
+    
+    # 步骤5: 重启服务
+    log_info "[5/7] 重启服务..."
     docker compose -f "$COMPOSE_FILE" up -d 2>/dev/null || docker-compose -f "$COMPOSE_FILE" up -d 2>/dev/null
     
-    # 步骤5: 更新管理脚本
-    log_info "[5/6] 更新管理脚本..."
+    # 步骤6: 更新管理脚本
+    log_info "[6/7] 更新管理脚本..."
     update_simulator_scripts
     log_info "✓ 脚本已更新"
     
-    # 步骤6: 等待服务就绪
-    log_info "[6/6] 等待服务就绪..."
+    # 步骤7: 等待服务就绪
+    log_info "[7/7] 等待服务就绪..."
     sleep 15
     
     # 显示状态
