@@ -75,9 +75,9 @@ services:
       - TZ=Asia/Shanghai
       - DB_HOST=timescaledb
       - DB_PORT=5432
-      - DB_USER=postgres
+      - DB_USER=${DB_USER:-postgres}
       - DB_PASS=${DB_PASS:-password}
-      - DB_NAME=mcs_iot
+      - DB_NAME=${DB_NAME:-mcs_iot}
       - REDIS_HOST=redis
       - MQTT_HOST=mosquitto
       - MQTT_PORT=1883 # Internal via TCP
@@ -116,9 +116,9 @@ services:
       - TZ=Asia/Shanghai
       - DB_HOST=timescaledb
       - DB_PORT=5432
-      - DB_USER=postgres
+      - DB_USER=${DB_USER:-postgres}
       - DB_PASS=${DB_PASS:-password}
-      - DB_NAME=mcs_iot
+      - DB_NAME=${DB_NAME:-mcs_iot}
       - REDIS_HOST=redis
       - JWT_SECRET=${JWT_SECRET:-dev-secret-key-change-in-production}
       - ADMIN_INITIAL_PASSWORD=${ADMIN_INITIAL_PASSWORD:-admin123}
