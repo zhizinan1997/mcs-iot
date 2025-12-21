@@ -1,9 +1,9 @@
 <template>
-  <div class="login-container" :class="{ 'light-mode': !isDark }">
+  <div class="login-container" :class="{ 'light-mode': !themeStore.isDark }">
     <!-- Theme Toggle -->
     <div class="theme-toggle">
       <el-button circle size="large" @click="toggleTheme">
-        <el-icon v-if="isDark" :size="20"><Moon /></el-icon>
+        <el-icon v-if="themeStore.isDark" :size="20"><Moon /></el-icon>
         <el-icon v-else :size="20"><Sunny /></el-icon>
       </el-button>
     </div>
@@ -95,13 +95,19 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Monitor, Link, Moon, Sunny } from '@element-plus/icons-vue'
 import { useAuthStore } from '../../stores/auth'
+import { useThemeStore } from '../../stores/theme'
 import { configApi } from '../../api'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const themeStore = useThemeStore()
 const formRef = ref()
 const loading = ref(false)
-const isDark = ref(true)
+
+const toggleTheme = () => {
+  themeStore.toggleTheme()
+  initParticles() // Reload particles when theme changes
+}
 
 // Load tsparticles params
 const loadParticlesParams = {
@@ -114,8 +120,8 @@ const initParticles = () => {
   const tsParticles = (window as any).tsParticles
   if (tsParticles) {
     // Light grey for dark mode, subtle white for light mode
-    const color = isDark.value ? "#888888" : "#ffffff"
-    const linkColor = isDark.value ? "#aaaaaa" : "#ffffff"
+    const color = themeStore.isDark ? "#888888" : "#ffffff"
+    const linkColor = themeStore.isDark ? "#aaaaaa" : "#ffffff"
     
     tsParticles.load("tsparticles", {
       fullScreen: { enable: false, zIndex: 0 },
@@ -160,11 +166,6 @@ const initParticles = () => {
       detectRetina: true
     })
   }
-}
-
-const toggleTheme = () => {
-  isDark.value = !isDark.value
-  initParticles() // Reload particles when theme changes
 }
 
 const form = reactive({

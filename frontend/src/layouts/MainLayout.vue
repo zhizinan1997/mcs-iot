@@ -101,6 +101,12 @@
           <h1 class="page-title">{{ route.meta.title || route.name }}</h1>
         </div>
         <div class="header-right">
+          <!-- Theme Toggle -->
+          <el-button circle @click="themeStore.toggleTheme" class="theme-toggle-btn">
+             <el-icon v-if="themeStore.isDark"><Moon /></el-icon>
+             <el-icon v-else><Sunny /></el-icon>
+          </el-button>
+
           <!-- License Status -->
           <el-tag 
             :type="licenseStatus.status === 'active' ? 'success' : licenseStatus.status === 'grace' ? 'warning' : 'danger'"
@@ -145,7 +151,9 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useThemeStore } from '../stores/theme'
 import { configApi } from '../api'
+import { Moon, Sunny, WarningFilled } from '@element-plus/icons-vue'
 
 // Import icons explicitly? No, used globally in main.ts, but let's test safely.
 // Assuming global registration in main.ts is correct.
@@ -153,6 +161,7 @@ import { configApi } from '../api'
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const themeStore = useThemeStore()
 
 const siteConfig = ref({
   site_name: "MCS-IoT",
@@ -267,5 +276,24 @@ function handleLogout() {
   padding: 20px;
   background: transparent;
   overflow-y: auto;
+}
+
+.theme-toggle-btn {
+  border: none;
+  background: transparent;
+  width: 32px;
+  height: 32px;
+}
+
+.theme-toggle-btn:hover {
+  background: rgba(0,0,0,0.05);
+}
+
+html.dark .theme-toggle-btn {
+  color: #fff;
+}
+
+html.dark .theme-toggle-btn:hover {
+  background: rgba(255,255,255,0.1);
 }
 </style>

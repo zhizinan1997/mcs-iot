@@ -15,7 +15,7 @@ from typing import Optional, Dict, Any
 logger = logging.getLogger(__name__)
 
 # License server URL (Cloudflare Worker)
-LICENSE_SERVER = os.getenv("LICENSE_SERVER", "https://lic.zinanzhi.workers.dev")
+LICENSE_SERVER = os.getenv("LICENSE_SERVER", "https://lic.zhizinan.cc")
 
 # Grace period in days when verification fails (72 hours)
 GRACE_PERIOD_DAYS = 3
@@ -28,7 +28,7 @@ UNLICENSED_DEVICE_LIMIT = 10
 
 # Expected integrity hash (computed at build time)
 # This is the SHA-256 hash of critical source files
-EXPECTED_INTEGRITY_HASH = "1f872545cd99018c"
+EXPECTED_INTEGRITY_HASH = "cad58e7969ac3cba"
 
 
 def compute_integrity_hash() -> str:

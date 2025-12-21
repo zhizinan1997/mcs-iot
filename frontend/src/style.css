@@ -8,6 +8,11 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  --bg-color: #f5f5f7;
+  --text-color: #1d1d1f;
+  --sidebar-bg: rgba(255, 255, 255, 0.6);
+  --border-color: rgba(255, 255, 255, 0.4);
 }
 
 * {
@@ -23,4 +28,1004 @@ body {
 
 #app {
   min-height: 100vh;
+}
+
+/* Dark Mode Overrides */
+html.dark {
+  background-color: #1a1a1a;
+  color: #ffffff;
+}
+
+html.dark body {
+  background-color: #1a1a1a;
+}
+
+html.dark .layout-container {
+  background: #1a1a2e !important;
+  background-image: linear-gradient(
+    135deg,
+    #1a1a2e 0%,
+    #0f3460 100%
+  ) !important;
+  color: #ffffff !important;
+}
+
+html.dark .sidebar {
+  background: rgba(0, 0, 0, 0.3) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .header {
+  background: rgba(0, 0, 0, 0.3) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .site-title,
+html.dark .page-title {
+  color: #ffffff !important;
+}
+
+html.dark .el-menu {
+  background: transparent !important;
+  border-right: none !important;
+}
+
+html.dark .el-menu-item {
+  color: #cccccc !important;
+}
+
+html.dark .el-menu-item:hover,
+html.dark .el-menu-item.is-active {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+html.dark .menu-group-title {
+  color: #888888 !important;
+}
+
+/* Sub-menu (可视化大屏) */
+html.dark .el-sub-menu__title {
+  color: #cccccc !important;
+}
+
+html.dark .el-sub-menu__title:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+html.dark .el-sub-menu .el-menu-item {
+  color: #aaaaaa !important;
+}
+
+html.dark .el-sub-menu .el-menu-item:hover,
+html.dark .el-sub-menu .el-menu-item.is-active {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Popper / Dropdown menus */
+html.dark .el-popper,
+html.dark .el-popper.is-light {
+  background: #2a2a3e !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .el-popper .el-menu {
+  background: #2a2a3e !important;
+}
+
+html.dark .el-popper .el-menu-item {
+  color: #cccccc !important;
+}
+
+html.dark .el-popper .el-menu-item:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+/* Cards */
+html.dark .el-card {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+html.dark .el-card__header {
+  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Tables */
+html.dark .el-table {
+  background: transparent !important;
+  color: #ffffff !important;
+}
+
+html.dark .el-table th.el-table__cell,
+html.dark .el-table tr {
+  background: transparent !important;
+  color: #cccccc !important;
+}
+
+html.dark .el-table--enable-row-hover .el-table__body tr:hover > td {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+html.dark .el-table td.el-table__cell,
+html.dark .el-table th.el-table__cell.is-leaf {
+  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .el-table--border .el-table__cell {
+  border-right-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .el-table__empty-text {
+  color: #888888 !important;
+}
+
+/* Inputs */
+html.dark .el-input__wrapper {
+  background: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1) inset !important;
+}
+
+html.dark .el-input__inner {
+  color: #ffffff !important;
+}
+
+html.dark .el-input__inner::placeholder {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Buttons */
+html.dark .el-button--default {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+}
+
+html.dark .el-button--default:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Tags */
+html.dark .el-tag {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #cccccc !important;
+}
+
+/* Dividers */
+html.dark .el-divider {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Pagination */
+html.dark .el-pagination button,
+html.dark .el-pagination .el-pager li {
+  background: transparent !important;
+  color: #cccccc !important;
+}
+
+html.dark .el-pagination .el-pager li:hover,
+html.dark .el-pagination .el-pager li.is-active {
+  color: #409eff !important;
+}
+
+/* Dialogs / Modal */
+html.dark .el-dialog {
+  background: #2a2a3e !important;
+}
+
+html.dark .el-dialog__header {
+  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .el-dialog__title {
+  color: #ffffff !important;
+}
+
+html.dark .el-dialog__body {
+  color: #cccccc !important;
+}
+
+/* Form labels */
+html.dark .el-form-item__label {
+  color: #cccccc !important;
+}
+
+/* Descriptions */
+html.dark .el-descriptions {
+  color: #cccccc !important;
+}
+
+html.dark .el-descriptions__label {
+  color: #888888 !important;
+}
+
+html.dark .el-descriptions__content {
+  color: #ffffff !important;
+}
+
+/* Select dropdown */
+html.dark .el-select-dropdown {
+  background: #2a2a3e !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .el-select-dropdown__item {
+  color: #cccccc !important;
+}
+
+html.dark .el-select-dropdown__item:hover,
+html.dark .el-select-dropdown__item.selected {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+/* Dashboard Stat Cards */
+html.dark .stat-card {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .stat-card:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+html.dark .stat-value {
+  color: #ffffff !important;
+}
+
+html.dark .stat-label {
+  color: #aaaaaa !important;
+}
+
+/* Card Headers */
+html.dark .card-header span {
+  color: #ffffff !important;
+}
+
+html.dark .device-card {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .device-card .el-card__header {
+  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Chart Cards */
+html.dark .chart-card {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .chart-card h4 {
+  color: #ffffff !important;
+}
+
+/* Alarms section */
+html.dark .alarms-section {
+  border-top-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Timeline */
+html.dark .el-timeline-item__content {
+  color: #cccccc !important;
+}
+
+html.dark .el-timeline-item__timestamp {
+  color: #888888 !important;
+}
+
+/* Radio buttons */
+html.dark .el-radio-button__inner {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #cccccc !important;
+}
+
+html.dark .el-radio-button__original-radio:checked + .el-radio-button__inner {
+  background: #409eff !important;
+  color: #ffffff !important;
+}
+
+/* Empty state */
+html.dark .el-empty__description {
+  color: #888888 !important;
+}
+
+/* Loading */
+html.dark .el-loading-mask {
+  background: rgba(0, 0, 0, 0.6) !important;
+}
+
+html.dark .el-loading-text {
+  color: #cccccc !important;
+}
+
+/* Scrollbar */
+html.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+html.dark ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* ========================================
+   PAGE-SPECIFIC DARK MODE STYLES
+   ======================================== */
+
+/* General page containers and titles */
+html.dark .page-container,
+html.dark .config-container,
+html.dark .settings-container,
+html.dark .ai-config-container {
+  color: #ffffff !important;
+}
+
+html.dark .page-title,
+html.dark .section-title,
+html.dark h1, html.dark h2, html.dark h3, html.dark h4 {
+  color: #ffffff !important;
+}
+
+html.dark .page-subtitle,
+html.dark .section-desc,
+html.dark .description,
+html.dark p {
+  color: #aaaaaa !important;
+}
+
+/* All cards with glass effect - make them dark */
+html.dark .glass-card,
+html.dark .config-card,
+html.dark .settings-card,
+html.dark .ai-card,
+html.dark .weather-card,
+html.dark .archive-card,
+html.dark .license-card,
+html.dark [class*="-card"] {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+html.dark [class*="-card"]:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Card headers and titles */
+html.dark .card-title,
+html.dark .card-header,
+html.dark [class*="-header"] h1,
+html.dark [class*="-header"] h2,
+html.dark [class*="-header"] h3,
+html.dark [class*="-header"] span {
+  color: #ffffff !important;
+}
+
+/* Form items and labels */
+html.dark .form-label,
+html.dark .el-form-item__label,
+html.dark label {
+  color: #cccccc !important;
+}
+
+html.dark .form-hint,
+html.dark .el-form-item__error,
+html.dark small {
+  color: #888888 !important;
+}
+
+/* Switches */
+html.dark .el-switch__core {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .el-switch.is-checked .el-switch__core {
+  background: #409eff !important;
+}
+
+html.dark .el-switch__label {
+  color: #cccccc !important;
+}
+
+/* Cascader (地区选择器) */
+html.dark .el-cascader .el-input__wrapper {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark .el-cascader-panel {
+  background: #2a2a3e !important;
+}
+
+html.dark .el-cascader-node__label {
+  color: #cccccc !important;
+}
+
+html.dark .el-cascader-node:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .el-cascader-node.in-active-path,
+html.dark .el-cascader-node.is-active {
+  color: #409eff !important;
+}
+
+/* Links */
+html.dark a {
+  color: #409eff !important;
+}
+
+html.dark a:hover {
+  color: #66b1ff !important;
+}
+
+/* Log viewer specific */
+html.dark .log-container,
+html.dark .logs-container,
+html.dark .log-viewer {
+  background: rgba(0, 0, 0, 0.3) !important;
+  color: #e0e0e0 !important;
+}
+
+html.dark .log-item,
+html.dark .log-entry,
+html.dark .log-row {
+  background: transparent !important;
+  border-bottom-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+html.dark .log-item:nth-child(odd),
+html.dark .log-entry:nth-child(odd),
+html.dark tr:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+html.dark .log-time,
+html.dark .log-timestamp {
+  color: #888888 !important;
+}
+
+html.dark .log-level,
+html.dark .log-type {
+  color: #66b1ff !important;
+}
+
+html.dark .log-message,
+html.dark .log-content {
+  color: #e0e0e0 !important;
+}
+
+/* Alert/Notification colors in logs */
+html.dark .log-error,
+html.dark .error-text {
+  color: #ff6b6b !important;
+}
+
+html.dark .log-warning,
+html.dark .warning-text {
+  color: #ffc107 !important;
+}
+
+html.dark .log-success,
+html.dark .success-text {
+  color: #52c41a !important;
+}
+
+/* Icon containers */
+html.dark .icon-container,
+html.dark .icon-box,
+html.dark [class*="-icon"]:not(.el-icon) {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Section dividers */
+html.dark .section-divider,
+html.dark hr {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Textarea */
+html.dark .el-textarea__inner {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+html.dark .el-textarea__inner::placeholder {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Checkbox */
+html.dark .el-checkbox__label {
+  color: #cccccc !important;
+}
+
+html.dark .el-checkbox__inner {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Alert boxes */
+html.dark .el-alert {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .el-alert__title {
+  color: #ffffff !important;
+}
+
+html.dark .el-alert__description {
+  color: #cccccc !important;
+}
+
+/* Message box */
+html.dark .el-message-box {
+  background: #2a2a3e !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .el-message-box__title {
+  color: #ffffff !important;
+}
+
+html.dark .el-message-box__message {
+  color: #cccccc !important;
+}
+
+/* Tabs */
+html.dark .el-tabs__item {
+  color: #cccccc !important;
+}
+
+html.dark .el-tabs__item:hover,
+html.dark .el-tabs__item.is-active {
+  color: #409eff !important;
+}
+
+html.dark .el-tabs__nav-wrap::after {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Collapse */
+html.dark .el-collapse {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .el-collapse-item__header {
+  background: transparent !important;
+  color: #ffffff !important;
+  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .el-collapse-item__content {
+  color: #cccccc !important;
+}
+
+/* Breadcrumb */
+html.dark .el-breadcrumb__item {
+  color: #888888 !important;
+}
+
+html.dark .el-breadcrumb__item:last-child {
+  color: #ffffff !important;
+}
+
+/* Popover */
+html.dark .el-popover {
+  background: #2a2a3e !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #cccccc !important;
+}
+
+/* Tooltip */
+html.dark .el-tooltip__popper {
+  background: #1a1a2e !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Upload */
+html.dark .el-upload-dragger {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+html.dark .el-upload-dragger:hover {
+  border-color: #409eff !important;
+}
+
+/* Slider */
+html.dark .el-slider__runway {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Progress */
+html.dark .el-progress__text {
+  color: #ffffff !important;
+}
+
+/* Statistic */
+html.dark .el-statistic__head {
+  color: #888888 !important;
+}
+
+html.dark .el-statistic__content {
+  color: #ffffff !important;
+}
+
+/* Icon buttons in header */
+html.dark .header-icon,
+html.dark .action-icon {
+  color: #cccccc !important;
+}
+
+html.dark .header-icon:hover,
+html.dark .action-icon:hover {
+  color: #ffffff !important;
+}
+
+/* Status badges */
+html.dark .status-badge,
+html.dark .el-badge__content {
+  color: #ffffff !important;
+}
+
+/* Footer */
+html.dark .page-footer,
+html.dark .footer {
+  color: #888888 !important;
+  border-top-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Code blocks */
+html.dark pre,
+html.dark code {
+  background: rgba(0, 0, 0, 0.3) !important;
+  color: #e0e0e0 !important;
+}
+
+/* ========================================
+   AGGRESSIVE OVERRIDES FOR ALL PAGES
+   ======================================== */
+
+/* Force all white/light backgrounds to dark */
+html.dark .el-card,
+html.dark [class*="card"],
+html.dark [class*="Card"],
+html.dark [class*="panel"],
+html.dark [class*="Panel"],
+html.dark [class*="box"],
+html.dark [class*="Box"],
+html.dark [class*="container"]:not(.layout-container),
+html.dark [class*="Container"]:not(.layout-container),
+html.dark [class*="section"],
+html.dark [class*="Section"],
+html.dark [class*="wrapper"],
+html.dark [class*="Wrapper"] {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+/* Force all text to be light colored */
+html.dark [class*="title"],
+html.dark [class*="Title"],
+html.dark [class*="label"],
+html.dark [class*="Label"],
+html.dark [class*="text"],
+html.dark [class*="Text"],
+html.dark [class*="name"],
+html.dark [class*="Name"],
+html.dark [class*="value"],
+html.dark [class*="Value"],
+html.dark [class*="desc"],
+html.dark [class*="Desc"],
+html.dark [class*="info"],
+html.dark [class*="Info"] {
+  color: #ffffff !important;
+}
+
+/* Secondary text (hints, descriptions) */
+html.dark [class*="hint"],
+html.dark [class*="Hint"],
+html.dark [class*="sub"],
+html.dark [class*="Sub"],
+html.dark [class*="note"],
+html.dark [class*="Note"],
+html.dark [class*="tip"],
+html.dark [class*="Tip"],
+html.dark .el-form-item__content small,
+html.dark .form-tip {
+  color: #888888 !important;
+}
+
+/* Input number / Slider components */
+html.dark .el-input-number {
+  background: transparent !important;
+}
+
+html.dark .el-input-number__decrease,
+html.dark .el-input-number__increase {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #cccccc !important;
+}
+
+html.dark .el-input-number__decrease:hover,
+html.dark .el-input-number__increase:hover {
+  color: #409eff !important;
+}
+
+/* Status indicators with light backgrounds */
+html.dark .status-card,
+html.dark .info-card,
+html.dark .stat-box,
+html.dark .metric-card {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Number/Metric displays */
+html.dark .metric-value,
+html.dark .stat-number,
+html.dark .big-number {
+  color: #ffffff !important;
+}
+
+/* Icon boxes that might have light backgrounds */
+html.dark .icon-wrapper,
+html.dark .icon-bg {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* File list / Archive list tables */
+html.dark .file-list,
+html.dark .archive-list,
+html.dark .data-list {
+  background: rgba(0, 0, 0, 0.2) !important;
+}
+
+html.dark .file-item,
+html.dark .archive-item,
+html.dark .list-item {
+  background: transparent !important;
+  border-bottom-color: rgba(255, 255, 255, 0.05) !important;
+  color: #cccccc !important;
+}
+
+html.dark .file-item:hover,
+html.dark .archive-item:hover,
+html.dark .list-item:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* License page specific */
+html.dark .license-info,
+html.dark .license-details,
+html.dark .device-id,
+html.dark .machine-id {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #ffffff !important;
+}
+
+html.dark .license-status,
+html.dark .validity-info {
+  color: #cccccc !important;
+}
+
+/* Health check page */
+html.dark .health-card,
+html.dark .check-item,
+html.dark .diagnostic-card {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .check-result,
+html.dark .diagnostic-result {
+  color: #cccccc !important;
+}
+
+/* Result states */
+html.dark .result-success,
+html.dark .check-pass {
+  color: #52c41a !important;
+}
+
+html.dark .result-error,
+html.dark .check-fail {
+  color: #ff4d4f !important;
+}
+
+html.dark .result-warning,
+html.dark .check-warning {
+  color: #faad14 !important;
+}
+
+/* More specific Element Plus overrides */
+html.dark .el-descriptions__body,
+html.dark .el-descriptions__table {
+  background: transparent !important;
+}
+
+html.dark .el-descriptions__cell {
+  background: transparent !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .el-descriptions__label.el-descriptions__cell {
+  color: #888888 !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+
+html.dark .el-descriptions__content.el-descriptions__cell {
+  color: #ffffff !important;
+}
+
+/* Drawer */
+html.dark .el-drawer {
+  background: #1a1a2e !important;
+}
+
+html.dark .el-drawer__header {
+  color: #ffffff !important;
+  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .el-drawer__body {
+  color: #cccccc !important;
+}
+
+/* Dropdown menu */
+html.dark .el-dropdown-menu {
+  background: #2a2a3e !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .el-dropdown-menu__item {
+  color: #cccccc !important;
+}
+
+html.dark .el-dropdown-menu__item:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+/* Steps */
+html.dark .el-step__title {
+  color: #cccccc !important;
+}
+
+html.dark .el-step__title.is-process,
+html.dark .el-step__title.is-finish {
+  color: #ffffff !important;
+}
+
+html.dark .el-step__description {
+  color: #888888 !important;
+}
+
+/* Notification */
+html.dark .el-notification {
+  background: #2a2a3e !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .el-notification__title {
+  color: #ffffff !important;
+}
+
+html.dark .el-notification__content {
+  color: #cccccc !important;
+}
+
+/* Image/Avatar placeholder */
+html.dark .el-image__placeholder,
+html.dark .el-avatar {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Result component */
+html.dark .el-result__title {
+  color: #ffffff !important;
+}
+
+html.dark .el-result__subtitle {
+  color: #888888 !important;
+}
+
+/* Tree */
+html.dark .el-tree {
+  background: transparent !important;
+  color: #cccccc !important;
+}
+
+html.dark .el-tree-node__content:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Skeleton */
+html.dark .el-skeleton__item {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Calendar */
+html.dark .el-calendar {
+  background: transparent !important;
+}
+
+html.dark .el-calendar__header {
+  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .el-calendar-table thead th {
+  color: #888888 !important;
+}
+
+html.dark .el-calendar-table td {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Date picker */
+html.dark .el-date-picker,
+html.dark .el-date-range-picker {
+  background: #2a2a3e !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .el-date-picker__header-label,
+html.dark .el-date-range-picker__header {
+  color: #ffffff !important;
+}
+
+html.dark .el-picker-panel__content {
+  color: #cccccc !important;
+}
+
+html.dark .el-date-table td.available:hover,
+html.dark .el-date-table td.today {
+  color: #409eff !important;
+}
+
+/* Time picker */
+html.dark .el-time-panel {
+  background: #2a2a3e !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .el-time-spinner__item {
+  color: #cccccc !important;
+}
+
+html.dark .el-time-spinner__item:hover,
+html.dark .el-time-spinner__item.is-active {
+  color: #ffffff !important;
+}
+
+/* Color picker */
+html.dark .el-color-picker__panel {
+  background: #2a2a3e !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Force backdrop filter cards to be dark */
+html.dark [style*="backdrop-filter"],
+html.dark [style*="background: rgba(255"] {
+  background: rgba(255, 255, 255, 0.06) !important;
 }
