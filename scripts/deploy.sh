@@ -1146,6 +1146,52 @@ deploy_containers() {
 }
 
 # =============================================================================
+# MQTT 密码同步
+# =============================================================================
+
+sync_mqtt_password() {
+    log_step "第十四步：同步 MQTT 密码"
+    
+    log_info "正在同步 MQTT 密码到 Mosquitto..."
+    
+    # 等待 Mosquitto 容器完全启动
+    local max_wait=30
+    local waited=0
+    while ! docker exec mcs_mosquitto ls /mosquitto/config 2>/dev/null | grep -q passwd; do
+        if [[ $waited -ge $max_wait ]]; then
+            log_warn "等待 Mosquitto 超时，跳过密码同步"
+            return 1
+        fi
+        sleep 1
+        ((waited++))
+    done
+    
+    # 使用 mosquitto_passwd 设置密码
+    # admin 用户用于所有后端服务连接
+    if docker exec mcs_mosquitto mosquitto_passwd -b /mosquitto/config/passwd admin "$MQTT_PASSWORD" 2>/dev/null; then
+        log_info "✓ MQTT admin 用户密码已同步"
+    else
+        log_warn "MQTT 密码同步失败，可能需要手动设置"
+        log_info "手动设置方法: docker exec -it mcs_mosquitto mosquitto_passwd -b /mosquitto/config/passwd admin <密码>"
+        return 1
+    fi
+    
+    # 重启 Mosquitto 使密码生效
+    log_info "重启 Mosquitto 使配置生效..."
+    docker restart mcs_mosquitto >/dev/null 2>&1
+    sleep 3
+    
+    # 验证 Mosquitto 是否正常运行
+    if docker ps --filter "name=mcs_mosquitto" --filter "status=running" -q | grep -q .; then
+        log_info "✓ Mosquitto 已重启并运行"
+    else
+        log_warn "Mosquitto 重启后未运行，请检查日志"
+    fi
+    
+    log_info "✓ MQTT 密码同步完成"
+}
+
+# =============================================================================
 # 演示数据 (已禁用 - 不再自动导入模拟数据)
 # =============================================================================
 
@@ -1397,9 +1443,10 @@ main() {
     copy_ssl_certificates       # 第十一步调整为: 复制/生成 SSL 证书
     
     # ===== 第四阶段: 密码配置和部署 =====
-    configure_credentials       # 第十二步调整为: 配置密码和 API 密钥
-    generate_env_file           # 第十三步调整为: 生成配置文件
-    deploy_containers           # 第十四步调整为: 拉取镜像并启动容器
+    configure_credentials       # 第十二步: 配置密码和 API 密钥
+    generate_env_file           # 第十三步: 生成配置文件
+    deploy_containers           # 第十四步: 拉取镜像并启动容器
+    sync_mqtt_password          # 第十五步: 同步 MQTT 密码到 Mosquitto
     
     # ===== 第五阶段: 完成 =====
     create_management_scripts

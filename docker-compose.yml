@@ -81,8 +81,8 @@ services:
       - REDIS_HOST=redis
       - MQTT_HOST=mosquitto
       - MQTT_PORT=1883 # Internal via TCP
-      - MQTT_USER=admin
-      - MQTT_PASS=${MQTT_PASSWORD:-admin123}
+      - MQTT_USER=${MQTT_USER:-admin}
+      - MQTT_PASS=${MQTT_PASS:-admin123}
       - DEV_MODE=true # Bypass license check for dev
     volumes:
       - ./worker/src:/app/src # Hot reload
@@ -124,8 +124,8 @@ services:
       - ADMIN_INITIAL_PASSWORD=${ADMIN_INITIAL_PASSWORD:-admin123}
       - MQTT_HOST=mosquitto
       - MQTT_PORT=1883
-      - MQTT_USER=admin
-      - MQTT_PASS=${MQTT_PASSWORD:-admin123}
+      - MQTT_USER=${MQTT_USER:-admin}
+      - MQTT_PASS=${MQTT_PASS:-admin123}
       - AI_API_KEY=${AI_API_KEY:-}
       - AI_MODEL=${AI_MODEL:-gpt-3.5-turbo}
       - WEATHER_API_KEY=${WEATHER_API_KEY:-}

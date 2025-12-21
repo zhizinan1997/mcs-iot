@@ -203,7 +203,8 @@ mcs-iot/
 │   ├── backup.sh               # 数据库备份脚本
 │   ├── uninstall.sh            # 卸载脚本
 │   ├── init.sql                # 数据库初始化 SQL
-│   ├── demo_generator.py       # 模拟数据生成器
+│   ├── demo_generator.py       # 本地模拟数据生成器 (24个设备)
+│   ├── remote_sensor.py        # 远程模拟传感器脚本 (单设备)
 │   └── mqtt_config.json        # MQTT 配置模板
 │
 ├── mosquitto/                  # MQTT 配置
@@ -653,6 +654,46 @@ bash scripts/deploy.sh
 ```
 
 升级自动执行: 备份数据库 → 拉取代码 → 更新镜像 → 重启服务
+
+### 远程模拟传感器
+
+本地开发或测试时，可以使用 `remote_sensor.py` 模拟一个远程传感器向服务器发送数据：
+
+```bash
+# 基本用法（连接到远程服务器，每秒发送一次数据）
+python scripts/remote_sensor.py --no-tls
+
+# 指定传感器序列号
+python scripts/remote_sensor.py --no-tls --sn SENSOR001
+
+# 指定传感器类型
+python scripts/remote_sensor.py --no-tls --type H2      # 氢气
+python scripts/remote_sensor.py --no-tls --type CH4     # 甲烷（默认）
+python scripts/remote_sensor.py --no-tls --type VOCs    # 挥发性有机物
+python scripts/remote_sensor.py --no-tls --type TEMP    # 温度
+python scripts/remote_sensor.py --no-tls --type HUMI    # 湿度
+python scripts/remote_sensor.py --no-tls --type PM25    # PM2.5
+
+# 自定义发送间隔
+python scripts/remote_sensor.py --no-tls --interval 0.5   # 每0.5秒
+
+# 自定义 MQTT 账号密码
+python scripts/remote_sensor.py --no-tls --user admin --pass your_password
+
+# 组合使用
+python scripts/remote_sensor.py --no-tls --sn TEST001 --type VOCs --interval 2
+```
+
+**连接参数**:
+
+| 参数   | 默认值                  |
+| ------ | ----------------------- |
+| 服务器 | `mqtt.yourdomain.com`   |
+| 端口   | 1883 (TCP) / 8883 (TLS) |
+| 用户名 | `admin`                 |
+| 密码   | 部署时设置的 MQTT 密码  |
+
+> **注意**: 使用 `--no-tls` 参数可以跳过 TLS 加密，适用于本地测试。生产环境建议使用 TLS 连接（端口 8883）。
 
 ---
 
