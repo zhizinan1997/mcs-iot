@@ -62,8 +62,11 @@ class Archiver:
                 endpoint_url=self.config['r2_endpoint'],
                 aws_access_key_id=self.config['r2_access_key'],
                 aws_secret_access_key=self.config['r2_secret_key'],
-                config=BotoConfig(signature_version='s3v4'),
-                verify=False
+                config=BotoConfig(
+                    signature_version='s3v4',
+                    retries={'max_attempts': 3, 'mode': 'standard'}
+                ),
+                region_name='auto'  # Required for Cloudflare R2
             )
             return self._s3_client
         except ImportError:

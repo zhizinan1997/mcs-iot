@@ -291,9 +291,9 @@ async def test_archive_connection(redis = Depends(get_redis)):
                     signature_version='s3v4',
                     connect_timeout=10,
                     read_timeout=15,
-                    retries={'max_attempts': 1}
+                    retries={'max_attempts': 3, 'mode': 'standard'}
                 ),
-                verify=False
+                region_name='auto'  # Required for Cloudflare R2
             )
             
             # 测试连接
@@ -390,8 +390,11 @@ async def get_storage_stats(redis = Depends(get_redis), db = Depends(get_db)):
                         endpoint_url=config['r2_endpoint'],
                         aws_access_key_id=config['r2_access_key'],
                         aws_secret_access_key=config['r2_secret_key'],
-                        config=BotoConfig(signature_version='s3v4'),
-                        verify=False
+                        config=BotoConfig(
+                            signature_version='s3v4',
+                            retries={'max_attempts': 3, 'mode': 'standard'}
+                        ),
+                        region_name='auto'  # Required for Cloudflare R2
                     )
                     
                     total_size = 0
@@ -446,8 +449,11 @@ async def list_archive_files(redis = Depends(get_redis)):
                 endpoint_url=config['r2_endpoint'],
                 aws_access_key_id=config['r2_access_key'],
                 aws_secret_access_key=config['r2_secret_key'],
-                config=BotoConfig(signature_version='s3v4'),
-                verify=False
+                config=BotoConfig(
+                    signature_version='s3v4',
+                    retries={'max_attempts': 3, 'mode': 'standard'}
+                ),
+                region_name='auto'  # Required for Cloudflare R2
             )
             
             files = []

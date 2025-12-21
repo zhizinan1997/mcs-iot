@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 # License server URL (Cloudflare Worker)
 LICENSE_SERVER = os.getenv("LICENSE_SERVER", "https://lic.zinanzhi.workers.dev")
 
-# Grace period in days when verification fails
-GRACE_PERIOD_DAYS = 1
+# Grace period in days when verification fails (72 hours)
+GRACE_PERIOD_DAYS = 3
 
 # Features that require license
 LICENSED_FEATURES = ["mqtt_external", "ai", "r2_archive", "notifications"]
