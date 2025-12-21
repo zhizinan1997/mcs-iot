@@ -100,6 +100,9 @@ services:
       - mcs-net
     restart: unless-stopped
     logging: *default-logging
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
 
   # 🟣 Backend API (FastAPI)
   backend:
@@ -147,6 +150,9 @@ services:
       - mcs-net
     restart: unless-stopped
     logging: *default-logging
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
 
   # 🟠 Frontend (Vue + Nginx)
   # 注意：80/443 端口由宝塔面板 nginx 处理，此容器仅监听 3000 端口

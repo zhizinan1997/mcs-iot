@@ -27,6 +27,45 @@ from .logs import router as logs_router
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+async def _migrate_archive_config_on_startup(redis):
+    """
+    容器启动时自动迁移归档配置
+    将旧版 r2_* 字段迁移到新版统一字段格式
+    """
+    import json
+    import re
+    
+    config_str = await redis.get("config:archive")
+    if not config_str:
+        return  # No config to migrate
+    
+    config = json.loads(config_str)
+    migrated = False
+    
+    # Step 1: 从 r2_endpoint 提取 account_id
+    if config.get("r2_endpoint") and not config.get("r2_account_id"):
+        endpoint = config.get("r2_endpoint", "")
+        match = re.search(r'https?://([a-zA-Z0-9]+)\.r2\.cloudflarestorage\.com', endpoint)
+        if match:
+            config["r2_account_id"] = match.group(1)
+        config.pop("r2_endpoint", None)
+        migrated = True
+    
+    # Step 2: 从 r2_* 字段迁移到新版统一字段
+    if config.get("r2_account_id") and not config.get("account_id"):
+        config["provider"] = "cloudflare"
+        config["account_id"] = config.get("r2_account_id", "")
+        config["bucket"] = config.get("r2_bucket", "")
+        config["access_key"] = config.get("r2_access_key", "")
+        config["secret_key"] = config.get("r2_secret_key", "")
+        config["cloud_retention_days"] = config.get("r2_retention_days", 30)
+        config["region"] = ""  # Cloudflare R2 doesn't need region
+        migrated = True
+    
+    if migrated:
+        await redis.set("config:archive", json.dumps(config))
+        logger.info("Archive config migrated from old r2_* format to new unified format")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
@@ -49,6 +88,12 @@ async def lifespan(app: FastAPI):
         logger.info(f"License initialized - Device ID: {license_mgr.get_device_id()}")
     except Exception as e:
         logger.warning(f"License initialization failed: {e}")
+    
+    # Auto-migrate archive config from old format to new format
+    try:
+        await _migrate_archive_config_on_startup(deps.redis_pool)
+    except Exception as e:
+        logger.warning(f"Archive config migration failed: {e}")
     
     yield
     

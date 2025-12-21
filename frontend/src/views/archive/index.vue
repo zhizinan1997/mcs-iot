@@ -58,28 +58,68 @@
                 />
                 <span class="unit">天</span>
                </div>
-               <p class="hint">云端备份文件保留 {{ archiveConfig.r2_retention_days }} 天后自动清理</p>
+               <p class="hint">云端备份文件保留 {{ archiveConfig.cloud_retention_days }} 天后自动清理</p>
              </div>
            </div>
 
            <!-- Connection Settings -->
            <div class="config-card glass-inset">
-             <h4>R2 存储桶连接</h4>
+             <h4>云存储连接</h4>
              <el-form :model="archiveConfig" label-width="120px" label-position="left">
-               <el-form-item label="Bucket 名称">
-                  <el-input v-model="archiveConfig.r2_bucket" placeholder="mcs-archive" />
+               <!-- Provider Selection -->
+               <el-form-item label="存储提供商">
+                 <el-radio-group v-model="archiveConfig.provider" @change="onProviderChange">
+                   <el-radio value="cloudflare">Cloudflare R2</el-radio>
+                   <el-radio value="tencent">腾讯云 COS</el-radio>
+                   <el-radio value="alibaba">阿里云 OSS</el-radio>
+                 </el-radio-group>
                </el-form-item>
-               <el-form-item label="账户 ID">
-                  <el-input v-model="archiveConfig.r2_account_id" placeholder="Cloudflare 账户 ID">
+               
+               <!-- Common Fields -->
+               <el-form-item label="Bucket 名称">
+                  <el-input v-model="archiveConfig.bucket" placeholder="mcs-archive" />
+               </el-form-item>
+               
+               <!-- Cloudflare R2 Specific -->
+               <el-form-item label="账户 ID" v-if="archiveConfig.provider === 'cloudflare'">
+                  <el-input v-model="archiveConfig.account_id" placeholder="Cloudflare 账户 ID">
                     <template #prepend>https://</template>
                     <template #append>.r2.cloudflarestorage.com</template>
                   </el-input>
                </el-form-item>
+               
+               <!-- Tencent COS Region -->
+               <el-form-item label="存储区域" v-if="archiveConfig.provider === 'tencent'">
+                  <el-select v-model="archiveConfig.region" placeholder="选择区域" style="width: 100%">
+                    <el-option label="广州 (ap-guangzhou)" value="ap-guangzhou" />
+                    <el-option label="上海 (ap-shanghai)" value="ap-shanghai" />
+                    <el-option label="北京 (ap-beijing)" value="ap-beijing" />
+                    <el-option label="成都 (ap-chengdu)" value="ap-chengdu" />
+                    <el-option label="重庆 (ap-chongqing)" value="ap-chongqing" />
+                    <el-option label="南京 (ap-nanjing)" value="ap-nanjing" />
+                    <el-option label="香港 (ap-hongkong)" value="ap-hongkong" />
+                    <el-option label="新加坡 (ap-singapore)" value="ap-singapore" />
+                  </el-select>
+               </el-form-item>
+               
+               <!-- Alibaba OSS Region -->
+               <el-form-item label="存储区域" v-if="archiveConfig.provider === 'alibaba'">
+                  <el-select v-model="archiveConfig.region" placeholder="选择区域" style="width: 100%">
+                    <el-option label="杭州 (oss-cn-hangzhou)" value="oss-cn-hangzhou" />
+                    <el-option label="上海 (oss-cn-shanghai)" value="oss-cn-shanghai" />
+                    <el-option label="北京 (oss-cn-beijing)" value="oss-cn-beijing" />
+                    <el-option label="深圳 (oss-cn-shenzhen)" value="oss-cn-shenzhen" />
+                    <el-option label="成都 (oss-cn-chengdu)" value="oss-cn-chengdu" />
+                    <el-option label="香港 (oss-cn-hongkong)" value="oss-cn-hongkong" />
+                    <el-option label="美西 (oss-us-west-1)" value="oss-us-west-1" />
+                  </el-select>
+               </el-form-item>
+               
                <el-form-item label="Access Key ID">
-                  <el-input v-model="archiveConfig.r2_access_key" placeholder="R2 Access Key" />
+                  <el-input v-model="archiveConfig.access_key" placeholder="Access Key" />
                </el-form-item>
                <el-form-item label="Secret Key">
-                  <el-input v-model="archiveConfig.r2_secret_key" type="password" show-password placeholder="R2 Secret Key" />
+                  <el-input v-model="archiveConfig.secret_key" type="password" show-password placeholder="Secret Key" />
                </el-form-item>
              </el-form>
              
@@ -118,9 +158,14 @@
           <div class="files-list glass-inset">
             <div class="list-header">
               <h4>归档文件列表</h4>
-              <el-button size="small" @click="fetchArchiveFiles" :loading="loadingFiles" circle>
-                <el-icon><Refresh /></el-icon>
-              </el-button>
+              <div class="list-actions">
+                <el-button type="primary" size="small" @click="manualBackup" :loading="backingUp" round>
+                  <el-icon><Upload /></el-icon> 立即备份今日数据
+                </el-button>
+                <el-button size="small" @click="fetchArchiveFiles" :loading="loadingFiles" circle>
+                  <el-icon><Refresh /></el-icon>
+                </el-button>
+              </div>
             </div>
             
             <el-table 
@@ -187,25 +232,41 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from "vue";
 import { ElMessage } from "element-plus";
-import { Box, DataLine, UploadFilled, Document, Refresh, InfoFilled } from '@element-plus/icons-vue'
+import { Box, DataLine, UploadFilled, Document, Refresh, InfoFilled, Upload } from '@element-plus/icons-vue'
 import { configApi } from "../../api";
 
 const saving = ref(false);
 const testingArchive = ref(false);
 const loadingStats = ref(false);
 const loadingFiles = ref(false);
+const backingUp = ref(false);
 const storageStats = ref<any>(null);
 const archiveFiles = ref<any[]>([]);
 
 const archiveConfig = reactive({
   enabled: false,
   local_retention_days: 3,
+  cloud_retention_days: 30,
+  // 新版统一字段
+  provider: "cloudflare",
+  bucket: "",
+  access_key: "",
+  secret_key: "",
+  account_id: "",  // Cloudflare R2
+  region: "",      // 腾讯云/阿里云
+  // 兼容旧版字段
   r2_retention_days: 30,
   r2_account_id: "",
   r2_bucket: "",
   r2_access_key: "",
   r2_secret_key: "",
 });
+
+function onProviderChange() {
+  // 切换提供商时清空特定字段
+  archiveConfig.account_id = "";
+  archiveConfig.region = "";
+}
 
 async function loadArchiveConfig() {
   try {
@@ -264,6 +325,26 @@ async function fetchArchiveFiles() {
     console.error("Failed to list files:", error)
   } finally {
     loadingFiles.value = false;
+  }
+}
+
+async function manualBackup() {
+  backingUp.value = true;
+  try {
+    const res = await configApi.backupArchive();
+    if (res.data.status === 'empty') {
+      ElMessage.warning(res.data.message || "今日暂无数据可备份");
+    } else {
+      ElMessage.success(res.data.message || "备份成功！");
+      // 刷新文件列表和统计
+      fetchArchiveFiles();
+      fetchStorageStats();
+    }
+  } catch (error: any) {
+    const detail = error.response?.data?.detail || "备份失败";
+    ElMessage.error(detail);
+  } finally {
+    backingUp.value = false;
   }
 }
 
@@ -486,6 +567,14 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
+}
+.list-header h4 {
+  margin: 0;
+}
+.list-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 .list-header h4 {
   margin: 0;

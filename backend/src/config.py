@@ -41,11 +41,23 @@ class DashboardConfig(BaseModel):
     background_image: Optional[str] = None
 
 class ArchiveConfig(BaseModel):
-    """数据归档配置 (Cloudflare R2)"""
+    """数据归档配置 (支持多云存储: Cloudflare R2, 腾讯云 COS, 阿里云 OSS)"""
     enabled: bool = False
     local_retention_days: int = 3  # 本地数据库保留天数
-    r2_retention_days: int = 30    # R2 备份保留天数
-    r2_account_id: str = ""        # Cloudflare 账户 ID
+    cloud_retention_days: int = 30  # 云端备份保留天数
+    # 云存储提供商: cloudflare, tencent, alibaba
+    provider: str = "cloudflare"
+    # 通用字段
+    bucket: str = ""
+    access_key: str = ""
+    secret_key: str = ""
+    # Cloudflare R2 专用
+    account_id: str = ""
+    # 腾讯云/阿里云 专用
+    region: str = ""
+    # 兼容旧版字段 (deprecated)
+    r2_retention_days: int = 30
+    r2_account_id: str = ""
     r2_bucket: str = ""
     r2_access_key: str = ""
     r2_secret_key: str = ""
@@ -227,13 +239,74 @@ async def upload_background(file: UploadFile = File(...)):
     
     return {"message": "Background uploaded", "path": "/static/uploads/background.png"}
 
-# Archive Config (R2)
+# Archive Config (Multi-Cloud: Cloudflare R2, Tencent COS, Alibaba OSS)
+def _migrate_archive_config(config_dict: dict) -> dict:
+    """
+    迁移旧版配置到新版统一格式
+    旧格式使用 r2_* 前缀，新格式使用统一字段名
+    """
+    # 迁移旧版 r2_endpoint 到 account_id
+    if config_dict.get("r2_endpoint") and not config_dict.get("r2_account_id"):
+        endpoint = config_dict.get("r2_endpoint", "")
+        import re
+        match = re.search(r'https?://([a-zA-Z0-9]+)\.r2\.cloudflarestorage\.com', endpoint)
+        if match:
+            config_dict["r2_account_id"] = match.group(1)
+        config_dict.pop("r2_endpoint", None)
+    
+    # 迁移 r2_* 字段到新版统一字段
+    if config_dict.get("r2_account_id") and not config_dict.get("account_id"):
+        config_dict["provider"] = "cloudflare"
+        config_dict["account_id"] = config_dict.get("r2_account_id", "")
+        config_dict["bucket"] = config_dict.get("r2_bucket", "")
+        config_dict["access_key"] = config_dict.get("r2_access_key", "")
+        config_dict["secret_key"] = config_dict.get("r2_secret_key", "")
+        config_dict["cloud_retention_days"] = config_dict.get("r2_retention_days", 30)
+    
+    return config_dict
+
+def _build_storage_endpoint(config: dict) -> tuple:
+    """
+    根据提供商构建存储 endpoint URL
+    返回: (endpoint_url, bucket_name, signature_version)
+    """
+    provider = config.get("provider", "cloudflare")
+    bucket = config.get("bucket", "")
+    
+    if provider == "cloudflare":
+        account_id = config.get("account_id", "").strip()
+        endpoint = f"https://{account_id}.r2.cloudflarestorage.com"
+        return (endpoint, bucket, "s3v4")
+    
+    elif provider == "tencent":
+        region = config.get("region", "ap-guangzhou").strip()
+        # 腾讯云 COS S3 兼容端点
+        endpoint = f"https://cos.{region}.myqcloud.com"
+        return (endpoint, bucket, "s3v4")
+    
+    elif provider == "alibaba":
+        region = config.get("region", "oss-cn-hangzhou").strip()
+        # 阿里云 OSS S3 兼容端点
+        endpoint = f"https://{region}.aliyuncs.com"
+        return (endpoint, bucket, "s3v4")
+    
+    else:
+        raise ValueError(f"不支持的存储提供商: {provider}")
+
 @router.get("/archive", response_model=ArchiveConfig)
 async def get_archive_config(redis = Depends(get_redis)):
-    """获取数据归档配置"""
+    """获取数据归档配置（自动迁移旧版配置）"""
     data = await redis.get("config:archive")
     if data:
-        return ArchiveConfig(**json.loads(data))
+        config_dict = json.loads(data)
+        
+        # 检查并迁移旧格式
+        if config_dict.get("r2_endpoint") and not config_dict.get("r2_account_id"):
+            config_dict = _migrate_archive_config(config_dict)
+            # 保存迁移后的配置
+            await redis.set("config:archive", json.dumps(config_dict))
+        
+        return ArchiveConfig(**config_dict)
     return ArchiveConfig()
 
 @router.put("/archive")
@@ -244,7 +317,7 @@ async def update_archive_config(config: ArchiveConfig, redis = Depends(get_redis
 
 @router.post("/archive/test")
 async def test_archive_connection(redis = Depends(get_redis)):
-    """测试 R2 连接"""
+    """测试云存储连接 (支持 Cloudflare R2, 腾讯云 COS, 阿里云 OSS)"""
     import logging
     import subprocess
     import asyncio
@@ -257,91 +330,74 @@ async def test_archive_connection(redis = Depends(get_redis)):
     
     config = json.loads(data)
     
-    if not config.get("r2_account_id") or not config.get("r2_bucket"):
-        raise HTTPException(status_code=400, detail="请填写 Cloudflare 账户 ID 和 Bucket 名称")
+    # 迁移旧配置
+    if config.get("r2_endpoint") or (config.get("r2_account_id") and not config.get("account_id")):
+        config = _migrate_archive_config(config)
+        await redis.set("config:archive", json.dumps(config))
     
-    if not config.get("r2_access_key") or not config.get("r2_secret_key"):
-        raise HTTPException(status_code=400, detail="请填写 R2 访问密钥")
+    provider = config.get("provider", "cloudflare")
+    provider_names = {"cloudflare": "Cloudflare R2", "tencent": "腾讯云 COS", "alibaba": "阿里云 OSS"}
+    provider_name = provider_names.get(provider, provider)
     
-        # 根据 account_id 构建 endpoint URL
-        account_id = config['r2_account_id'].strip()
-        endpoint = f"https://{account_id}.r2.cloudflarestorage.com"
-        bucket = config['r2_bucket']
-        access_key = config['r2_access_key']
-        secret_key = config['r2_secret_key']
+    # 验证必填字段
+    if not config.get("bucket"):
+        raise HTTPException(status_code=400, detail="请填写 Bucket 名称")
+    
+    if not config.get("access_key") or not config.get("secret_key"):
+        raise HTTPException(status_code=400, detail="请填写访问密钥")
+    
+    if provider == "cloudflare" and not config.get("account_id"):
+        raise HTTPException(status_code=400, detail="请填写 Cloudflare 账户 ID")
+    
+    if provider in ["tencent", "alibaba"] and not config.get("region"):
+        raise HTTPException(status_code=400, detail="请选择存储区域")
+    
+    try:
+        endpoint, bucket, sig_version = _build_storage_endpoint(config)
+        access_key = config['access_key']
+        secret_key = config['secret_key']
         
-        # 使用 boto3 在同步模式下测试（在线程池中运行）
         def test_connection():
             import boto3
             from botocore.config import Config as BotoConfig
-            from botocore.exceptions import ClientError
             import os
             
-            # 设置环境变量禁用 SSL 警告
             os.environ['PYTHONWARNINGS'] = 'ignore:Unverified HTTPS request'
             
-            # 创建 session 并设置自定义 HTTP 选项
-            session = boto3.Session()
-            
-            s3 = session.client(
+            s3 = boto3.client(
                 's3',
                 endpoint_url=endpoint,
                 aws_access_key_id=access_key,
                 aws_secret_access_key=secret_key,
                 config=BotoConfig(
-                    signature_version='s3v4',
+                    signature_version=sig_version,
                     connect_timeout=10,
                     read_timeout=15,
                     retries={'max_attempts': 3, 'mode': 'standard'}
                 ),
-                region_name='auto'  # Required for Cloudflare R2
+                region_name='auto' if provider == 'cloudflare' else config.get('region', 'auto')
             )
             
-            # 测试连接
             s3.head_bucket(Bucket=bucket)
             return True
         
-        # 在线程池中运行同步代码
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, test_connection)
         
-        return {"message": f"R2 连接成功！Bucket: {bucket}"}
+        return {"message": f"{provider_name} 连接成功！Bucket: {bucket}"}
         
     except Exception as e:
         error_str = str(e)
-        logger.error(f"R2 test failed: {e}")
+        logger.error(f"Storage test failed ({provider}): {e}")
         
-        # 解析常见错误
-        if 'SSL' in error_str or 'ssl' in error_str:
-            # SSL 仍然失败，尝试使用 curl 作为后备方案
-            try:
-                test_url = f"{endpoint}/{bucket}"
-                result = subprocess.run(
-                    ['curl', '-s', '-o', '/dev/null', '-w', '%{http_code}', '-I', '-k', test_url],
-                    capture_output=True,
-                    text=True,
-                    timeout=15
-                )
-                status_code = result.stdout.strip()
-                if status_code in ['200', '403', '404']:
-                    if status_code == '200':
-                        return {"message": f"R2 连接成功！Bucket: {bucket}"}
-                    elif status_code == '403':
-                        raise HTTPException(status_code=400, detail="访问被拒绝，请检查 Access Key 和 Secret Key（注意：curl 测试无签名）")
-                    else:
-                        raise HTTPException(status_code=400, detail=f"Bucket '{bucket}' 不存在")
-                else:
-                    raise HTTPException(status_code=400, detail=f"R2 Endpoint 可达，但返回状态码 {status_code}")
-            except subprocess.TimeoutExpired:
-                raise HTTPException(status_code=400, detail="连接超时，请检查 Endpoint URL")
-            except FileNotFoundError:
-                raise HTTPException(status_code=500, detail=f"SSL 错误且 curl 不可用: {error_str}")
-        elif '403' in error_str or 'Forbidden' in error_str or 'AccessDenied' in error_str:
+        if '403' in error_str or 'Forbidden' in error_str or 'AccessDenied' in error_str:
             raise HTTPException(status_code=400, detail="访问被拒绝，请检查 Access Key 和 Secret Key")
         elif '404' in error_str or 'NoSuchBucket' in error_str:
-            raise HTTPException(status_code=400, detail=f"Bucket '{bucket}' 不存在")
+            raise HTTPException(status_code=400, detail=f"Bucket '{config.get('bucket')}' 不存在")
+        elif 'SSL' in error_str or 'ssl' in error_str:
+            raise HTTPException(status_code=400, detail=f"SSL 连接失败，请检查网络配置: {error_str[:100]}")
         else:
-            raise HTTPException(status_code=500, detail=f"连接测试失败: {error_str}")
+            raise HTTPException(status_code=500, detail=f"连接测试失败: {error_str[:200]}")
 
 @router.get("/archive/stats")
 async def get_storage_stats(redis = Depends(get_redis), db = Depends(get_db)):
@@ -376,35 +432,42 @@ async def get_storage_stats(redis = Depends(get_redis), db = Depends(get_db)):
     except Exception as e:
         stats["local_db"]["error"] = str(e)
     
-    # 获取 R2 存储大小
+    # 获取云端存储大小
     config_str = await redis.get("config:archive")
     if config_str:
         config = json.loads(config_str)
-        if config.get("r2_account_id"):
+        # 迁移旧配置
+        if config.get("r2_account_id") and not config.get("account_id"):
+            config = _migrate_archive_config(config)
+        
+        # 检查是否配置了云存储
+        has_config = config.get("account_id") or config.get("region")
+        if has_config and config.get("bucket") and config.get("access_key"):
             try:
                 import boto3
                 from botocore.config import Config as BotoConfig
                 
-                def get_r2_stats():
-                    account_id = config['r2_account_id'].strip()
-                    endpoint = f"https://{account_id}.r2.cloudflarestorage.com"
+                def get_cloud_stats():
+                    endpoint, bucket, sig_version = _build_storage_endpoint(config)
+                    provider = config.get("provider", "cloudflare")
+                    
                     s3 = boto3.client(
                         's3',
                         endpoint_url=endpoint,
-                        aws_access_key_id=config['r2_access_key'],
-                        aws_secret_access_key=config['r2_secret_key'],
+                        aws_access_key_id=config['access_key'],
+                        aws_secret_access_key=config['secret_key'],
                         config=BotoConfig(
-                            signature_version='s3v4',
+                            signature_version=sig_version,
                             retries={'max_attempts': 3, 'mode': 'standard'}
                         ),
-                        region_name='auto'  # Required for Cloudflare R2
+                        region_name='auto' if provider == 'cloudflare' else config.get('region', 'auto')
                     )
                     
                     total_size = 0
                     file_count = 0
                     
                     paginator = s3.get_paginator('list_objects_v2')
-                    for page in paginator.paginate(Bucket=config['r2_bucket'], Prefix='archive/'):
+                    for page in paginator.paginate(Bucket=bucket, Prefix='archive/'):
                         for obj in page.get('Contents', []):
                             total_size += obj.get('Size', 0)
                             file_count += 1
@@ -412,7 +475,7 @@ async def get_storage_stats(redis = Depends(get_redis), db = Depends(get_db)):
                     return total_size, file_count
                 
                 loop = asyncio.get_event_loop()
-                total_size, file_count = await loop.run_in_executor(None, get_r2_stats)
+                total_size, file_count = await loop.run_in_executor(None, get_cloud_stats)
                 
                 stats["r2"]["size_bytes"] = total_size
                 stats["r2"]["size_human"] = format_size(total_size)
@@ -422,7 +485,7 @@ async def get_storage_stats(redis = Depends(get_redis), db = Depends(get_db)):
             except Exception as e:
                 stats["r2"]["error"] = str(e)
         else:
-            stats["r2"]["message"] = "R2 未配置"
+            stats["r2"]["message"] = "云存储未配置"
     else:
         stats["r2"]["message"] = "归档配置未设置"
     
@@ -430,7 +493,7 @@ async def get_storage_stats(redis = Depends(get_redis), db = Depends(get_db)):
 
 @router.get("/archive/files")
 async def list_archive_files(redis = Depends(get_redis)):
-    """列出 R2 中的所有归档文件"""
+    """列出云存储中的所有归档文件"""
     import asyncio
     
     config_str = await redis.get("config:archive")
@@ -438,32 +501,39 @@ async def list_archive_files(redis = Depends(get_redis)):
         return {"files": [], "message": "归档配置未设置"}
     
     config = json.loads(config_str)
-    if not config.get("r2_account_id") or not config.get("r2_bucket"):
-        return {"files": [], "message": "R2 未配置"}
+    
+    # 迁移旧配置
+    if config.get("r2_account_id") and not config.get("account_id"):
+        config = _migrate_archive_config(config)
+    
+    # 检查是否配置了云存储
+    has_config = config.get("account_id") or config.get("region")
+    if not has_config or not config.get("bucket"):
+        return {"files": [], "message": "云存储未配置"}
     
     try:
         import boto3
         from botocore.config import Config as BotoConfig
-        from datetime import datetime
         
         def get_files_list():
-            account_id = config['r2_account_id'].strip()
-            endpoint = f"https://{account_id}.r2.cloudflarestorage.com"
+            endpoint, bucket, sig_version = _build_storage_endpoint(config)
+            provider = config.get("provider", "cloudflare")
+            
             s3 = boto3.client(
                 's3',
                 endpoint_url=endpoint,
-                aws_access_key_id=config['r2_access_key'],
-                aws_secret_access_key=config['r2_secret_key'],
+                aws_access_key_id=config['access_key'],
+                aws_secret_access_key=config['secret_key'],
                 config=BotoConfig(
-                    signature_version='s3v4',
+                    signature_version=sig_version,
                     retries={'max_attempts': 3, 'mode': 'standard'}
                 ),
-                region_name='auto'  # Required for Cloudflare R2
+                region_name='auto' if provider == 'cloudflare' else config.get('region', 'auto')
             )
             
             files = []
             paginator = s3.get_paginator('list_objects_v2')
-            for page in paginator.paginate(Bucket=config['r2_bucket'], Prefix='archive/'):
+            for page in paginator.paginate(Bucket=bucket, Prefix='archive/'):
                 for obj in page.get('Contents', []):
                     key = obj.get('Key', '')
                     size = obj.get('Size', 0)
@@ -472,7 +542,7 @@ async def list_archive_files(redis = Depends(get_redis)):
                     # 生成预签名下载 URL (有效期 1 小时)
                     download_url = s3.generate_presigned_url(
                         'get_object',
-                        Params={'Bucket': config['r2_bucket'], 'Key': key},
+                        Params={'Bucket': bucket, 'Key': key},
                         ExpiresIn=3600
                     )
                     
@@ -508,6 +578,127 @@ async def list_archive_files(redis = Depends(get_redis)):
         return {"files": [], "message": "boto3 未安装"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/archive/backup")
+async def manual_backup(redis = Depends(get_redis), db = Depends(get_db)):
+    """手动触发备份今日数据到云存储"""
+    import asyncio
+    from datetime import datetime, date
+    
+    config_str = await redis.get("config:archive")
+    if not config_str:
+        raise HTTPException(status_code=400, detail="归档配置未设置")
+    
+    config = json.loads(config_str)
+    
+    # 迁移旧配置
+    if config.get("r2_endpoint") or (config.get("r2_account_id") and not config.get("account_id")):
+        config = _migrate_archive_config(config)
+        await redis.set("config:archive", json.dumps(config))
+    
+    # 检查是否配置了云存储
+    has_config = config.get("account_id") or config.get("region")
+    if not has_config or not config.get("bucket"):
+        raise HTTPException(status_code=400, detail="请先配置云存储")
+    
+    try:
+        import boto3
+        from botocore.config import Config as BotoConfig
+        import gzip
+        import csv
+        import io
+        
+        # 构建 endpoint URL
+        endpoint, bucket, sig_version = _build_storage_endpoint(config)
+        provider = config.get("provider", "cloudflare")
+        
+        # 获取今日数据
+        today = date.today()
+        
+        async with db.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT time, sn, v_raw, ppm, temp, humi, bat, rssi, seq
+                FROM sensor_data
+                WHERE time::date = $1
+                ORDER BY time
+            """, today)
+        
+        if not rows:
+            return {"status": "empty", "message": f"今日 ({today}) 暂无数据可备份"}
+        
+        # 生成 CSV
+        csv_buffer = io.StringIO()
+        writer = csv.writer(csv_buffer)
+        writer.writerow(["time", "sn", "v_raw", "ppm", "temp", "humi", "bat", "rssi", "seq"])
+        
+        for row in rows:
+            writer.writerow([
+                row['time'].isoformat(),
+                row['sn'],
+                row['v_raw'],
+                row['ppm'],
+                row['temp'],
+                row['humi'],
+                row['bat'],
+                row['rssi'],
+                row['seq']
+            ])
+        
+        # 压缩
+        csv_content = csv_buffer.getvalue().encode('utf-8')
+        gzipped = gzip.compress(csv_content)
+        
+        # 上传到云存储
+        file_name = f"sensor_data_{today.strftime('%Y%m%d')}_manual.csv.gz"
+        cloud_path = f"archive/{today.year}/{today.month:02d}/{file_name}"
+        
+        def upload_to_cloud():
+            s3 = boto3.client(
+                's3',
+                endpoint_url=endpoint,
+                aws_access_key_id=config['access_key'],
+                aws_secret_access_key=config['secret_key'],
+                config=BotoConfig(
+                    signature_version=sig_version,
+                    retries={'max_attempts': 3, 'mode': 'standard'}
+                ),
+                region_name='auto' if provider == 'cloudflare' else config.get('region', 'auto')
+            )
+            s3.put_object(
+                Bucket=bucket,
+                Key=cloud_path,
+                Body=gzipped,
+                ContentType='application/gzip'
+            )
+            return True
+        
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, upload_to_cloud)
+        
+        # 格式化文件大小
+        size = len(gzipped)
+        if size < 1024:
+            size_human = f"{size} B"
+        elif size < 1024 * 1024:
+            size_human = f"{size / 1024:.2f} KB"
+        else:
+            size_human = f"{size / (1024 * 1024):.2f} MB"
+        
+        provider_names = {"cloudflare": "R2", "tencent": "COS", "alibaba": "OSS"}
+        provider_name = provider_names.get(provider, "云存储")
+        
+        return {
+            "status": "success",
+            "message": f"备份到 {provider_name} 成功！{len(rows)} 条记录，{size_human}",
+            "row_count": len(rows),
+            "file_size": size,
+            "file_path": cloud_path
+        }
+        
+    except ImportError:
+        raise HTTPException(status_code=500, detail="boto3 未安装")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"备份失败: {str(e)}")
 
 # Test notification
 @router.post("/alarm/test")

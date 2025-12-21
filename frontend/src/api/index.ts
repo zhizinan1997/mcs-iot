@@ -78,6 +78,7 @@ export const configApi = {
     testArchive: () => api.post('/config/archive/test'),
     getArchiveStats: () => api.get('/config/archive/stats'),
     listArchiveFiles: () => api.get('/config/archive/files'),
+    backupArchive: () => api.post('/config/archive/backup', null, { timeout: 60000 }),
     // 站点品牌配置
     getSite: () => api.get('/config/site'),
     updateSite: (data: any) => api.put('/config/site', data),

@@ -28,12 +28,26 @@ class Archiver:
         self._s3_client = None
     
     async def load_config(self):
-        """加载归档配置"""
+        """加载归档配置（自动迁移旧版配置）"""
         try:
             import json
+            import re
             config_str = await self.redis.get("config:archive")
             if config_str:
                 self.config = json.loads(config_str)
+                
+                # 迁移旧版配置：从 r2_endpoint 提取 account_id
+                if self.config.get("r2_endpoint") and not self.config.get("r2_account_id"):
+                    endpoint = self.config.get("r2_endpoint", "")
+                    # 格式: https://{account_id}.r2.cloudflarestorage.com
+                    match = re.search(r'https?://([a-zA-Z0-9]+)\.r2\.cloudflarestorage\.com', endpoint)
+                    if match:
+                        self.config["r2_account_id"] = match.group(1)
+                        logger.info(f"Migrated r2_endpoint to r2_account_id: {self.config['r2_account_id']}")
+                    # 移除旧字段
+                    self.config.pop("r2_endpoint", None)
+                    # 保存迁移后的配置
+                    await self.redis.set("config:archive", json.dumps(self.config))
             else:
                 self.config = {
                     "enabled": False,
