@@ -39,7 +39,7 @@ class Archiver:
                     "enabled": False,
                     "local_retention_days": 3,
                     "r2_retention_days": 30,
-                    "r2_endpoint": "",
+                    "r2_account_id": "",
                     "r2_bucket": "",
                     "r2_access_key": "",
                     "r2_secret_key": ""
@@ -56,10 +56,17 @@ class Archiver:
         try:
             import boto3
             from botocore.config import Config as BotoConfig
+            # 根据 account_id 构建 endpoint URL
+            account_id = self.config.get('r2_account_id', '').strip()
+            if not account_id:
+                logger.warning("R2 account_id not configured")
+                return None
+            
+            endpoint = f"https://{account_id}.r2.cloudflarestorage.com"
             
             self._s3_client = boto3.client(
                 's3',
-                endpoint_url=self.config['r2_endpoint'],
+                endpoint_url=endpoint,
                 aws_access_key_id=self.config['r2_access_key'],
                 aws_secret_access_key=self.config['r2_secret_key'],
                 config=BotoConfig(
@@ -113,7 +120,7 @@ class Archiver:
             result["cleanup_result"] = {"status": "skipped", "message": "备份未成功，跳过清理"}
         
         # Step 3: 清理 R2 中过期的备份
-        if self.config.get("r2_endpoint"):
+        if self.config.get("r2_account_id"):
             r2_cleanup = await self.cleanup_r2_old_backups(r2_retention)
             result["r2_cleanup_result"] = r2_cleanup
         
@@ -182,7 +189,7 @@ class Archiver:
             file_name = f"sensor_data_{target_date.strftime('%Y%m%d')}.csv.gz"
             r2_path = f"archive/{target_date.year}/{target_date.month:02d}/{file_name}"
             
-            if self.config.get("r2_endpoint"):
+            if self.config.get("r2_account_id"):
                 upload_success = await self._upload_to_r2(gzipped, r2_path)
                 if not upload_success:
                     result["status"] = "upload_failed"
@@ -375,7 +382,7 @@ class Archiver:
         
         # 获取 R2 存储大小
         await self.load_config()
-        if self.config.get("r2_endpoint"):
+        if self.config.get("r2_account_id"):
             try:
                 s3 = self._get_s3_client()
                 if s3:

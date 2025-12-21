@@ -45,7 +45,7 @@ class ArchiveConfig(BaseModel):
     enabled: bool = False
     local_retention_days: int = 3  # 本地数据库保留天数
     r2_retention_days: int = 30    # R2 备份保留天数
-    r2_endpoint: str = ""
+    r2_account_id: str = ""        # Cloudflare 账户 ID
     r2_bucket: str = ""
     r2_access_key: str = ""
     r2_secret_key: str = ""
@@ -257,14 +257,15 @@ async def test_archive_connection(redis = Depends(get_redis)):
     
     config = json.loads(data)
     
-    if not config.get("r2_endpoint") or not config.get("r2_bucket"):
-        raise HTTPException(status_code=400, detail="请填写完整的 R2 配置")
+    if not config.get("r2_account_id") or not config.get("r2_bucket"):
+        raise HTTPException(status_code=400, detail="请填写 Cloudflare 账户 ID 和 Bucket 名称")
     
     if not config.get("r2_access_key") or not config.get("r2_secret_key"):
         raise HTTPException(status_code=400, detail="请填写 R2 访问密钥")
     
-    try:
-        endpoint = config['r2_endpoint'].rstrip('/')
+        # 根据 account_id 构建 endpoint URL
+        account_id = config['r2_account_id'].strip()
+        endpoint = f"https://{account_id}.r2.cloudflarestorage.com"
         bucket = config['r2_bucket']
         access_key = config['r2_access_key']
         secret_key = config['r2_secret_key']
@@ -379,15 +380,17 @@ async def get_storage_stats(redis = Depends(get_redis), db = Depends(get_db)):
     config_str = await redis.get("config:archive")
     if config_str:
         config = json.loads(config_str)
-        if config.get("r2_endpoint"):
+        if config.get("r2_account_id"):
             try:
                 import boto3
                 from botocore.config import Config as BotoConfig
                 
                 def get_r2_stats():
+                    account_id = config['r2_account_id'].strip()
+                    endpoint = f"https://{account_id}.r2.cloudflarestorage.com"
                     s3 = boto3.client(
                         's3',
-                        endpoint_url=config['r2_endpoint'],
+                        endpoint_url=endpoint,
                         aws_access_key_id=config['r2_access_key'],
                         aws_secret_access_key=config['r2_secret_key'],
                         config=BotoConfig(
@@ -435,7 +438,7 @@ async def list_archive_files(redis = Depends(get_redis)):
         return {"files": [], "message": "归档配置未设置"}
     
     config = json.loads(config_str)
-    if not config.get("r2_endpoint") or not config.get("r2_bucket"):
+    if not config.get("r2_account_id") or not config.get("r2_bucket"):
         return {"files": [], "message": "R2 未配置"}
     
     try:
@@ -444,9 +447,11 @@ async def list_archive_files(redis = Depends(get_redis)):
         from datetime import datetime
         
         def get_files_list():
+            account_id = config['r2_account_id'].strip()
+            endpoint = f"https://{account_id}.r2.cloudflarestorage.com"
             s3 = boto3.client(
                 's3',
-                endpoint_url=config['r2_endpoint'],
+                endpoint_url=endpoint,
                 aws_access_key_id=config['r2_access_key'],
                 aws_secret_access_key=config['r2_secret_key'],
                 config=BotoConfig(

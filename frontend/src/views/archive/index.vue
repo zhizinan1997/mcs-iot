@@ -69,8 +69,11 @@
                <el-form-item label="Bucket 名称">
                   <el-input v-model="archiveConfig.r2_bucket" placeholder="mcs-archive" />
                </el-form-item>
-               <el-form-item label="Endpoint URL">
-                  <el-input v-model="archiveConfig.r2_endpoint" placeholder="https://<account-id>.r2.cloudflarestorage.com" />
+               <el-form-item label="账户 ID">
+                  <el-input v-model="archiveConfig.r2_account_id" placeholder="Cloudflare 账户 ID">
+                    <template #prepend>https://</template>
+                    <template #append>.r2.cloudflarestorage.com</template>
+                  </el-input>
                </el-form-item>
                <el-form-item label="Access Key ID">
                   <el-input v-model="archiveConfig.r2_access_key" placeholder="R2 Access Key" />
@@ -198,7 +201,7 @@ const archiveConfig = reactive({
   enabled: false,
   local_retention_days: 3,
   r2_retention_days: 30,
-  r2_endpoint: "",
+  r2_account_id: "",
   r2_bucket: "",
   r2_access_key: "",
   r2_secret_key: "",
