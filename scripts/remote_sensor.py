@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """
 MCS-IoT 远程传感器模拟器
-连接到远程 MQTT 服务器，模拟单个传感器每秒发送数据
+连接到远程 MQTT 服务器，模拟多个传感器每秒发送数据
 
 使用方法:
-  python3 remote_sensor.py                    # 使用默认配置运行 (TLS)
+  python3 remote_sensor.py                    # 使用默认配置运行 10 个传感器 (TLS)
   python3 remote_sensor.py --no-tls           # 不使用 TLS (端口 1883)
-  python3 remote_sensor.py --sn DEMO001       # 指定传感器序列号
-  python3 remote_sensor.py --type CH4         # 指定传感器类型
+  python3 remote_sensor.py --count 5          # 模拟 5 个传感器
   python3 remote_sensor.py --interval 0.5     # 每0.5秒发送一次
 """
 import paho.mqtt.client as mqtt
@@ -17,6 +16,7 @@ import random
 import argparse
 import ssl
 import sys
+import threading
 
 # 禁用输出缓冲，确保 Windows 下实时显示
 sys.stdout.reconfigure(line_buffering=True)
@@ -40,10 +40,16 @@ SENSOR_CONFIGS = {
     "H2": {"name": "氢气", "unit": "ppm", "base": 30, "range": 40, "high_limit": 80},
     "CH4": {"name": "甲烷", "unit": "ppm", "base": 25, "range": 35, "high_limit": 80},
     "VOCs": {"name": "VOCs", "unit": "ppm", "base": 20, "range": 30, "high_limit": 80},
-    "TEMP": {"name": "温度", "unit": "°C", "base": 22, "range": 3, "high_limit": 28},
+    "TEMP": {"name": "温度", "unit": "C", "base": 22, "range": 3, "high_limit": 28},
     "HUMI": {"name": "湿度", "unit": "%", "base": 40, "range": 10, "high_limit": 60},
-    "PM25": {"name": "PM2.5", "unit": "μg/m³", "base": 35, "range": 25, "high_limit": 75},
+    "PM25": {"name": "PM2.5", "unit": "ug/m3", "base": 35, "range": 25, "high_limit": 75},
 }
+
+# 传感器类型列表，用于随机分配
+SENSOR_TYPES = list(SENSOR_CONFIGS.keys())
+
+# 线程锁，用于控制输出
+print_lock = threading.Lock()
 
 # ============================================================================
 # 传感器模拟器类
@@ -62,6 +68,7 @@ class RemoteSensor:
         self.mqtt_pass = mqtt_pass or MQTT_PASS
         self.use_tls = use_tls
         self.port = MQTT_PORT_TLS if use_tls else MQTT_PORT_TCP
+        self.running = True
         
     def generate_value(self):
         """生成传感器数值"""
@@ -114,24 +121,21 @@ class RemoteSensor:
         """MQTT 连接回调"""
         if reason_code == 0:
             self.connected = True
-            mode = "TLS" if self.use_tls else "TCP"
-            print(f"[OK] 连接成功!")
-            print(f"   服务器: {BROKER}:{self.port} ({mode})")
-            print(f"   传感器: {self.sn} ({self.config['name']})")
+            with print_lock:
+                print(f"[OK] {self.sn} 连接成功! ({self.config['name']})")
         else:
-            print(f"[ERROR] 连接失败，错误码: {reason_code}")
+            with print_lock:
+                print(f"[ERROR] {self.sn} 连接失败，错误码: {reason_code}")
     
     def on_disconnect(self, client, userdata, disconnect_flags, reason_code, properties):
         """MQTT 断开连接回调"""
         self.connected = False
-        if reason_code != 0:
-            print(f"[WARN] 连接断开，将自动重连... (rc={reason_code})")
+        if reason_code != 0 and self.running:
+            with print_lock:
+                print(f"[WARN] {self.sn} 连接断开，将自动重连... (rc={reason_code})")
     
     def connect(self):
         """连接到 MQTT 服务器"""
-        mode = "TLS" if self.use_tls else "TCP"
-        print(f"\n[INFO] 正在连接 {BROKER}:{self.port} ({mode})...")
-        
         self.client = mqtt.Client(client_id=self.sn, callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
         self.client.username_pw_set(self.mqtt_user, self.mqtt_pass)
         
@@ -156,12 +160,14 @@ class RemoteSensor:
                 timeout -= 0.5
             
             if not self.connected:
-                print("[ERROR] 连接超时")
+                with print_lock:
+                    print(f"[ERROR] {self.sn} 连接超时")
                 return False
             
             return True
         except Exception as e:
-            print(f"[ERROR] 连接错误: {e}")
+            with print_lock:
+                print(f"[ERROR] {self.sn} 连接错误: {e}")
             return False
     
     def run(self, interval):
@@ -170,44 +176,80 @@ class RemoteSensor:
             return
         
         topic = f"{TOPIC_PREFIX}/{self.sn}/up"
-        print(f"\n[INFO] 开始发送数据...")
-        print(f"   Topic: {topic}")
-        print(f"   间隔: {interval} 秒")
-        print(f"   按 Ctrl+C 停止\n")
-        print("-" * 60)
         
-        try:
-            while True:
-                if not self.connected:
-                    print("[WARN] 等待重连...")
-                    time.sleep(1)
-                    continue
-                
-                data = self.generate_payload()
-                payload = json.dumps(data)
-                
-                result = self.client.publish(topic, payload)
-                if result.rc == 0:
-                    # 格式化输出
-                    value = data["v_raw"] / 10
-                    print(f"[{time.strftime('%H:%M:%S')}] "
-                          f"seq={data['seq']:05d} | "
-                          f"{self.config['name']}={value:.1f}{self.config['unit']} | "
-                          f"温度={data['temp']}°C | "
-                          f"湿度={data['humi']}% | "
-                          f"电池={data['bat']}% | "
-                          f"信号={data['rssi']}dBm")
-                else:
-                    print(f"[WARN] 发送失败 (rc={result.rc})")
-                
-                time.sleep(interval)
-                
-        except KeyboardInterrupt:
-            print("\n\n[INFO] 停止中...")
-        finally:
+        # 添加随机延迟，避免所有传感器同时发送
+        time.sleep(random.uniform(0, interval))
+        
+        while self.running:
+            if not self.connected:
+                time.sleep(1)
+                continue
+            
+            data = self.generate_payload()
+            payload = json.dumps(data)
+            
+            result = self.client.publish(topic, payload)
+            if result.rc == 0:
+                # 格式化输出
+                value = data["v_raw"] / 10
+                with print_lock:
+                    print(f"[{time.strftime('%H:%M:%S')}] {self.sn:12} | "
+                          f"{self.config['name']:6}={value:6.1f}{self.config['unit']:6} | "
+                          f"T={data['temp']:4.1f}C | "
+                          f"H={data['humi']:4.1f}% | "
+                          f"B={data['bat']:3d}% | "
+                          f"RSSI={data['rssi']}dBm")
+            
+            time.sleep(interval)
+    
+    def stop(self):
+        """停止传感器"""
+        self.running = False
+        if self.client:
             self.client.loop_stop()
             self.client.disconnect()
-            print(f"[OK] 已断开连接，共发送 {self.seq} 条消息")
+
+
+# ============================================================================
+# 多传感器管理器
+# ============================================================================
+
+class SensorManager:
+    def __init__(self, count, mqtt_user, mqtt_pass, use_tls, interval):
+        self.sensors = []
+        self.threads = []
+        self.count = count
+        self.mqtt_user = mqtt_user
+        self.mqtt_pass = mqtt_pass
+        self.use_tls = use_tls
+        self.interval = interval
+    
+    def create_sensors(self):
+        """创建多个传感器实例"""
+        for i in range(self.count):
+            sn = f"SENSOR{i+1:03d}"
+            sensor_type = SENSOR_TYPES[i % len(SENSOR_TYPES)]
+            sensor = RemoteSensor(sn, sensor_type, self.mqtt_user, self.mqtt_pass, self.use_tls)
+            self.sensors.append(sensor)
+    
+    def start(self):
+        """启动所有传感器"""
+        self.create_sensors()
+        
+        for sensor in self.sensors:
+            thread = threading.Thread(target=sensor.run, args=(self.interval,), daemon=True)
+            thread.start()
+            self.threads.append(thread)
+            # 错开连接时间，避免同时连接
+            time.sleep(0.2)
+    
+    def stop(self):
+        """停止所有传感器"""
+        for sensor in self.sensors:
+            sensor.stop()
+        
+        for thread in self.threads:
+            thread.join(timeout=2)
 
 
 # ============================================================================
@@ -216,30 +258,26 @@ class RemoteSensor:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="MCS-IoT 远程传感器模拟器",
+        description="MCS-IoT 远程传感器模拟器 (多传感器版)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-传感器类型:
+传感器类型 (自动轮流分配):
   H2     氢气传感器
-  CH4    甲烷传感器 (默认)
+  CH4    甲烷传感器
   VOCs   挥发性有机物传感器
   TEMP   温度传感器
   HUMI   湿度传感器
   PM25   PM2.5 传感器
 
 示例:
-  python remote_sensor.py                     # 默认配置 (TLS)
+  python remote_sensor.py                     # 默认运行 10 个传感器 (TLS)
+  python remote_sensor.py --count 5           # 运行 5 个传感器
   python remote_sensor.py --no-tls            # 不使用 TLS
-  python remote_sensor.py --sn DEMO001        # 自定义序列号
-  python remote_sensor.py --type TEMP         # 温度传感器
   python remote_sensor.py --interval 0.5      # 每0.5秒发送
 """
     )
-    parser.add_argument("--sn", type=str, default="REMOTE001", 
-                        help="传感器序列号 (默认: REMOTE001)")
-    parser.add_argument("--type", type=str, default="CH4", 
-                        choices=list(SENSOR_CONFIGS.keys()),
-                        help="传感器类型 (默认: CH4)")
+    parser.add_argument("--count", type=int, default=10, 
+                        help="模拟传感器数量 (默认: 10)")
     parser.add_argument("--interval", type=float, default=1.0, 
                         help="数据发送间隔/秒 (默认: 1.0)")
     parser.add_argument("--user", type=str, default=MQTT_USER,
@@ -254,17 +292,41 @@ def main():
     port = MQTT_PORT_TLS if use_tls else MQTT_PORT_TCP
     mode = "TLS" if use_tls else "TCP"
     
-    print("=" * 60)
-    print("  MCS-IoT 远程传感器模拟器")
-    print("=" * 60)
+    print("=" * 70)
+    print("  MCS-IoT 远程传感器模拟器 (多传感器版)")
+    print("=" * 70)
     print(f"  服务器: {BROKER}:{port} ({mode})")
-    print(f"  传感器: {args.sn}")
-    print(f"  类型: {args.type} ({SENSOR_CONFIGS[args.type]['name']})")
-    print(f"  间隔: {args.interval} 秒")
-    print("=" * 60)
+    print(f"  传感器数量: {args.count}")
+    print(f"  发送间隔: {args.interval} 秒")
+    print(f"  传感器类型: 自动轮流分配 (H2, CH4, VOCs, TEMP, HUMI, PM25)")
+    print("=" * 70)
+    print()
+    print("[INFO] 正在启动传感器...")
+    print()
     
-    sensor = RemoteSensor(args.sn, args.type, args.user, args.password, use_tls)
-    sensor.run(args.interval)
+    manager = SensorManager(args.count, args.user, args.password, use_tls, args.interval)
+    
+    try:
+        manager.start()
+        
+        # 等待所有传感器连接完成
+        time.sleep(args.count * 0.3 + 2)
+        
+        print()
+        print("-" * 70)
+        print(f"[INFO] {args.count} 个传感器已启动，正在发送数据...")
+        print("[INFO] 按 Ctrl+C 停止")
+        print("-" * 70)
+        print()
+        
+        # 保持主线程运行
+        while True:
+            time.sleep(1)
+            
+    except KeyboardInterrupt:
+        print("\n\n[INFO] 停止中...")
+        manager.stop()
+        print(f"[OK] 已停止所有 {args.count} 个传感器")
 
 
 if __name__ == "__main__":
