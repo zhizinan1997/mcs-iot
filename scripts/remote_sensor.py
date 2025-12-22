@@ -16,12 +16,16 @@ import time
 import random
 import argparse
 import ssl
+import sys
+
+# 禁用输出缓冲，确保 Windows 下实时显示
+sys.stdout.reconfigure(line_buffering=True)
 
 # ============================================================================
 # 远程服务器配置
 # ============================================================================
 
-BROKER = "mqtt.yourdomain.com"  # 替换为你的 MQTT 服务器域名
+BROKER = "mqtt.zhizinan.top"  # 替换为你的 MQTT 服务器域名
 MQTT_PORT_TLS = 8883  # TLS 加密端口
 MQTT_PORT_TCP = 1883  # 非加密端口
 MQTT_USER = "admin"
@@ -111,22 +115,22 @@ class RemoteSensor:
         if reason_code == 0:
             self.connected = True
             mode = "TLS" if self.use_tls else "TCP"
-            print(f"✅ 连接成功!")
+            print(f"[OK] 连接成功!")
             print(f"   服务器: {BROKER}:{self.port} ({mode})")
             print(f"   传感器: {self.sn} ({self.config['name']})")
         else:
-            print(f"❌ 连接失败，错误码: {reason_code}")
+            print(f"[ERROR] 连接失败，错误码: {reason_code}")
     
     def on_disconnect(self, client, userdata, disconnect_flags, reason_code, properties):
         """MQTT 断开连接回调"""
         self.connected = False
         if reason_code != 0:
-            print(f"⚠️ 连接断开，将自动重连... (rc={reason_code})")
+            print(f"[WARN] 连接断开，将自动重连... (rc={reason_code})")
     
     def connect(self):
         """连接到 MQTT 服务器"""
         mode = "TLS" if self.use_tls else "TCP"
-        print(f"\n🔌 正在连接 {BROKER}:{self.port} ({mode})...")
+        print(f"\n[INFO] 正在连接 {BROKER}:{self.port} ({mode})...")
         
         self.client = mqtt.Client(client_id=self.sn, callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
         self.client.username_pw_set(self.mqtt_user, self.mqtt_pass)
@@ -152,12 +156,12 @@ class RemoteSensor:
                 timeout -= 0.5
             
             if not self.connected:
-                print("❌ 连接超时")
+                print("[ERROR] 连接超时")
                 return False
             
             return True
         except Exception as e:
-            print(f"❌ 连接错误: {e}")
+            print(f"[ERROR] 连接错误: {e}")
             return False
     
     def run(self, interval):
@@ -166,7 +170,7 @@ class RemoteSensor:
             return
         
         topic = f"{TOPIC_PREFIX}/{self.sn}/up"
-        print(f"\n📡 开始发送数据...")
+        print(f"\n[INFO] 开始发送数据...")
         print(f"   Topic: {topic}")
         print(f"   间隔: {interval} 秒")
         print(f"   按 Ctrl+C 停止\n")
@@ -175,7 +179,7 @@ class RemoteSensor:
         try:
             while True:
                 if not self.connected:
-                    print("⚠️ 等待重连...")
+                    print("[WARN] 等待重连...")
                     time.sleep(1)
                     continue
                 
@@ -194,16 +198,16 @@ class RemoteSensor:
                           f"电池={data['bat']}% | "
                           f"信号={data['rssi']}dBm")
                 else:
-                    print(f"⚠️ 发送失败 (rc={result.rc})")
+                    print(f"[WARN] 发送失败 (rc={result.rc})")
                 
                 time.sleep(interval)
                 
         except KeyboardInterrupt:
-            print("\n\n🛑 停止中...")
+            print("\n\n[INFO] 停止中...")
         finally:
             self.client.loop_stop()
             self.client.disconnect()
-            print(f"✅ 已断开连接，共发送 {self.seq} 条消息")
+            print(f"[OK] 已断开连接，共发送 {self.seq} 条消息")
 
 
 # ============================================================================
