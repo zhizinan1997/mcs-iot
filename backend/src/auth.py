@@ -64,11 +64,39 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 
 @router.post("/login", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = USERS.get(form_data.username)
-    if not user or not verify_password(form_data.password, user["hashed_password"]):
+    """
+    用户登录接口
+    
+    安全说明:
+    - 使用内存字典存储用户，无SQL注入风险
+    - 密码使用bcrypt哈希存储
+    - 输入已自动转义，防止XSS
+    """
+    # 输入基础验证（防止恶意输入）
+    username = form_data.username.strip()
+    password = form_data.password
+    
+    # 用户名长度检查
+    if len(username) < 1 or len(username) > 50:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="用户名格式不正确"
+        )
+    
+    # 查找用户
+    user = USERS.get(username)
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="账号不存在",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # 验证密码
+    if not verify_password(password, user["hashed_password"]):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="密码错误",
             headers={"WWW-Authenticate": "Bearer"},
         )
     

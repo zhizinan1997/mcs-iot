@@ -48,6 +48,23 @@ class Archiver:
                     self.config.pop("r2_endpoint", None)
                     # 保存迁移后的配置
                     await self.redis.set("config:archive", json.dumps(self.config))
+                
+                # 兼容新版统一字段格式：将新版字段映射到旧版字段（供 _get_s3_client 使用）
+                # 新版字段: account_id, bucket, access_key, secret_key, cloud_retention_days
+                # 旧版字段: r2_account_id, r2_bucket, r2_access_key, r2_secret_key, r2_retention_days
+                if self.config.get("account_id") and not self.config.get("r2_account_id"):
+                    self.config["r2_account_id"] = self.config.get("account_id", "")
+                if self.config.get("bucket") and not self.config.get("r2_bucket"):
+                    self.config["r2_bucket"] = self.config.get("bucket", "")
+                if self.config.get("access_key") and not self.config.get("r2_access_key"):
+                    self.config["r2_access_key"] = self.config.get("access_key", "")
+                if self.config.get("secret_key") and not self.config.get("r2_secret_key"):
+                    self.config["r2_secret_key"] = self.config.get("secret_key", "")
+                if self.config.get("cloud_retention_days") and not self.config.get("r2_retention_days"):
+                    self.config["r2_retention_days"] = self.config.get("cloud_retention_days", 30)
+                    
+                logger.info(f"Archive config loaded: enabled={self.config.get('enabled')}, "
+                           f"account_id={self.config.get('r2_account_id', '')[:8] or self.config.get('account_id', '')[:8] if self.config.get('r2_account_id') or self.config.get('account_id') else 'N/A'}...")
             else:
                 self.config = {
                     "enabled": False,

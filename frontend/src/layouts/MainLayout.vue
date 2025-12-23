@@ -148,12 +148,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
 import { configApi } from '../api'
 import { Moon, Sunny, WarningFilled } from '@element-plus/icons-vue'
+import { onLicenseUpdate } from '../utils/licenseEvent'
 
 // Import icons explicitly? No, used globally in main.ts, but let's test safely.
 // Assuming global registration in main.ts is correct.
@@ -176,9 +177,24 @@ const licenseStatus = ref<any>({
   tampered: false
 })
 
+// 用于取消订阅
+let unsubscribeLicenseEvent: (() => void) | null = null
+
 onMounted(() => {
   loadSiteConfig()
   loadLicenseStatus()
+  
+  // 监听授权验证成功事件，刷新右上角状态
+  unsubscribeLicenseEvent = onLicenseUpdate(() => {
+    loadLicenseStatus()
+  })
+})
+
+onUnmounted(() => {
+  // 清理事件订阅
+  if (unsubscribeLicenseEvent) {
+    unsubscribeLicenseEvent()
+  }
 })
 
 async function loadLicenseStatus() {
@@ -188,7 +204,8 @@ async function loadLicenseStatus() {
       licenseStatus.value = {
         status: res.data.status || 'unlicensed',
         expires: res.data.expires_at ? res.data.expires_at.split('T')[0] : '',
-        grace_remaining_days: res.data.grace_remaining_days || 0
+        grace_remaining_days: res.data.grace_remaining_days || 0,
+        tampered: res.data.tampered || false
       }
     }
   } catch (error) {

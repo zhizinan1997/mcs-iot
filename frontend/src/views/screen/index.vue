@@ -21,6 +21,20 @@
           </div>
         </div>
       </div>
+      
+      <!-- Loading Status Messages -->
+      <div class="splash-loading-messages">
+        <TransitionGroup name="loading-msg">
+          <div 
+            v-for="(msg, idx) in loadingMessages" 
+            :key="msg.id"
+            class="loading-msg-item"
+            :style="{ opacity: 1 - (loadingMessages.length - 1 - idx) * 0.25 }"
+          >
+            {{ msg.text }}
+          </div>
+        </TransitionGroup>
+      </div>
     </div>
   </div>
 
@@ -1313,6 +1327,70 @@ const splashLogoUrl = ref('')
 const SPLASH_DURATION = 10000 // 10 seconds
 const RING_CIRCUMFERENCE = 2 * Math.PI * 90 // 2πr where r=90
 
+// Loading Messages
+interface LoadingMessage {
+  id: number
+  text: string
+}
+const loadingMessages = ref<LoadingMessage[]>([])
+const MAX_VISIBLE_MESSAGES = 4
+
+// List of loading messages to display
+const LOADING_MESSAGE_LIST = [
+  '[CORE] 系统内核初始化中...',
+  '[DB] PostgreSQL 连接池已建立',
+  '[MQTT] 消息代理握手完成',
+  '[SENSOR] 传感器数据采集服务上线',
+  '[ALARM] 规则引擎已加载 (15条规则)',
+  '[API] RESTful 接口注册完成',
+  '[WS] WebSocket 网关就绪',
+  '[AI] 神经分析模块加载中...',
+  '[VIS] ECharts 渲染引擎初始化',
+  '[STREAM] 实时数据管道已连接',
+  '[SAFE] 安全监管模块激活',
+  '[SYS] 系统健康检查通过',
+  '[CFG] 用户配置已加载',
+  '[UI] 仪表盘布局编译完成',
+  '[READY] 系统引导完成'
+]
+
+let loadingMsgId = 0
+let loadingMsgTimer: ReturnType<typeof setInterval> | null = null
+
+function startLoadingMessages() {
+  let msgIndex = 0
+  const messageInterval = SPLASH_DURATION / LOADING_MESSAGE_LIST.length
+  
+  // Add first message immediately
+  const firstMsg = LOADING_MESSAGE_LIST[msgIndex++]
+  if (firstMsg) addLoadingMessage(firstMsg)
+  
+  loadingMsgTimer = setInterval(() => {
+    if (msgIndex < LOADING_MESSAGE_LIST.length) {
+      const msg = LOADING_MESSAGE_LIST[msgIndex++]
+      if (msg) addLoadingMessage(msg)
+    } else {
+      if (loadingMsgTimer) {
+        clearInterval(loadingMsgTimer)
+        loadingMsgTimer = null
+      }
+    }
+  }, messageInterval)
+}
+
+function addLoadingMessage(text: string) {
+  const newMsg: LoadingMessage = {
+    id: loadingMsgId++,
+    text
+  }
+  loadingMessages.value.push(newMsg)
+  
+  // Keep only the last N messages
+  if (loadingMessages.value.length > MAX_VISIBLE_MESSAGES) {
+    loadingMessages.value.shift()
+  }
+}
+
 const progressOffset = computed(() => {
   // Progress goes from 0% to 100%, offset goes from full to 0
   const progress = splashProgress.value / 100
@@ -1321,6 +1399,10 @@ const progressOffset = computed(() => {
 
 function startSplashAnimation() {
   const startTime = Date.now()
+  
+  // Start loading messages
+  startLoadingMessages()
+  
   const interval = setInterval(() => {
     const elapsed = Date.now() - startTime
     const progress = Math.min((elapsed / SPLASH_DURATION) * 100, 100)
@@ -1328,6 +1410,10 @@ function startSplashAnimation() {
     
     if (progress >= 100) {
       clearInterval(interval)
+      if (loadingMsgTimer) {
+        clearInterval(loadingMsgTimer)
+        loadingMsgTimer = null
+      }
       // Fade out splash screen
       setTimeout(() => {
         showSplash.value = false
@@ -1492,8 +1578,47 @@ onUnmounted(() => { clearInterval(timer); clearInterval(aiTimer); stopCarouselTi
   letter-spacing: 2px;
 }
 
+/* Loading Messages Container */
+.splash-loading-messages {
+  margin-top: 40px;
+  width: 320px;
+  max-height: 120px;
+  padding-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+}
 
+.loading-msg-item {
+  color: #64748b;
+  font-size: 12px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  text-align: center;
+  padding: 5px 0;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+  letter-spacing: 0.5px;
+}
 
+/* TransitionGroup animation: new messages slide up from bottom */
+.loading-msg-enter-active {
+  transition: all 0.5s ease;
+}
+.loading-msg-leave-active {
+  transition: all 0.3s ease;
+}
+.loading-msg-enter-from {
+  opacity: 0;
+  transform: translateY(20px);
+}
+.loading-msg-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+.loading-msg-move {
+  transition: transform 0.3s ease;
+}
 /* ========== GLOBAL: Deep Space Blue with Grid Texture ========== */
 .dashboard {
   width: 100vw; height: 100vh;

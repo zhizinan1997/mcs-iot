@@ -115,6 +115,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { CopyDocument, Refresh, WarningFilled, Check, Lock, InfoFilled, Monitor } from '@element-plus/icons-vue'
 import { configApi } from '../../api'
+import { emitLicenseUpdate } from '../../utils/licenseEvent'
 
 interface LicenseInfo {
   device_id: string
@@ -187,6 +188,12 @@ async function verifyLicense() {
              ElMessage.warning(res.data.error)
         }
     }
+    
+    // 验证完成后，重新获取最新状态（包含 last_check 等信息）
+    await fetchLicenseInfo()
+    
+    // 通知 MainLayout 刷新右上角授权状态
+    emitLicenseUpdate()
   } catch (error: any) {
     const detail = error.response?.data?.detail || '无法连接到授权服务器'
     ElMessage.warning(detail)
@@ -200,7 +207,7 @@ async function verifyLicense() {
 onMounted(async () => {
   // First fetch local info to show Device ID immediately
   await fetchLicenseInfo()
-  // Then try to verify
+  // Then try to verify (which will also refresh and emit event)
   await verifyLicense()
 })
 
@@ -221,11 +228,6 @@ function formatTime(isoString?: string) {
     return isoString
   }
 }
-
-// Automatically verify license on every page load/refresh
-onMounted(() => {
-  verifyLicense()
-})
 </script>
 
 <style scoped>

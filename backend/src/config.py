@@ -579,6 +579,78 @@ async def list_archive_files(redis = Depends(get_redis)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class DeleteFileRequest(BaseModel):
+    key: str  # R2 文件路径，如 "archive/2025/12/sensor_data_20251220.csv.gz"
+
+@router.post("/archive/delete")
+async def delete_archive_file(request: DeleteFileRequest, redis = Depends(get_redis)):
+    """删除 R2 中的单个归档文件"""
+    import asyncio
+    
+    config_str = await redis.get("config:archive")
+    if not config_str:
+        raise HTTPException(status_code=400, detail="归档配置未设置")
+    
+    config = json.loads(config_str)
+    
+    # 迁移旧配置
+    if config.get("r2_account_id") and not config.get("account_id"):
+        config = _migrate_archive_config(config)
+    
+    # 检查是否配置了云存储
+    has_config = config.get("account_id") or config.get("region")
+    if not has_config or not config.get("bucket"):
+        raise HTTPException(status_code=400, detail="云存储未配置")
+    
+    file_key = request.key
+    if not file_key or not file_key.startswith("archive/"):
+        raise HTTPException(status_code=400, detail="无效的文件路径")
+    
+    try:
+        import boto3
+        from botocore.config import Config as BotoConfig
+        
+        def delete_file():
+            endpoint, bucket, sig_version = _build_storage_endpoint(config)
+            provider = config.get("provider", "cloudflare")
+            
+            s3 = boto3.client(
+                's3',
+                endpoint_url=endpoint,
+                aws_access_key_id=config['access_key'],
+                aws_secret_access_key=config['secret_key'],
+                config=BotoConfig(
+                    signature_version=sig_version,
+                    retries={'max_attempts': 3, 'mode': 'standard'}
+                ),
+                region_name='auto' if provider == 'cloudflare' else config.get('region', 'auto')
+            )
+            
+            # 先检查文件是否存在
+            try:
+                s3.head_object(Bucket=bucket, Key=file_key)
+            except:
+                raise Exception(f"文件不存在: {file_key}")
+            
+            # 删除文件
+            s3.delete_object(Bucket=bucket, Key=file_key)
+            return True
+        
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, delete_file)
+        
+        file_name = file_key.split('/')[-1]
+        return {
+            "status": "success",
+            "message": f"已删除文件: {file_name}",
+            "deleted_key": file_key
+        }
+        
+    except ImportError:
+        raise HTTPException(status_code=500, detail="boto3 未安装")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"删除失败: {str(e)}")
+
 @router.post("/archive/backup")
 async def manual_backup(redis = Depends(get_redis), db = Depends(get_db)):
     """手动触发备份今日数据到云存储"""
@@ -699,6 +771,57 @@ async def manual_backup(redis = Depends(get_redis), db = Depends(get_db)):
         raise HTTPException(status_code=500, detail="boto3 未安装")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"备份失败: {str(e)}")
+
+class CleanupRequest(BaseModel):
+    days: int  # 保留最近多少天的数据
+
+@router.post("/archive/cleanup")
+async def manual_cleanup(request: CleanupRequest, db = Depends(get_db)):
+    """手动清理本地数据库中超过指定天数的数据"""
+    from datetime import datetime, timedelta
+    
+    days = request.days
+    if days < 1:
+        raise HTTPException(status_code=400, detail="保留天数必须大于 0")
+    
+    # 允许的清理选项：3天、7天、30天
+    allowed_days = [1, 3, 7, 30]
+    if days not in allowed_days:
+        raise HTTPException(status_code=400, detail=f"保留天数必须是以下之一: {allowed_days}")
+    
+    try:
+        cutoff_date = (datetime.now() - timedelta(days=days)).date()
+        
+        async with db.acquire() as conn:
+            # 先统计要删除的行数
+            count = await conn.fetchval("""
+                SELECT COUNT(*) FROM sensor_data
+                WHERE time::date < $1
+            """, cutoff_date)
+            
+            if count == 0:
+                return {
+                    "status": "empty",
+                    "message": f"没有 {days} 天前的数据需要清理",
+                    "deleted_rows": 0,
+                    "cutoff_date": str(cutoff_date)
+                }
+            
+            # 删除旧数据
+            await conn.execute("""
+                DELETE FROM sensor_data
+                WHERE time::date < $1
+            """, cutoff_date)
+            
+            return {
+                "status": "success",
+                "message": f"成功清理 {count} 条 {days} 天前的数据",
+                "deleted_rows": count,
+                "cutoff_date": str(cutoff_date)
+            }
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"清理失败: {str(e)}")
 
 # Test notification
 @router.post("/alarm/test")

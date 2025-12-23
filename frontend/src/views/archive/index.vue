@@ -154,6 +154,43 @@
             </div>
           </div>
 
+          <!-- Manual Cleanup Actions -->
+          <div class="cleanup-section glass-inset">
+            <div class="cleanup-header">
+              <h4>手动清理本地数据</h4>
+              <p class="hint">清理指定时间之前的传感器数据，释放本地存储空间</p>
+            </div>
+            <div class="cleanup-actions">
+              <el-button 
+                type="warning" 
+                size="small" 
+                @click="confirmCleanup(3)" 
+                :loading="cleaningUp === 3"
+                round
+              >
+                <el-icon><Delete /></el-icon> 清理 3 天前数据
+              </el-button>
+              <el-button 
+                type="warning" 
+                size="small" 
+                @click="confirmCleanup(7)" 
+                :loading="cleaningUp === 7"
+                round
+              >
+                <el-icon><Delete /></el-icon> 清理 7 天前数据
+              </el-button>
+              <el-button 
+                type="danger" 
+                size="small" 
+                @click="confirmCleanup(30)" 
+                :loading="cleaningUp === 30"
+                round
+              >
+                <el-icon><Delete /></el-icon> 清理 30 天前数据
+              </el-button>
+            </div>
+          </div>
+
           <!-- File List -->
           <div class="files-list glass-inset">
             <div class="list-header">
@@ -186,9 +223,10 @@
               <el-table-column prop="last_modified" label="归档时间" width="180">
                 <template #default="{ row }">{{ formatTime(row.last_modified) }}</template>
               </el-table-column>
-              <el-table-column label="操作" width="100" fixed="right" align="right">
+              <el-table-column label="操作" width="140" fixed="right" align="right">
                 <template #default="{ row }">
                   <el-button link type="primary" @click="downloadFile(row)">下载</el-button>
+                  <el-button link type="danger" @click="confirmDeleteFile(row)" :loading="deletingFile === row.key">删除</el-button>
                 </template>
               </el-table-column>
               <template #empty>
@@ -231,8 +269,8 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from "vue";
-import { ElMessage } from "element-plus";
-import { Box, DataLine, UploadFilled, Document, Refresh, InfoFilled, Upload } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from "element-plus";
+import { Box, DataLine, UploadFilled, Document, Refresh, InfoFilled, Upload, Delete } from '@element-plus/icons-vue'
 import { configApi } from "../../api";
 
 const saving = ref(false);
@@ -240,6 +278,8 @@ const testingArchive = ref(false);
 const loadingStats = ref(false);
 const loadingFiles = ref(false);
 const backingUp = ref(false);
+const cleaningUp = ref<number | null>(null);
+const deletingFile = ref<string | null>(null);
 const storageStats = ref<any>(null);
 const archiveFiles = ref<any[]>([]);
 
@@ -362,6 +402,76 @@ function downloadFile(file: any) {
     window.open(file.download_url, '_blank');
   } else {
     ElMessage.error("下载链接不可用");
+  }
+}
+
+async function confirmDeleteFile(file: any) {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除文件 "${file.name}" 吗？\n\n此操作不可恢复！`,
+      '确认删除',
+      {
+        confirmButtonText: '确认删除',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    await deleteArchiveFile(file.key)
+  } catch {
+    // User cancelled
+  }
+}
+
+async function deleteArchiveFile(key: string) {
+  deletingFile.value = key;
+  try {
+    const res = await configApi.deleteArchiveFile(key);
+    ElMessage.success(res.data.message || "文件已删除");
+    // 刷新文件列表和统计
+    fetchArchiveFiles();
+    fetchStorageStats();
+  } catch (error: any) {
+    const detail = error.response?.data?.detail || "删除失败";
+    ElMessage.error(detail);
+  } finally {
+    deletingFile.value = null;
+  }
+}
+
+async function confirmCleanup(days: number) {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除 ${days} 天前的所有传感器数据吗？\n\n此操作不可恢复，请确保已备份重要数据！`,
+      '确认清理',
+      {
+        confirmButtonText: '确认删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        dangerouslyUseHTMLString: true
+      }
+    )
+    await cleanupData(days)
+  } catch {
+    // User cancelled
+  }
+}
+
+async function cleanupData(days: number) {
+  cleaningUp.value = days;
+  try {
+    const res = await configApi.cleanupData(days);
+    if (res.data.status === 'empty') {
+      ElMessage.info(res.data.message || "没有需要清理的数据");
+    } else {
+      ElMessage.success(res.data.message || `成功清理 ${res.data.deleted_rows} 条数据`);
+      // 刷新统计
+      fetchStorageStats();
+    }
+  } catch (error: any) {
+    const detail = error.response?.data?.detail || "清理失败";
+    ElMessage.error(detail);
+  } finally {
+    cleaningUp.value = null;
   }
 }
 
@@ -600,6 +710,34 @@ onMounted(() => {
 }
 :deep(.el-table tr) {
   background-color: transparent;
+}
+
+/* Cleanup Section */
+.cleanup-section {
+  margin-bottom: 24px;
+}
+
+.cleanup-header {
+  margin-bottom: 16px;
+}
+
+.cleanup-header h4 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  color: #1d1d1f;
+  font-weight: 600;
+}
+
+.cleanup-header .hint {
+  margin: 0;
+  font-size: 12px;
+  color: #86868b;
+}
+
+.cleanup-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 /* Help */

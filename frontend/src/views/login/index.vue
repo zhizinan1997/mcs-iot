@@ -191,7 +191,9 @@ async function handleLogin() {
     ElMessage.success('登录成功')
     router.push('/')
   } catch (error: any) {
-    ElMessage.error(error.response?.data?.detail || '登录失败')
+    // 显示后端返回的具体错误信息（如"账号不存在"、"密码错误"）
+    const detail = error.response?.data?.detail || '登录失败，请检查网络连接'
+    ElMessage.error(detail)
   } finally {
     loading.value = false
   }
