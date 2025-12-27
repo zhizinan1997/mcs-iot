@@ -136,3 +136,16 @@ export const instrumentsApi = {
         api.patch(`/instruments/${id}/position`, { pos_x, pos_y }),
     history: (id: number, hours = 1) => api.get(`/instruments/${id}/history`, { params: { hours } })
 }
+
+// Users API (子账号管理)
+export const usersApi = {
+    list: () => api.get('/users'),
+    get: (id: number) => api.get(`/users/${id}`),
+    create: (data: any) => api.post('/users', data),
+    update: (id: number, data: any) => api.put(`/users/${id}`, data),
+    delete: (id: number) => api.delete(`/users/${id}`),
+    changePassword: (id: number, new_password: string) => 
+        api.put(`/users/${id}/password`, { new_password }),
+    getPermissions: () => api.get('/users/permissions')
+}
+

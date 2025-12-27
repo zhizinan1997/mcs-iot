@@ -207,7 +207,7 @@ perform_update() {
     cd "$INSTALL_DIR"
     
     # 步骤1: 备份数据库
-    log_info "[1/6] 备份数据库..."
+    log_info "[1/8] 备份数据库..."
     BACKUP_FILE="backup_$(date +%Y%m%d_%H%M%S).sql"
     
     # 检查数据库容器是否运行且健康
@@ -229,7 +229,7 @@ perform_update() {
     fi
     
     # 步骤2: 拉取最新代码
-    log_info "[2/6] 拉取最新代码..."
+    log_info "[2/8] 拉取最新代码..."
     if [[ -d ".git" ]]; then
         git fetch origin 2>/dev/null || true
         git pull origin main 2>/dev/null || git reset --hard origin/main 2>/dev/null || true
@@ -239,7 +239,7 @@ perform_update() {
     fi
     
     # 步骤3: 拉取最新镜像
-    log_info "[3/6] 拉取最新镜像..."
+    log_info "[3/8] 拉取最新镜像..."
     if [[ -f "docker-compose.ghcr.yml" ]]; then
         if docker compose -f docker-compose.ghcr.yml pull 2>&1; then
             log_info "✓ 镜像已更新"
@@ -253,24 +253,47 @@ perform_update() {
         COMPOSE_FILE="docker-compose.yml"
     fi
     
-    # 步骤4: 清除授权缓存（确保使用新的设备ID验证）
-    log_info "[4/7] 清除授权缓存..."
+    # 步骤4: 数据库 Schema 迁移
+    log_info "[4/8] 检查数据库 Schema..."
+    if docker ps --filter "name=mcs_db" -q 2>/dev/null | grep -q .; then
+        # 检查 users 表是否存在 permissions 列
+        HAS_PERMISSIONS=$(docker exec mcs_db psql -U postgres -d mcs_iot -t -c \
+            "SELECT column_name FROM information_schema.columns WHERE table_name='users' AND column_name='permissions';" 2>/dev/null | tr -d ' ')
+        
+        if [[ -z "$HAS_PERMISSIONS" ]]; then
+            log_info "正在添加 permissions 字段到 users 表..."
+            docker exec mcs_db psql -U postgres -d mcs_iot -c \
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions TEXT DEFAULT '{}';" 2>/dev/null
+            if [[ $? -eq 0 ]]; then
+                log_info "✓ 数据库 Schema 已更新 (添加 permissions 字段)"
+            else
+                log_warn "数据库 Schema 更新失败，可能需要手动处理"
+            fi
+        else
+            log_info "✓ 数据库 Schema 已是最新版本"
+        fi
+    else
+        log_warn "数据库容器未运行，跳过 Schema 迁移 (服务启动后会自动处理)"
+    fi
+    
+    # 步骤5: 清除授权缓存（确保使用新的设备ID验证）
+    log_info "[5/8] 清除授权缓存..."
     if docker ps --filter "name=mcs_redis" -q 2>/dev/null | grep -q .; then
         docker exec mcs_redis redis-cli DEL license:status license:grace_start license:error license:tampered 2>/dev/null || true
         log_info "✓ 授权缓存已清除"
     fi
     
-    # 步骤5: 重启服务
-    log_info "[5/7] 重启服务..."
+    # 步骤6: 重启服务
+    log_info "[6/8] 重启服务..."
     docker compose -f "$COMPOSE_FILE" up -d 2>/dev/null || docker-compose -f "$COMPOSE_FILE" up -d 2>/dev/null
     
-    # 步骤6: 更新管理脚本
-    log_info "[6/7] 更新管理脚本..."
+    # 步骤7: 更新管理脚本
+    log_info "[7/8] 更新管理脚本..."
     update_simulator_scripts
     log_info "✓ 脚本已更新"
     
-    # 步骤7: 等待服务就绪
-    log_info "[7/7] 等待服务就绪..."
+    # 步骤8: 等待服务就绪
+    log_info "[8/8] 等待服务就绪..."
     sleep 15
     
     # 显示状态

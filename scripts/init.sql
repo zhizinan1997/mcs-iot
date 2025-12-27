@@ -148,13 +148,27 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(128),
     phone VARCHAR(32),
     is_active BOOLEAN DEFAULT TRUE,
+    permissions TEXT DEFAULT '{}',   -- JSON: 各功能模块访问权限
     last_login TIMESTAMP,
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- 8. Schema Migrations Table (用于追踪数据库版本)
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    version INTEGER PRIMARY KEY,
+    description TEXT,
+    applied_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 标记初始迁移已应用 (新安装时)
+INSERT INTO schema_migrations (version, description) VALUES 
+(1, '添加 users.permissions 字段用于子账号权限管理')
+ON CONFLICT DO NOTHING;
+
 -- Create default admin user (password: admin123)
-INSERT INTO users (username, password_hash, role) VALUES 
-('admin', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.SHJGrMeVwBVzGO', 'admin')
+-- 使用 bcrypt hash: $2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.SHJGrMeVwBVzGO
+INSERT INTO users (username, password_hash, role, permissions) VALUES 
+('admin', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.SHJGrMeVwBVzGO', 'admin', '{}')
 ON CONFLICT DO NOTHING;
 
 -- Seed Initial Config
@@ -166,3 +180,4 @@ INSERT INTO system_config (key, value) VALUES
 ('dashboard', '{"title": "MCS-IoT 气体监测大屏", "background": "", "refresh_rate": 5}'),
 ('archive', '{"enabled": false, "retention_days": 3, "r2_endpoint": "", "r2_bucket": "", "r2_access_key": "", "r2_secret_key": ""}')
 ON CONFLICT DO NOTHING;
+

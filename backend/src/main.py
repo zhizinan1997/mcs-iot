@@ -22,6 +22,7 @@ from .uploads import router as uploads_router
 from .ai import router as ai_router
 from .health import router as health_router
 from .logs import router as logs_router
+from .users import router as users_router
 
 # Setup Logging
 logging.basicConfig(level=logging.INFO)
@@ -80,6 +81,13 @@ async def lifespan(app: FastAPI):
     db_dsn = f"postgres://{os.getenv('DB_USER','postgres')}:{os.getenv('DB_PASS','password')}@{os.getenv('DB_HOST','timescaledb')}:5432/{os.getenv('DB_NAME','mcs_iot')}"
     deps.db_pool = await asyncpg.create_pool(db_dsn, min_size=5, max_size=20)
     logger.info("Connected to Database")
+    
+    # 自动执行数据库迁移 (确保 Schema 更新)
+    try:
+        from .migrations import run_migrations
+        await run_migrations(deps.db_pool)
+    except Exception as e:
+        logger.error(f"Database migration failed: {e}")
     
     # Initialize License Manager
     try:
@@ -147,6 +155,7 @@ app.include_router(uploads_router, prefix="/api/uploads", tags=["Uploads"])
 app.include_router(ai_router, prefix="/api/ai", tags=["AI"])
 app.include_router(health_router, prefix="/api/health-check", tags=["HealthCheck"])
 app.include_router(logs_router, prefix="/api", tags=["Logs"])
+app.include_router(users_router, prefix="/api/users", tags=["Users"])
 
 @app.get("/api/health")
 async def health_check():

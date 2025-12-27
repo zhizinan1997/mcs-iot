@@ -4,7 +4,11 @@ from pydantic import BaseModel
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
+from typing import Dict, Optional
 import os
+import json
+
+from .deps import get_db
 
 router = APIRouter()
 
@@ -16,26 +20,43 @@ ACCESS_TOKEN_EXPIRE_HOURS = 24
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
-# In-memory user store (in production, use database)
-USERS = {
-    "admin": {
-        "username": "admin",
-        "hashed_password": pwd_context.hash("admin123"),
-        "role": "admin"
-    }
+# 默认权限 (admin 拥有全部权限)
+DEFAULT_ADMIN_PERMISSIONS = {
+    "dashboard": True,
+    "devices": True,
+    "instruments": True,
+    "alarms": True,
+    "logs": True,
+    "ai": True,
+    "license": True,
+    "archive": True,
+    "health": True,
+    "config": True,
+    "screen": True
 }
+
 
 class Token(BaseModel):
     access_token: str
     token_type: str
     expires_in: int
 
+
 class User(BaseModel):
     username: str
     role: str
+    permissions: Dict[str, bool] = {}
+
+
+class UserResponse(BaseModel):
+    username: str
+    role: str
+    permissions: Dict[str, bool] = {}
+
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
+
 
 def create_access_token(data: dict):
     to_encode = data.copy()
@@ -43,7 +64,11 @@ def create_access_token(data: dict):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
+
 async def get_current_user(token: str = Depends(oauth2_scheme)):
+    """从 JWT token 解析当前用户信息"""
+    from .deps import db_pool
+    
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid authentication credentials",
@@ -57,18 +82,45 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     except JWTError:
         raise credentials_exception
     
-    user = USERS.get(username)
-    if user is None:
-        raise credentials_exception
-    return User(username=user["username"], role=user["role"])
+    # 从数据库获取用户最新信息
+    if db_pool:
+        async with db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT username, role, permissions, is_active FROM users WHERE username = $1",
+                username
+            )
+            if row:
+                if not row["is_active"]:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="账号已被禁用"
+                    )
+                
+                permissions = {}
+                if row["role"] == "admin":
+                    permissions = DEFAULT_ADMIN_PERMISSIONS.copy()
+                elif row["permissions"]:
+                    try:
+                        permissions = json.loads(row["permissions"])
+                    except:
+                        permissions = {}
+                
+                return User(
+                    username=row["username"],
+                    role=row["role"],
+                    permissions=permissions
+                )
+    
+    raise credentials_exception
+
 
 @router.post("/login", response_model=Token)
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), db=Depends(get_db)):
     """
     用户登录接口
     
     安全说明:
-    - 使用内存字典存储用户，无SQL注入风险
+    - 从数据库查询用户，使用参数化查询防SQL注入
     - 密码使用bcrypt哈希存储
     - 输入已自动转义，防止XSS
     """
@@ -83,30 +135,69 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
             detail="用户名格式不正确"
         )
     
-    # 查找用户
-    user = USERS.get(username)
-    if not user:
+    # 从数据库查找用户
+    async with db.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT username, password_hash, role, permissions, is_active FROM users WHERE username = $1",
+            username
+        )
+    
+    if not row:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="账号不存在",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    if not row["is_active"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="账号已被禁用"
+        )
+    
     # 验证密码
-    if not verify_password(password, user["hashed_password"]):
+    if not verify_password(password, row["password_hash"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="密码错误",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    access_token = create_access_token(data={"sub": user["username"], "role": user["role"]})
+    # 更新最后登录时间
+    async with db.acquire() as conn:
+        await conn.execute(
+            "UPDATE users SET last_login = NOW() WHERE username = $1",
+            username
+        )
+    
+    # 解析权限
+    permissions = {}
+    if row["role"] == "admin":
+        permissions = DEFAULT_ADMIN_PERMISSIONS.copy()
+    elif row["permissions"]:
+        try:
+            permissions = json.loads(row["permissions"])
+        except:
+            permissions = {}
+    
+    access_token = create_access_token(data={
+        "sub": row["username"],
+        "role": row["role"],
+        "permissions": permissions
+    })
+    
     return Token(
         access_token=access_token,
         token_type="bearer",
         expires_in=ACCESS_TOKEN_EXPIRE_HOURS * 3600
     )
 
-@router.get("/me", response_model=User)
+
+@router.get("/me", response_model=UserResponse)
 async def get_me(current_user: User = Depends(get_current_user)):
-    return current_user
+    """获取当前登录用户信息"""
+    return UserResponse(
+        username=current_user.username,
+        role=current_user.role,
+        permissions=current_user.permissions
+    )

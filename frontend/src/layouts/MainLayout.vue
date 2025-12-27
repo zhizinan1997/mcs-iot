@@ -18,54 +18,59 @@
         class="mac-menu"
       >
         <!-- Dashboard -->
-        <el-menu-item index="/">
+        <el-menu-item index="/" v-if="hasPermission('dashboard')">
           <el-icon><DataBoard /></el-icon>
           <span>仪表盘</span>
         </el-menu-item>
         
-        <div class="menu-group-title">设备管理</div>
-        <el-menu-item index="/instruments">
+        <div class="menu-group-title" v-if="hasPermission('instruments') || hasPermission('devices') || hasPermission('alarms')">设备管理</div>
+        <el-menu-item index="/instruments" v-if="hasPermission('instruments')">
           <el-icon><Odometer /></el-icon>
           <span>仪表管理</span>
         </el-menu-item>
-        <el-menu-item index="/devices">
+        <el-menu-item index="/devices" v-if="hasPermission('devices')">
           <el-icon><Monitor /></el-icon>
           <span>传感器管理</span>
         </el-menu-item>
-        <el-menu-item index="/alarms">
+        <el-menu-item index="/alarms" v-if="hasPermission('alarms')">
           <el-icon><Bell /></el-icon>
           <span>报警记录</span>
         </el-menu-item>
 
-        <div class="menu-group-title">系统管理</div>
-        <el-menu-item index="/logs">
+        <div class="menu-group-title" v-if="hasAnySystemPermission">系统管理</div>
+        <el-menu-item index="/logs" v-if="hasPermission('logs')">
           <el-icon><Document /></el-icon>
           <span>服务器日志</span>
         </el-menu-item>
-        <el-menu-item index="/ai-config">
+        <el-menu-item index="/ai-config" v-if="hasPermission('ai')">
           <el-icon><Cpu /></el-icon>
           <span>AI 接口</span>
         </el-menu-item>
-        <el-menu-item index="/license">
+        <el-menu-item index="/license" v-if="hasPermission('license')">
           <el-icon><Key /></el-icon>
           <span>授权管理</span>
         </el-menu-item>
-        <el-menu-item index="/archive">
+        <el-menu-item index="/archive" v-if="hasPermission('archive')">
           <el-icon><Folder /></el-icon>
           <span>数据归档</span>
         </el-menu-item>
-        <el-menu-item index="/health-check">
+        <el-menu-item index="/health-check" v-if="hasPermission('health')">
           <el-icon><FirstAidKit /></el-icon>
           <span>系统自检</span>
         </el-menu-item>
-        <el-menu-item index="/config">
+        <!-- 子账号管理 (仅管理员) -->
+        <el-menu-item index="/users" v-if="isAdmin">
+          <el-icon><User /></el-icon>
+          <span>子账号管理</span>
+        </el-menu-item>
+        <el-menu-item index="/config" v-if="hasPermission('config')">
           <el-icon><Setting /></el-icon>
           <span>系统配置</span>
         </el-menu-item>
         
-        <el-divider class="mac-divider" />
+        <el-divider class="mac-divider" v-if="hasPermission('screen')" />
         
-        <el-sub-menu index="/screen-group">
+        <el-sub-menu index="/screen-group" v-if="hasPermission('screen')">
           <template #title>
             <el-icon><FullScreen /></el-icon>
             <span>可视化大屏</span>
@@ -134,6 +139,12 @@
             <el-icon><WarningFilled /></el-icon> 代码篡改
           </el-tag>
 
+          <!-- User Info -->
+          <el-tag type="info" class="user-tag" v-if="authStore.user">
+            {{ authStore.user.username }}
+            <span v-if="isAdmin">(管理员)</span>
+          </el-tag>
+
           <el-button @click="handleLogout" size="small" type="danger" plain round>
             退出登录
           </el-button>
@@ -148,16 +159,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
 import { configApi } from '../api'
-import { Moon, Sunny, WarningFilled } from '@element-plus/icons-vue'
+import { Moon, Sunny, WarningFilled, User } from '@element-plus/icons-vue'
 import { onLicenseUpdate } from '../utils/licenseEvent'
-
-// Import icons explicitly? No, used globally in main.ts, but let's test safely.
-// Assuming global registration in main.ts is correct.
 
 const route = useRoute()
 const router = useRouter()
@@ -177,12 +185,28 @@ const licenseStatus = ref<any>({
   tampered: false
 })
 
+// 权限检查
+const isAdmin = computed(() => authStore.isAdmin)
+
+function hasPermission(key: string): boolean {
+  return authStore.hasPermission(key)
+}
+
+// 检查是否有任意系统管理相关权限
+const hasAnySystemPermission = computed(() => {
+  return hasPermission('logs') || hasPermission('ai') || hasPermission('license') || 
+         hasPermission('archive') || hasPermission('health') || hasPermission('config') ||
+         isAdmin.value
+})
+
 // 用于取消订阅
 let unsubscribeLicenseEvent: (() => void) | null = null
 
 onMounted(() => {
   loadSiteConfig()
   loadLicenseStatus()
+  // 加载用户信息以获取权限
+  authStore.fetchUser()
   
   // 监听授权验证成功事件，刷新右上角状态
   unsubscribeLicenseEvent = onLicenseUpdate(() => {
@@ -283,6 +307,11 @@ function handleLogout() {
 }
 
 .license-tag {
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.user-tag {
   border-radius: 12px;
   font-weight: 500;
 }
