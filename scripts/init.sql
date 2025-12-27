@@ -125,6 +125,9 @@ CREATE TABLE IF NOT EXISTS archive_logs (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- 添加 archive_date 唯一索引 (支持 ON CONFLICT 语法)
+CREATE UNIQUE INDEX IF NOT EXISTS archive_logs_date_unique ON archive_logs(archive_date);
+
 -- 6. Operation Logs (操作日志)
 CREATE TABLE IF NOT EXISTS operation_logs (
     id SERIAL PRIMARY KEY,

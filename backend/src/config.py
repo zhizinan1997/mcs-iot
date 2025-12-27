@@ -444,6 +444,7 @@ async def get_storage_stats(redis = Depends(get_redis), db = Depends(get_db)):
         has_config = config.get("account_id") or config.get("region")
         if has_config and config.get("bucket") and config.get("access_key"):
             try:
+                import asyncio
                 import boto3
                 from botocore.config import Config as BotoConfig
                 

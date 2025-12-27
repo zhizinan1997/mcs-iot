@@ -604,13 +604,17 @@ async def check_r2_config(redis) -> Dict[str, Any]:
         if data:
             config = json.loads(data)
             if config.get("enabled"):
-                if config.get("r2_endpoint") and config.get("r2_bucket"):
+                # 支持新版字段 (account_id, bucket) 和旧版字段 (r2_account_id, r2_bucket)
+                has_account = config.get("account_id") or config.get("r2_account_id")
+                has_bucket = config.get("bucket") or config.get("r2_bucket")
+                bucket_name = config.get("bucket") or config.get("r2_bucket")
+                if has_account and has_bucket:
                     return {
                         "id": "r2_config",
                         "name": "R2 归档配置",
                         "status": "ok",
-                        "message": f"已配置 Bucket: {config.get('r2_bucket')}",
-                        "details": {"bucket": config.get("r2_bucket")}
+                        "message": f"已配置 Bucket: {bucket_name}",
+                        "details": {"bucket": bucket_name}
                     }
                 else:
                     return {

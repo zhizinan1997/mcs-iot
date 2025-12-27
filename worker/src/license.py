@@ -33,11 +33,27 @@ class LicenseGuard:
             return "unknown"
 
     def get_license_key(self):
-        """Read license key from file"""
+        """Read license key from file (supports UTF-8, UTF-16 LE/BE with BOM)"""
         try:
             if os.path.exists(self.license_file):
-                with open(self.license_file, 'r') as f:
-                    return f.read().strip()
+                # 先用二进制读取，检测编码
+                with open(self.license_file, 'rb') as f:
+                    raw = f.read()
+                
+                # 检测 UTF-16 LE BOM (0xFF 0xFE)
+                if raw.startswith(b'\xff\xfe'):
+                    content = raw.decode('utf-16-le')
+                # 检测 UTF-16 BE BOM (0xFE 0xFF)
+                elif raw.startswith(b'\xfe\xff'):
+                    content = raw.decode('utf-16-be')
+                # 检测 UTF-8 BOM (0xEF 0xBB 0xBF)
+                elif raw.startswith(b'\xef\xbb\xbf'):
+                    content = raw[3:].decode('utf-8')
+                else:
+                    # 默认 UTF-8
+                    content = raw.decode('utf-8')
+                
+                return content.strip()
         except Exception as e:
             logger.error(f"Failed to read license: {e}")
         return None
