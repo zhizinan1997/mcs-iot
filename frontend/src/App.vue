@@ -1,3 +1,12 @@
+<!--
+  MCS-IOT 根组件 (Root Component)
+
+  该文件是 Vue 应用的顶层容器，负责全局层面的逻辑初始化与样式定义。
+  主要职责：
+  1. 渲染路由视图容器 (<router-view>)。
+  2. 应用初始化逻辑：从后端获取站点配置，动态更新浏览器标题及 Favicon。
+  3. 全局样式重写：定义了一套基于 Glassmorphism (毛玻璃) 效果的 macOS 风格弹窗样式，提升 UI 质感。
+-->
 <template>
   <router-view />
 </template>

@@ -1,3 +1,15 @@
+<!--
+  MCS-IOT 登录页面 (Login Page)
+
+  该文件负责用户的身份验证与系统准入。
+  主要功能：
+  1. 动态交互视觉：集成 tsparticles 粒子背景与动态渐变 Orb，支持随主题切换的视觉效果。
+  2. 表单处理：集成响应式登录表单，支持用户名、密码校验及回车快捷登录。
+  3. 全局主题切换：支持在登录页预览并切换系统深/浅色模式。
+  4. 站点配置同步：自动从后端拉取站点名称与 Logo 资源进行个性化展示。
+
+  技术栈：Vue 3 (setup), Pinia (Auth), tsparticles, Element Plus.
+-->
 <template>
   <div class="login-container" :class="{ 'light-mode': !themeStore.isDark }">
     <!-- Theme Toggle -->

@@ -1,6 +1,18 @@
 """
-MQTT 账号管理 API
-管理 Mosquitto 的用户名和密码
+MCS-IOT MQTT 账号管理模块 (MQTT Account Management)
+
+该文件负责管理 Mosquitto MQTT 实测内部的认证体系，确保设备、Worker 及管理端通过安全的账号连接。
+主要功能包括：
+1. 提供 API 接口用于修改 MQTT 的管理账号、工作账号及设备接入账号。
+2. 在 Python 层实现与 Mosquitto 兼容的密码哈希算法 (基于 PBKDF2-SHA512)。
+3. 自动维护 Mosquitto 容器所需的 passwd 认证文件，并分发 mqtt_config.json 配置文件。
+4. 在配置更新后，控制 MQTT 服务重新加载认证信息。
+
+结构：
+- MQTTAccountConfig: 账号信息的数据模型。
+- generate_passwd_hash: 兼容性哈希生成函数。
+- write_passwd_file: 文件持久化逻辑，将明文账号密码转为哈希格式。
+- API Handlers: 获取与更新 MQTT 全局配置。
 """
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel

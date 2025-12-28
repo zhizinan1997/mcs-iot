@@ -1,3 +1,17 @@
+/*
+  MCS-IOT 数据库初始化脚本 (Database Initialization Schema)
+
+  该文件定义了全栈系统的核心持久化层结构，集成了 TimescaleDB 时间序列优化。
+  主要职责：
+  1. 基础架构：定义仪表 (Instruments)、设备 (Devices) 及用户 (Users) 的元数据模型。
+  2. 时序优化：基于 TimescaleDB 构建传感器数据超表 (Hypertables)，实现高效的数据分区与压缩策略。
+  3. 报警与日志：建立报警记录 (Alarm Logs)、操作日志 (Operation Logs) 及系统配置 (System Config) 体系。
+  4. 权限与安全：预设子账号 RBAC 系统权限列及初始管理员账户 (bcrypt 加密)。
+  5. 自动化运维：配置归档日志 (Archive Logs) 与数据库版本追踪 (Schema Migrations) 机制。
+
+  技术栈：PostgreSQL, TimescaleDB, SQL Schema Design.
+*/
+
 -- Set timezone to Beijing (China Standard Time)
 SET timezone = 'Asia/Shanghai';
 
@@ -168,8 +182,8 @@ INSERT INTO schema_migrations (version, description) VALUES
 (1, '添加 users.permissions 字段用于子账号权限管理')
 ON CONFLICT DO NOTHING;
 
--- Create default admin user (password: admin123)
--- 使用 bcrypt hash: $2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.SHJGrMeVwBVzGO
+-- Create default admin user (Change password on first login)
+-- Recommended: Set a strong password in production via environment variables or UI.
 INSERT INTO users (username, password_hash, role, permissions) VALUES 
 ('admin', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.SHJGrMeVwBVzGO', 'admin', '{}')
 ON CONFLICT DO NOTHING;

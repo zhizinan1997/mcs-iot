@@ -1,7 +1,16 @@
 """
-数据导出模块
-- 传感器数据导出 CSV/Excel
-- 报警记录导出
+MCS-IOT 数据导出模块 (Data Export)
+
+该文件负责将系统中的传感器历史数据及报警记录导出为标准格式文件（如 CSV），方便用户进行离线分析或报表制作。
+主要功能包括：
+1. 提供传感器数据的导出接口，支持按 SN、时间范围进行筛选，并自动处理物理量转换及格式化。
+2. 提供报警日志的导出接口，支持按设备、报警类型及日期范围进行过滤。
+3. 采用 StreamingResponse 流式相应，支持大规模数据导出时减少内存占用。
+4. 自动生成规范的文件命名，包含导出内容的描述及时间范围。
+
+结构：
+- export_sensor_data: 传感器数据导出逻辑，包含表头定义及时序数据获取。
+- export_alarms: 报警记录导出逻辑，关联设备名称并导出报警详情。
 """
 from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import StreamingResponse

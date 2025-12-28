@@ -1,3 +1,15 @@
+<!--
+  MCS-IOT 后台管理主布局 (Main Layout Container)
+
+  该文件是应用内部页面的公共壳容器，采用了响应式的左右布局结构。
+  主要职责：
+  1. 侧边导航栏 (Sidebar)：基于权限系统 (RBAC) 动态渲染功能菜单，涵盖设备管理、系统管理及大屏配置入口。
+  2. 顶部工具栏 (Header)：展示当前页面标题、商业授权状态、异常篡改预警、用户信息及系统退出逻辑。
+  3. 全局状态监听：实时同步站点配置 (Logo/名称) 并监听授权更新事件以刷新 UI。
+  4. 视觉风格调优：集成了 macOS 风格的毛玻璃效果与响应式侧边栏。
+
+  技术栈：Vue 3 (setup), Vue Router, Pinia (Auth/Theme), Element Plus.
+-->
 <template>
   <el-container class="layout-container">
     <!-- Sidebar -->

@@ -10,6 +10,12 @@
   <img src="https://img.shields.io/badge/MQTT-TLS-660066" alt="MQTT TLS"/>
 </p>
 
+<p align="center">
+  <a href="CONFIG_GUIDE.md">
+    <img src="https://img.shields.io/badge/%F0%9F%94%92_配置指南-敏感信息汇总-FF4500?style=for-the-badge" alt="配置指南"/>
+  </a>
+</p>
+
 ---
 
 ## 目录

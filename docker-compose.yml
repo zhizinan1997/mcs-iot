@@ -32,7 +32,7 @@ services:
     environment:
       POSTGRES_DB: mcs_iot
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${DB_PASS:-password}
+      POSTGRES_PASSWORD: ${DB_PASS:-YOUR_DATABASE_PASSWORD}
     ports:
       - "5432:5432" # Exposed for local dev tools (DBeaver etc.)
     volumes:
@@ -76,13 +76,13 @@ services:
       - DB_HOST=timescaledb
       - DB_PORT=5432
       - DB_USER=${DB_USER:-postgres}
-      - DB_PASS=${DB_PASS:-password}
+      - DB_PASS=${DB_PASS:-YOUR_DATABASE_PASSWORD}
       - DB_NAME=${DB_NAME:-mcs_iot}
       - REDIS_HOST=redis
       - MQTT_HOST=mosquitto
       - MQTT_PORT=1883 # Internal via TCP
       - MQTT_USER=${MQTT_USER:-admin}
-      - MQTT_PASS=${MQTT_PASS:-admin123}
+      - MQTT_PASS=${MQTT_PASS:-YOUR_MQTT_PASSWORD}
       - DEV_MODE=true # Bypass license check for dev
     volumes:
       - ./worker/src:/app/src # Hot reload
@@ -117,15 +117,15 @@ services:
       - DB_HOST=timescaledb
       - DB_PORT=5432
       - DB_USER=${DB_USER:-postgres}
-      - DB_PASS=${DB_PASS:-password}
+      - DB_PASS=${DB_PASS:-YOUR_DATABASE_PASSWORD}
       - DB_NAME=${DB_NAME:-mcs_iot}
       - REDIS_HOST=redis
-      - JWT_SECRET=${JWT_SECRET:-dev-secret-key-change-in-production}
-      - ADMIN_INITIAL_PASSWORD=${ADMIN_INITIAL_PASSWORD:-admin123}
+      - JWT_SECRET=${JWT_SECRET:-YOUR_JWT_SECRET_KEY}
+      - ADMIN_INITIAL_PASSWORD=${ADMIN_INITIAL_PASSWORD:-YOUR_ADMIN_PASSWORD}
       - MQTT_HOST=mosquitto
       - MQTT_PORT=1883
       - MQTT_USER=${MQTT_USER:-admin}
-      - MQTT_PASS=${MQTT_PASS:-admin123}
+      - MQTT_PASS=${MQTT_PASS:-YOUR_MQTT_PASSWORD}
       - AI_API_KEY=${AI_API_KEY:-}
       - AI_MODEL=${AI_MODEL:-gpt-3.5-turbo}
       - WEATHER_API_KEY=${WEATHER_API_KEY:-}

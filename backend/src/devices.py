@@ -1,3 +1,19 @@
+"""
+MCS-IOT 设备管理模块 (Device Management)
+
+该文件负责物联网设备的生命周期管理及其数据的实时与历史查询。
+主要功能包括：
+1. 定义设备基础信息、响应格式及控制命令的 Pydantic 模型。
+2. 实现设备的增删改查 (CRUD) 接口。
+3. 结合 PostgreSQL 存储静态配置与 Redis 存储实时数据（如在线状态、最新 PPM 值、电量等）。
+4. 提供设备历史趋势数据的查询接口，支持按不同时间维度（1h, 3h, 24h, 72h）自动聚合数据。
+5. 在更新设备信息时，同步刷新 Redis 中的校准参数及设备缓存。
+
+结构：
+- Pydantic Models: DeviceBase, DeviceResponse 等数据交换格式定义。
+- API Handlers: list_devices, get_device, create_device, update_device, delete_device 等核心业务逻辑。
+- History Handler: get_device_history 负责时序数据的分桶聚合查询。
+"""
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional, List

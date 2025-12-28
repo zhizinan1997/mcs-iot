@@ -1,3 +1,15 @@
+<!--
+  MCS-IOT 服务器终端日志审计页面 (System Log Auditor)
+
+  该文件作为系统运维的“黑匣子”，实时聚合后端、Worker 及数据库各组件的运行时日志。
+  主要职责：
+  1. 服务聚合：支持按 Backend, Worker, Database, Redis, MQTT 等多服务源切换查看。
+  2. 智能过滤：支持按级别 (Error/Warning/Info) 筛选，通过不同颜色高亮异常信息。
+  3. 实时追踪：配置 30 秒自动刷新机制，模拟终端实时 Tail 效果。
+  4. 运维操作：支持日志手动刷新、一键清空及错误/警告数量的统计汇总。
+
+  技术栈：Vue 3 (setup), Axios, Custom Terminal-style Scroll Component.
+-->
 <template>
   <div class="logs-page">
     <!-- Main Content Card -->

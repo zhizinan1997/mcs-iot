@@ -1,3 +1,19 @@
+"""
+MCS-IOT 配置管理模块 (Configuration Management)
+
+该文件负责系统各项配置的读取、修改、验证及其对应的 API 接口。
+主要功能包括：
+1. 定义 Pydantic 模型，用于验证 Email、Webhook、SMS、报警、大屏、归档、AI 等模块的配置数据。
+2. 提供 RESTful API 接口，实现配置的持久化存储（主要存储在 Redis 中）。
+3. 支持多云存储方案（Cloudflare R2, 腾讯云 COS, 阿里云 OSS）的归档配置，并提供连接测试。
+4. 提供手动触发的数据备份与本地数据库清理功能。
+5. 集成 AI 接口配置及连通性测试。
+
+结构：
+- BaseModel 类群: 各种配置项的数据结构定义。
+- API 路由: 按照功能划分的配置管理接口。
+- 辅助函数: 包括配置迁移、存储终结点构建、云存储连接测试等逻辑。
+"""
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from typing import Optional, List

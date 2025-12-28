@@ -1,8 +1,17 @@
 """
-License Authorization Management
-- Device ID generation
-- License verification via CF Worker
-- Feature access control
+MCS-IOT 授权管理模块 (License Management & Security)
+
+该文件负责全系统的商业授权认证、硬件唯一识别及代码完整性校验。
+主要功能包括：
+1. 生成基于宿主机硬件指纹的唯一设备 ID (Device ID)，确保授权与物理服务器绑定。
+2. 实现源码完整性哈希校验 (Integrity Check)，检测关键文件（如授权逻辑、配置逻辑）是否被非法篡改。
+3. 与远程授权中心进行异步验证，支持离线宽限期 (Grace Period) 机制，确保服务器暂时不可达时业务不中断。
+4. 定义系统功能项的许可访问控制（如 AI 接口、数据归档等功能的启用权限）。
+
+结构：
+- Integrity Utils: compute_integrity_hash 等函数，用于自举校验。
+- LicenseManager: 核心类，封装了设备 ID 生成、授权同步、宽限期维护及功能权限判断。
+- Initialization: init_license_manager 用于在系统启动时挂载全局管理实例。
 """
 import os
 import hashlib

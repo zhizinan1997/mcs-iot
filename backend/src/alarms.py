@@ -1,3 +1,19 @@
+"""
+MCS-IOT 报警日志模块 (Alarm Logging)
+
+该文件负责系统报警记录的查询、确认及统计分析。
+主要功能包括：
+1. 分页查询报警日志，支持按 SN、报警类型、状态进行过滤。
+2. 关联查询设备及仪表信息，丰富报警记录的展示。
+3. 提供报警确认 (ACK) 功能，支持单个确认及一键全部确认。
+4. 统计报警概览，包括今日报警总数、近一周报警总数及各类型报警分布。
+
+结构：
+- AlarmLog / AlarmList: 报警数据的标准交换模型。
+- list_alarms: 多条件分页查询逻辑。
+- acknowledge Handlers: 处理报警的人工确认逻辑。
+- get_alarm_stats: 统计分析逻辑。
+"""
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional, List

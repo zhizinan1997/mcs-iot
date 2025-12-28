@@ -1,3 +1,19 @@
+"""
+MCS-IOT 服务日志与翻译模块 (Log Management & Translation)
+
+该文件负责从 Docker 容器中提取原始运行日志，并将其翻译为更易读的中文业务描述。
+主要功能包括：
+1. 实时读取指定的系统容器（如 backend, worker）最近的运行日志。
+2. 维护一套复杂的正则匹配规则，将枯燥的技术日志（如报警触发、通知发送、数据库保存）转译为“概括性”的中文描述。
+3. 对日志进行分级筛选（Error/Warning/Info）并按时间戳排序展示。
+4. 为大屏和管理后台提供统一的结构化日志流 API。
+
+结构：
+- TRANSLATION_RULES: 包含大量正则表达式的日志翻译模板，业务逻辑的核心资产。
+- translate_log / parse_log_line: 日志解析与转译的核心逻辑。
+- get_docker_logs: 封装与 Docker Engine 的底层交互逻辑。
+- get_logs API: 对外暴露的日志查询接口。
+"""
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import List, Optional

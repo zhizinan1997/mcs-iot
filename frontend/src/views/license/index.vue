@@ -1,3 +1,15 @@
+<!--
+  MCS-IOT 授权管理页面 (License & Security Management)
+
+  该文件负责系统的版权激活、硬件绑定验证及程序完整性校验。
+  主要职责：
+  1. 设备 ID 生成：基于服务器硬件特征（MAC、主机名等）生成的唯一编码，作为授权凭证。
+  2. 离线/在线激活：通过与云端 Worker 通讯验证授权文件，管理过期时间与宽限期。
+  3. 安全审计：实时监测核心代码是否被篡改（Tamper Detection），确保运行环境安全。
+  4. 权限分级：根据授权状态动态启用/禁用 AI 分析、云归档等高级功能。
+
+  技术栈：Vue 3 (setup), Element Plus UI & Alerts, Navigator Clipboard API.
+-->
 <template>
   <div class="license-page">
     <el-card class="glass-card">

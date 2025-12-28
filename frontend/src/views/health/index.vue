@@ -1,3 +1,15 @@
+<!--
+  MCS-IOT 系统健康自检页面 (System Health & Diagnostics)
+
+  该文件用于全方位扫描系统组件状态，提供工业级的故障排查辅助。
+  主要职责：
+  1. 多维度扫描：涵盖数据库连接、Redis 缓存、MQTT Broker 响应、Worker 进程心跳及磁盘空间监测。
+  2. 实时可视化：采用动画仪表盘形式展示扫描进度，逐项呈现检测结果。
+  3. 故障修复建议：针对异常项提供具体的“建议方案” (Solution)，指导运维人员快速排障。
+  4. 延迟监测：记录各项服务的毫秒级延迟，辅助性能评估。
+
+  技术栈：Vue 3 (setup), Element Plus Icons & Animations, RESTful API Simulation.
+-->
 <template>
   <div class="health-page">
     <div class="health-container">

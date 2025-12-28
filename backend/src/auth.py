@@ -1,3 +1,20 @@
+"""
+MCS-IOT 认证与授权模块 (Authentication & Authorization)
+
+该文件负责用户的登录验证、JWT 令牌签发及基于角色的权限管理。
+主要功能包括：
+1. 基于 OAuth2PasswordBearer 的身份验证流程。
+2. 使用 JWT (JSON Web Tokens) 进行会话维持，支持过期自动失效。
+3. 使用 bcrypt 对用户密码进行强哈希存储与校验。
+4. 定义系统角色（如 admin）及其对应的默认操作权限。
+5. 提供登录接口、获取当前用户信息接口，并实现非法访问过滤。
+
+结构：
+- Security Utils: 包含令牌创建、密码校验、当前用户解析等核心安全逻辑。
+- Models: Token, User 等认证相关数据模型。
+- login: 用户登录与认证逻辑，包括账号状态校验、权限装载。
+- get_me: 获取当前登录者详细信息的受保护路由。
+"""
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel

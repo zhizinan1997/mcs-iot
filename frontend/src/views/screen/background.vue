@@ -1,3 +1,15 @@
+<!--
+  MCS-IOT 大屏背景与点位配置页面 (Screen Background & Hotspots)
+
+  该文件负责管理大屏可视化界面的物理映射逻辑。
+  主要职责：
+  1. 背景图管理：支持平面图/实景图的上传、清除与持久化存储。
+  2. 交互式点位编辑器：提供可视化画布，支持通过“拖拽”绿点调整各个仪表在背景图上的 XY 百分比坐标。
+  3. 仪表联动：实时过滤并展示标记为“大屏显示”的仪表列表，同步坐标信息至后端。
+  4. 视觉反馈：集成毛玻璃面板与 1080P 预览容器，模拟大屏实际视觉效果。
+
+  技术栈：Vue 3 (setup), Canvas-like DOM Manipulation (Dragging), Element Plus.
+-->
 <template>
   <div class="screen-bg-page full-height">
     <div class="glass-panel main-layout">

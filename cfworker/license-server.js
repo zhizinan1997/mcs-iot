@@ -1,11 +1,14 @@
 /**
- * MCS-IoT 授权管理服务器
- * 部署于 Cloudflare Workers
+ * MCS-IOT 授权管理中心 (Cloudflare Worker Implementation)
  * 
- * 功能：
- * - 设备授权验证
- * - 授权管理 (增删改查)
- * - 代码篡改检测与记录
+ * 该服务器作为系统的“大脑”，负责全球范围内的设备授权验证、完整性审计及远程功能管控。
+ * 核心架构：
+ * 1. 验证网关 (Verification Gateway)：接收来自各部署站点的加密请求，校验设备 ID 与哈希指纹。
+ * 2. 实时审计 (Tamper Audit)：自动捕捉并记录哈希不匹配行为，为安全溯源提供依据。
+ * 3. 极简管理后台 (Atomic Admin UI)：内置单页面自研后台，支持管理员在移动端/PC端完成授权签发。
+ * 4. 边缘存储：基于 Cloudflare KV 确保毫秒级验证响应。
+ * 
+ * 部署环境：Cloudflare Workers (Runtime: Service Worker / ES Modules)
  */
 
 export default {
@@ -105,7 +108,7 @@ async function handleVerify(request, env) {
         if (integrity_hash && licenseData.expected_hash) {
             if (integrity_hash !== licenseData.expected_hash) {
                 tampered = true;
-                
+
                 // 记录篡改行为
                 const tamperReport = {
                     device_id,
@@ -114,7 +117,7 @@ async function handleVerify(request, env) {
                     actual_hash: integrity_hash,
                     timestamp: new Date().toISOString()
                 };
-                
+
                 const reportKey = `tamper:${device_id}:${Date.now()}`;
                 await env.LICENSES.put(reportKey, JSON.stringify(tamperReport));
             }
@@ -197,7 +200,7 @@ async function handleListLicenses(request, env) {
         // 并行获取所有授权数据
         const promises = keys.map(key => env.LICENSES.get(key.name, "json"));
         const results = await Promise.all(promises);
-        
+
         results.forEach(data => {
             if (data) licenses.push(data);
         });
@@ -262,7 +265,7 @@ async function handleTamperLogs(request, env) {
     try {
         const list = await env.LICENSES.list({ prefix: "tamper:" });
         const keys = list.keys;
-        
+
         const promises = keys.map(async key => {
             const data = await env.LICENSES.get(key.name, "json");
             if (data) {
@@ -271,7 +274,7 @@ async function handleTamperLogs(request, env) {
             }
             return null;
         });
-        
+
         const results = await Promise.all(promises);
         const tamperLogs = results.filter(r => r !== null);
 

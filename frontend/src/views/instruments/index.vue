@@ -1,3 +1,14 @@
+<!--
+  MCS-IOT 仪表管理页面 (Instrument Management)
+
+  该文件负责管理“仪表”(Instrument) 实体，仪表是传感器的逻辑分组单元。
+  主要职责：
+  1. 仪表 CRUD：支持仪表的创建、编辑与删除，包含名称、描述、主题颜色及排序配置。
+  2. 传感器关联管理：提供交互式弹出层，允许用户为特定仪表批量分配或移除传感器 (SN 关联)。
+  3. 数据表格：以卡片式布局展示所有仪表及其绑定的传感器数量。
+
+  技术栈：Vue 3 (setup), Element Plus Table, Dialog & ColorPicker.
+-->
 <template>
   <div class="instruments-page">
     <el-card class="full-card">

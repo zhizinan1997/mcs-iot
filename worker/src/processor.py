@@ -1,3 +1,19 @@
+"""
+MCS-IOT 消息处理器 (Message Processor)
+
+该文件负责解析来自 MQTT 的原始报文，并驱动业务逻辑。
+主要功能包括：
+1. 路由解析：根据 MQTT Topic (如 mcs/{sn}/up) 区分数据上报及状态上报。
+2. 状态维护：收到任何上报时，更新设备在 Redis 中的在线标记及 TTL。
+3. 数据加工：整合校准算法 (Calibrator)，将原始电压值转为 ppm 浓度值。
+4. 资源同步：将加工后的数据同步持久化到数据库 (Storage) 并缓存实时数据供大屏使用 (Redis Hash)。
+5. 报警触发：完成数据处理后，调起报警中心 (AlarmCenter) 进行阈值判定。
+
+结构：
+- Processor: 核心类，持有了校准、存储、缓存及报警的引用。
+- process_message: 入口函数，处理 JSON 解析及路由分发。
+- handle_uplink: 核心逻辑函数，处理传感器上报数据的完整流水线。
+"""
 import json
 import logging
 import asyncio

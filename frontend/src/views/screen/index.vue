@@ -1,3 +1,16 @@
+<!--
+  MCS-IOT 可视化大屏 (Big Screen / Monitoring Display)
+
+  该文件是系统的高级可视化组件，主要用于监控中心的大屏展示。
+  主要职责：
+  1. 高级视觉呈现：采用科技感 UI 设计，包含动态 SVG 曲线、流畅的入场动画及毛玻璃面板效果。
+  2. 业务地图集成：提供 3D 风格的设备分布图（点位可动态配置），支持交互式弹窗展示实时传感器详情。
+  3. 多维监控：集成仪表概览、安全监管评分、AI 智能总结、污染物趋势图及天气信息。
+  4. 实时滚动播报：支持报警记录与设备状态的自动滚动播放，确保信息的实时性。
+  5. 自适应布局：集成 Splitpanes 实现可自由拉伸的内容分区，并支持布局状态的持久化。
+
+  技术栈：Vue 3 (SFC), ECharts, Splitpanes, SCSS Animation.
+-->
 <template>
   <!-- Splash Screen Overlay -->
   <div v-if="showSplash" class="splash-overlay">

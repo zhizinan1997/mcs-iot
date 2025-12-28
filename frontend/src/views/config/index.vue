@@ -1,3 +1,17 @@
+<!--
+  MCS-IOT 全局系统配置页面 (System Settings Cluster)
+
+  该文件是系统参数的集中控制中心，集成了站点个性化、通知服务及长连接配置。
+  核心模块：
+  1. 站点设置：管理站点名称、Logo 上传（联动图标展示）及浏览器标题预览。
+  2. 邮件通知：配置 SMTP 授权信息，支持主流邮箱预设与多收件人管理。
+  3. Webhook 联动：对接钉钉、飞书、企业微信等外部机器人，支持加签安全验证。
+  4. 报警规则：全局配置报警消抖时长及基于周期的静默时段设置。
+  5. MQTT 运维：精细化管理管理员、Worker 及设备接入的三类账号凭据。
+  6. 交互特性：采用左侧导航+右侧滚动锚点联动的布局，提升配置效率。
+
+  技术栈：Vue 3 (setup), Element Plus Dashboard UI, Axios Asset Upload.
+-->
 <template>
   <div class="config-page-wrapper">
     <!-- Sidebar Navigation -->

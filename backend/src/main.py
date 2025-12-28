@@ -1,3 +1,20 @@
+"""
+MCS-IOT 后端主程序 (Main Entry Point)
+
+该文件是 FastAPI 后端服务的入口点。
+主要功能包括：
+1. 初始化 FastAPI 应用实例。
+2. 配置跨域资源共享 (CORS)。
+3. 管理应用生命周期事件 (Lifespan)，包括 Redis 和 数据库 (TimescaleDB) 线程池的启动与关闭。
+4. 自动执行数据库迁移和授权系统初始化。
+5. 注册所有子模块的 API 路由。
+6. 提供全局健康检查接口 (/api/health)。
+
+结构：
+- lifespan: 异步上下文管理器，处理服务启停逻辑。
+- app: FastAPI 实例，配置路由和中间件。
+- health_check: 系统监控接口，返回各组件及业务指标状态。
+"""
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm

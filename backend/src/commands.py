@@ -1,9 +1,17 @@
 """
-设备下行命令模块
-- 调试模式切换
-- 校准参数更新
-- 远程重启
-- OTA升级
+MCS-IOT 设备下行命令控制模块 (Device Control Commands)
+
+该文件负责向物联网设备发送下行控制指令，通过 MQTT 协议实现远程配置与管理。
+主要功能包括：
+1. 调试模式控制：允许管理员暂时提升设备的监测频率以便进行故障排查。
+2. 校准参数下发：将服务器端的标定参数（k/b 值及温度补偿）远程同步至设备端固件。
+3. 远程运维支持：实现设备的远程重启、OTA 固件升级等高级运维指令。
+4. 广播能力：支持向所有在线设备同步下达特定指令。
+
+结构：
+- MQTT Connection Logic: get_mqtt_client 实现后端的实时命令推送能力。
+- Command Models: DebugCommand, CalibCommand 等封装了各种指令的具体参数。
+- API Handlers: /{sn}/debug, /{sn}/calibrate 等接口，处理“校验权限 -> 更新本地 DB/Redis -> 推送 MQTT 消息”的闭环流程。
 """
 from fastapi import APIRouter, Depends, HTTPException, Body
 from pydantic import BaseModel

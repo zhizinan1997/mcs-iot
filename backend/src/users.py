@@ -1,6 +1,18 @@
 """
-子账号管理 API
-提供用户 CRUD 操作和权限管理
+MCS-IOT 用户与子账号管理模块 (User & Permissions Management)
+
+该文件负责系统内的多用户管理及其细粒度的功能权限分配。
+主要功能包括：
+1. 实现子账号的增删改查 (CRUD) 接口，并确保只有管理员 (Admin) 权限可操作。
+2. 定义系统内部各模块的权限控制点（Dashboard, 设备, 报警, AI 等），支持管理员为不同子账号分配不同的可视及操作范围。
+3. 维护默认权限配置，简化新用户的初始化流程。
+4. 提供密码修改及账号启用/禁用功能。
+
+结构：
+- DEFAULT_PERMISSIONS & PERMISSION_LABELS: 权限系统的配置常量。
+- User Models: UserCreate, UserUpdate, UserResponse 对应不同场景的数据交换格式。
+- Auth Logic: require_admin 装饰器，实现强权限控制。
+- API Handlers: list_users, create_user 等管理逻辑接口。
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field

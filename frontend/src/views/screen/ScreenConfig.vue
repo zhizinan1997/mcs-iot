@@ -1,3 +1,15 @@
+<!--
+  MCS-IOT 大屏全局参数与布局配置页面 (Screen Global Config & Layout)
+
+  该文件负责大屏的基础属性设置及自适应布局比例微调。
+  主要职责：
+  1. 基础信息：配置大屏显示的标题与全局数据刷新频率。
+  2. 比例化布局 (Responsive Proportion)：基于 1920x1080 标准，精细化配置各区域（左/中/右/上/下）的宽度与高度百分比。
+  3. 交互控制：提供“重置默认”功能以快速恢复标准比例，支持滑动条实时预览。
+  4. 引导说明：提示用户使用 F11 全屏模式以获得最佳工业级展示效果。
+
+  技术栈：Vue 3 (setup), Element Plus Slider & Form.
+-->
 <template>
   <div class="screen-config-page">
     <el-card>

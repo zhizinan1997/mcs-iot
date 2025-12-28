@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """
-MCS-IoT 演示数据生成器
-创建演示用仪表和设备，并持续发送模拟数据
+  MCS-IOT 演示数据生成器 (Demo Data Generator)
 
-使用方法:
-  python3 demo_generator.py --duration 60   # 运行60分钟
-  python3 demo_generator.py --init-only     # 仅创建设备，不发送数据
+  该脚本用于在系统初始化阶段快速构建虚拟环境，模拟海量传感器数据的上报过程。
+  主要职责：
+  1. 核心实体初始化：自动通过 API 创建演示所需的仪表 (Instruments) 与对应传感器 (Devices)。
+  2. 智能数据模拟：支持多线程并行模拟多个传感器，基于真实物理规律生成波动数值（含异常、报警态）。
+  3. MQTT 全链路打通：直接连接本地或远程 MQTT Broker，推送 JSON 格式的传感器上报报文。
+  4. 报警测试：可定时、随机触发高浓度报警，用于验证系统的预警与通知链路。
+
+  技术栈：Python 3, Paho-MQTT, Requests (RESTful API), Threading.
 """
 import paho.mqtt.client as mqtt
 import json

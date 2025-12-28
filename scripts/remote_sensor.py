@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """
-MCS-IoT 远程传感器模拟器
-连接到远程 MQTT 服务器，模拟多个传感器每秒发送数据
+  MCS-IOT 远程传感器模拟器 (Remote Sensor Simulator)
 
-使用方法:
-  python3 remote_sensor.py                    # 使用默认配置运行 10 个传感器 (TLS)
-  python3 remote_sensor.py --no-tls           # 不使用 TLS (端口 1883)
-  python3 remote_sensor.py --count 5          # 模拟 5 个传感器
-  python3 remote_sensor.py --interval 0.5     # 每0.5秒发送一次
+  该脚本用于在外网或远程环境模拟物理传感器的行为，验证系统的跨网络上报性能。
+  主要职责：
+  1. 远程连接方案：支持基于 TLS (8883) 的安全加密连接与传统 TCP (1883) 通信。
+  2. 批量设备模拟：支持同时模拟上百个逻辑设备，每个设备拥有独立的会话、SN 与数据序列。
+  3. 全参数模拟：上报报文涵盖原始电压 (v_raw)、计算浓度、环境温湿度、电量、信号强度 (RSSI) 及网络类型。
+  4. 稳定性测试：具备断线重连机制，自动处理网络波动，支持高频（每秒多次）上报压测。
+
+  技术栈：Python 3, Paho-MQTT (V2 Callbacks), SSL/TLS, Threading.
 """
 import paho.mqtt.client as mqtt
 import json

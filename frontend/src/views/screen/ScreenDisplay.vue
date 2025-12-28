@@ -1,3 +1,14 @@
+<!--
+  MCS-IOT 大屏内容可见性选择页面 (Screen Visibility Management)
+
+  该文件负责筛选哪些仪表具有进入“可视化大屏”展示的权限。
+  主要职责：
+  1. 数据筛选：以表格形式列出所有仪表，提供开关（Switch）控制其在大屏上的显示/隐藏。
+  2. 状态同步：实时将可见性状态更新至数据库，影响大屏端的 3D 地图点位渲染。
+  3. 统计展示：显示每个仪表关联的传感器数量及颜色标识，辅助管理决策。
+
+  技术栈：Vue 3 (setup), Element Plus Table & Switch.
+-->
 <template>
   <div class="screen-display-page">
     <el-card>

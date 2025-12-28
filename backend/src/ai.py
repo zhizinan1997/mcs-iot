@@ -1,3 +1,18 @@
+"""
+MCS-IOT AI 智能分析模块 (AI Analysis & Summary)
+
+该文件利用大语言模型 (LLM) 对平台的运行状况进行定时总结，以便在大屏等界面展示直观的分析报告。
+主要功能包括：
+1. 实现“检查点 (Checkpoint)”机制，确保 AI 总结与特定的时间段（如早班、午间、晚班）匹配。
+2. 自动从数据库抓取指定时间范围内的报警频次、涉及仪器及报警明细。
+3. 调用 OpenAI 兼容接口，根据预设 Prompt 生成简洁的运行总结。
+4. 提供缓存机制（Redis），减少冗余的 API 调用，并在数据陈旧或时间跨度变化时自动重新生成。
+
+结构：
+- Checkpoint Logic: get_latest_checkpoint 等函数用于计算当前所属的时间窗口。
+- call_openai: 封装异步 HTTP 调用 LLM 的逻辑。
+- get_ai_summary: 核心 API，处理“查询缓存 -> 逻辑判断 -> 取数分析 -> 调用 AI -> 更新缓存”的全流程。
+"""
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 import json

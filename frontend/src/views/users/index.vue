@@ -1,3 +1,15 @@
+<!--
+  MCS-IOT 权限与子账号管理页面 (Multi-user RBAC Management)
+
+  该文件负责多用户协作场景下的细粒度权限控制。
+  主要职责：
+  1. 账号全生命周期：支持管理员创建、编辑、禁用及删除子账号。
+  2. RBAC 权限模型：为每个用户分配针对功能模块（如：设备管理、AI 配置、系统自检）的布尔级控制权限。
+  3. 安全审计：提供强制修改子账号密码功能，记录用户最后登录时间。
+  4. 交互引导：采用权限矩阵勾选模式，简化复杂角色的配置流程。
+
+  技术栈：Vue 3 (setup), Element Plus Table, Dialog & Checkbox Grid.
+-->
 <template>
   <div class="users-container">
     <el-card class="main-card">

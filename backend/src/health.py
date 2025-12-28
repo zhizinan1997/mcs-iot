@@ -1,6 +1,18 @@
 """
-系统自检模块
-提供详细的系统健康检查功能
+MCS-IOT 系统健康自检模块 (System Health Check)
+
+该文件负责全系统的状态诊断，提供自动化的自检流程，帮助管理员快速定位系统故障。
+主要功能包括：
+1. 定义一系列自检项，涵盖数据库、Redis、MQTT、Worker 进程及授权状态。
+2. 检查多服务的连通性（基于 Socket 连接测试）。
+3. 验证数据库表结构的完整性及存储空间使用情况。
+4. 监控 Redis 运行内存及 Worker 进程的心跳上报。
+5. 汇总所有检查结果，给出整体健康评价（Healthy/Warning/Unhealthy）及对应的解决方案建议。
+
+结构：
+- CHECK_ITEMS: 自检项的静态定义。
+- run_health_check: 驱动各子检查函数并将结果聚合的入口。
+- Sub-checks: check_database, check_redis, check_network 等具体执行逻辑。
 """
 from fastapi import APIRouter, Depends
 from typing import List, Dict, Any

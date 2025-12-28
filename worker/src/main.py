@@ -1,3 +1,19 @@
+"""
+MCS-IOT 后台工作程序总控 (Worker Main Entry)
+
+该文件是后台 Worker 进程的启动入口，负责协调数据采集、处理、报警及定时任务。
+主要功能包括：
+1. 初始化 Redis 连接及持久化存储 (Storage)。
+2. 实例化并配置各核心组件：校准器 (Calibrator)、报警中心 (AlarmCenter)、授权守卫 (LicenseGuard) 等。
+3. 启动定时任务调度器 (Scheduler)，处理数据归档、设备在线检查等周期性逻辑。
+4. 建立 MQTT 连接，并建立同步消息回调与异步逻辑处理 (Processor) 之间的桥梁。
+5. 实现服务的优雅停机 (Graceful Shutdown)，确保资源在退出前正确释放。
+
+结构：
+- main: 异步主函数，按顺序执行各组件的启动与依赖注入。
+- on_mqtt_message: 消息中转回调，将 MQTT 线程捕获的数据安全传递至异步事件循环处理。
+- 信号处理: 监听系统信号并触发退出流程。
+"""
 import asyncio
 import os
 import signal

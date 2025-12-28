@@ -1,3 +1,18 @@
+"""
+MCS-IOT 后台授权守卫 (Worker License Guard)
+
+该文件负责在 Worker 侧执行授权校验，确保数据解析与报警推送逻辑仅在合规环境下运行。
+主要功能包括：
+1. 硬件识别：读取宿主机 ID 并结合本地 license.key 文件。
+2. 双重验证机制：优先尝试与远程授权服务器同步，失败时回退至基于本地缓存 Token 的宽限期模式（Grace Period）。
+3. 业务准入控制：根据授权状态动态拦截外部 MQTT 数据的注入，保护商业版核心算法不被盗用。
+4. 状态反馈：维护实时的授权状态机，为调度器及管理后台提供准确的授权元数据。
+
+结构：
+- LicenseGuard: 核心类，持有了文件读取、网络验证及状态判断的职责。
+- verify / startup_check: 两种核验模式，分别应对日常轮转及冷启动。
+- is_mqtt_allowed: 功能开关，实现基于 IP 及授权状态的准入逻辑。
+"""
 import logging
 import hashlib
 import os

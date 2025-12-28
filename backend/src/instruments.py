@@ -1,3 +1,17 @@
+"""
+MCS-IOT 仪表管理模块 (Instrument & Panel Management)
+
+该文件负责虚拟“仪表”的逻辑管理。在系统中，一个仪表可以作为一个容器，展示一个或多个传感器的监测数据。
+主要功能包括：
+1. 实现仪表的增删改查 (CRUD) 接口。
+2. 动态计算每个仪表关联的传感器数量、今日报警数及未处理报警数。
+3. 维护表在大屏可视化界面上的显示位置 (pos_x, pos_y) 及排序权重 (sort_order)。
+4. 提供基于仪表的历史数据聚合查询，支持同时获取一个仪表下所有传感器的趋势曲线。
+
+结构：
+- Pydantic Models: InstrumentBase, InstrumentResponse 用于前端交互的数据结构。
+- API Handlers: 实现基础的 CRUD 逻辑及特定的位置更新、历史数据聚合逻辑。
+"""
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional, List

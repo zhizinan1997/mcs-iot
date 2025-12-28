@@ -1,3 +1,15 @@
+<!--
+  MCS-IOT 管理大屏 (Management Dashboard)
+
+  该文件是系统的主控台视图，提供全局状态概览及详细设备列表。
+  主要功能：
+  1. 统计看板：实时显示设备在线情况、告警数量等核心指标。
+  2. 交互式设备列表：支持多维排序（SN、名称、浓度、电量等）及实时刷新。
+  3. 历史回溯：集成 ECharts 插件，以图表形式展示特定传感器的浓度、温湿度历史趋势。
+  4. 报警联动：在列表中直观展示触发报警的传感器状态及详情入口。
+
+  技术栈：Vue 3 (Composition API), Element Plus, ECharts, SCSS.
+-->
 <template>
   <div class="dashboard">
     <!-- Stats Cards -->

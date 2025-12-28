@@ -1,3 +1,19 @@
+"""
+MCS-IOT 数据库存储接口 (Storage Infrastructure)
+
+该文件封装了后台 Worker 与时序数据库 (TimescaleDB) 之间的底层交互逻辑。
+主要功能包括：
+1. 维护异步数据库连接池 (asyncpg)，并实现针对容器启动环境的重试连接机制。
+2. 实现传感器海量时序数据的并发保存。
+3. 动态维护设备元数据：在收到上报时自动注册新设备 (Upsert) 并实时更新其最后活跃时间。
+4. 提供设备状态转场的持久化操作（如标记离线）。
+
+结构：
+- Storage: 核心持久化类。
+- connect: 健壮的连接初始化逻辑。
+- save_sensor_data: 传感器采集值的高效保存逻辑。
+- upsert_device / set_device_offline: 设备生命周期管理相关的 SQL 封装。
+"""
 import asyncpg
 import logging
 import os

@@ -1,3 +1,14 @@
+/**
+ * MCS-IOT API 客户端 (Axios API Client)
+ * 
+ * 该文件封装了前端与后端 RESTful API 的所有通信逻辑。
+ * 主要职责：
+ * 1. Axios 实例配置：设置基础 URL (/api) 及请求超时时间。
+ * 2. 拦截器实现：
+ *    - 请求拦截：自动在 Header 中注入 JWT Token 进行身份识别。
+ *    - 响应拦截：统一处理 401 错误（Token 过期/无效），自动清理本地缓存并跳转至登录页。
+ * 3. 模块化 API 封装：将业务接口按功能领域（Auth, Devices, Alarms, Config 等）进行对象化组织，提供 TS 类型支持。
+ */
 import axios from 'axios'
 
 // Use relative URL to go through nginx proxy in production
@@ -144,7 +155,7 @@ export const usersApi = {
     create: (data: any) => api.post('/users', data),
     update: (id: number, data: any) => api.put(`/users/${id}`, data),
     delete: (id: number) => api.delete(`/users/${id}`),
-    changePassword: (id: number, new_password: string) => 
+    changePassword: (id: number, new_password: string) =>
         api.put(`/users/${id}/password`, { new_password }),
     getPermissions: () => api.get('/users/permissions')
 }

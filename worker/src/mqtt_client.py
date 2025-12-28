@@ -1,3 +1,17 @@
+"""
+MCS-IOT MQTT 客户端组件 (MQTT Client Interface)
+
+该文件封装了后台 Worker 与 Mosquitto 消息中间件之间的通信逻辑。
+主要功能包括：
+1. 自动从配置文件 (mqtt_config.json) 中读取动态更新的连接凭据。
+2. 实现 MQTT 代理的自动化连接与重连机制，通过循环重试应对容器启动顺序导致的连接失败。
+3. 订阅设备上行数据及状态主题 (mcs/+/up, mcs/+/status)。
+4. 提供线程安全的发布接口，并维护实时的连接状态。
+
+结构：
+- load_mqtt_config_from_file: 静态助手函数，用于同步后端修改的账号信息。
+- MQTTClient: 包装类，集成了 paho.mqtt 的回调管理与连接生命周期控制。
+"""
 import paho.mqtt.client as mqtt
 import os
 import time

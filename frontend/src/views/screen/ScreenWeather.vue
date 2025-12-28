@@ -1,3 +1,15 @@
+<!--
+  MCS-IOT 大屏天气服务配置页面 (Screen Weather Service)
+
+  该文件负责大屏右上角气象模块的数据源配置。
+  主要职责：
+  1. 地域定位：集成省市二级联动选择器，自动根据中文名生成拼音 ID（适配 API）。
+  2. 接口集成：配置心知天气 (Seniverse) 的 API 私钥，支持开启/关闭天气展示。
+  3. 交互体验：采用苹果风格的圆角表单设计，提供清晰的申请流程说明与外链。
+  4. 自动转换：内置城市名称处理逻辑（剔除“市/盟/地区”后缀），确保 API 匹配高成功率。
+
+  技术栈：Vue 3 (setup), element-china-area-data, pinyin-pro, Element Plus.
+-->
 <template>
   <div class="screen-weather-page">
     <div class="glass-panel main-container">

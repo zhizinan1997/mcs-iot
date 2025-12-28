@@ -1,3 +1,15 @@
+<!--
+  MCS-IOT AI 接口配置页面 (AI Model Configuration)
+
+  该文件负责管理系统的 AI 增强功能，集成大语言模型以生成智能化洞察。
+  主要职责：
+  1. 接口设置：配置 OpenRouter 或兼容接口的 API Key 与模型名称 (如 GPT-4)。
+  2. 连接校验：提供“测试连接”功能，实时验证配置的有效性。
+  3. 商业联动：提供快速购买 API 额度的跳转链接，确保服务的持续性。
+  4. 视觉交互：采用深色渐变 Hero 区域与简洁的表单卡片设计。
+
+  技术栈：Vue 3 (setup), Element Plus Form, Pinia.
+-->
 <template>
   <div class="ai-config-page">
     <div class="ai-container">

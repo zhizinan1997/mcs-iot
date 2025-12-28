@@ -1,3 +1,15 @@
+<!--
+  MCS-IOT 云端数据归档管理页面 (Cloud Data Backup & Archiving)
+
+  该文件负责管理历史传感器数据的异地备份与本地空间释放逻辑。
+  主要职责：
+  1. 多云存储集成：支持 Cloudflare R2、腾讯云 COS 与 阿里云 OSS 的无缝切换。
+  2. 自动化策略：配置数据保留时长（Retention），到期自动导出为 CSV.GZ 并上传至云端。
+  3. 运维工具：提供立即手动备份、手动清理本地过期数据、文件在线管理（下载/删除）等功能。
+  4. 存储看板：实时监测本地数据库占用空间与云端对象存储的资源消耗。
+
+  技术栈：Vue 3 (setup), Element Plus Table & Dialog, S3-compatible Service API.
+-->
 <template>
   <div class="archive-page full-scroll">
     <div class="glass-panel">

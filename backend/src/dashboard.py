@@ -1,3 +1,20 @@
+"""
+MCS-IOT 大屏与仪表盘数据模块 (Dashboard & Real-time Data)
+
+该文件负责为监控前端提供高度聚合的系统概览数据及低延迟的实时状态流。
+主要功能包括：
+1. 统计全系统的设备在线状态、今日报警及确认情况。
+2. 提供所有设备的最新实时监测数据（PPM、温度、电量、信号等），并关联所属仪表信息。
+3. 通过 WebSocket (WS) 协议向前端实时推送数据更新，实现无刷新同步。
+4. 提供设备布局坐标的管理接口，支持在大屏上拖拽保存设备位置。
+
+结构：
+- ConnectionManager: 管理 WebSocket 连接的生命周期及消息广播。
+- get_dashboard_stats: 聚合统计逻辑，用于仪表盘卡片展示。
+- get_realtime_data: 实时数据快照获取逻辑。
+- websocket_endpoint: WS 服务端实现，每秒定时推送最新传感器状态。
+- update_device_positions: 布局管理逻辑，将位置信息持久化至 Redis。
+"""
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from typing import Optional, List, Dict
