@@ -264,7 +264,7 @@ perform_update() {
     # 步骤4: 数据库 Schema 迁移
     log_info "[4/8] 检查数据库 Schema..."
     if docker ps --filter "name=mcs_db" -q 2>/dev/null | grep -q .; then
-        # 检查 users 表是否存在 permissions 列
+        # 迁移1: 检查 users 表是否存在 permissions 列
         HAS_PERMISSIONS=$(docker exec mcs_db psql -U postgres -d mcs_iot -t -c \
             "SELECT column_name FROM information_schema.columns WHERE table_name='users' AND column_name='permissions';" 2>/dev/null | tr -d ' ')
         
@@ -273,13 +273,37 @@ perform_update() {
             docker exec mcs_db psql -U postgres -d mcs_iot -c \
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions TEXT DEFAULT '{}';" 2>/dev/null
             if [[ $? -eq 0 ]]; then
-                log_info "✓ 数据库 Schema 已更新 (添加 permissions 字段)"
+                log_info "✓ 已添加 permissions 字段"
             else
-                log_warn "数据库 Schema 更新失败，可能需要手动处理"
+                log_warn "permissions 字段添加失败"
             fi
-        else
-            log_info "✓ 数据库 Schema 已是最新版本"
         fi
+        
+        # 迁移2: 检查 ai_summary_logs 表是否存在
+        HAS_AI_SUMMARY_TABLE=$(docker exec mcs_db psql -U postgres -d mcs_iot -t -c \
+            "SELECT table_name FROM information_schema.tables WHERE table_name='ai_summary_logs';" 2>/dev/null | tr -d ' ')
+        
+        if [[ -z "$HAS_AI_SUMMARY_TABLE" ]]; then
+            log_info "正在创建 ai_summary_logs 表..."
+            docker exec mcs_db psql -U postgres -d mcs_iot -c "
+                CREATE TABLE IF NOT EXISTS ai_summary_logs (
+                    id SERIAL PRIMARY KEY,
+                    time_range VARCHAR(32),
+                    content TEXT NOT NULL,
+                    alarm_count INT DEFAULT 0,
+                    instrument_count INT DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT NOW()
+                );
+                CREATE INDEX IF NOT EXISTS idx_ai_summary_time ON ai_summary_logs (created_at DESC);
+            " 2>/dev/null
+            if [[ $? -eq 0 ]]; then
+                log_info "✓ 已创建 ai_summary_logs 表"
+            else
+                log_warn "ai_summary_logs 表创建失败"
+            fi
+        fi
+        
+        log_info "✓ 数据库 Schema 检查完成"
     else
         log_warn "数据库容器未运行，跳过 Schema 迁移 (服务启动后会自动处理)"
     fi

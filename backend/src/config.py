@@ -116,6 +116,7 @@ class AIConfig(BaseModel):
     """仅配置 API Key 和模型，URL 已锁定"""
     api_key: str = ""
     model: str = "gpt-3.5-turbo"
+    interval_hours: int = 4  # AI 总结间隔（小时），以0点为起点计算检查点
 
 async def get_redis():
     from .main import redis_pool
@@ -148,6 +149,62 @@ async def test_ai_config(config: AIConfig):
         return {"success": True, "message": response}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/ai/history")
+async def get_ai_history(db = Depends(get_db), page: int = 1, size: int = 20):
+    """获取 AI 总结历史记录列表"""
+    try:
+        offset = (page - 1) * size
+        async with db.acquire() as conn:
+            # 获取总数
+            count_result = await conn.fetchrow("SELECT COUNT(*) as total FROM ai_summary_logs")
+            total = count_result['total'] if count_result else 0
+            
+            # 获取分页数据
+            rows = await conn.fetch("""
+                SELECT id, time_range, content, alarm_count, instrument_count, created_at
+                FROM ai_summary_logs
+                ORDER BY created_at DESC
+                LIMIT $1 OFFSET $2
+            """, size, offset)
+            
+            history = []
+            for row in rows:
+                history.append({
+                    "id": row['id'],
+                    "time_range": row['time_range'],
+                    "content": row['content'],
+                    "alarm_count": row['alarm_count'],
+                    "instrument_count": row['instrument_count'],
+                    "created_at": row['created_at'].isoformat() if row['created_at'] else None
+                })
+            
+            return {"total": total, "data": history, "page": page, "size": size}
+    except Exception as e:
+        # 如果表不存在，返回空数据
+        if "does not exist" in str(e):
+            return {"total": 0, "data": [], "page": page, "size": size}
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/ai/history")
+async def clear_ai_history(db = Depends(get_db), redis = Depends(get_redis)):
+    """清空所有 AI 总结历史记录"""
+    try:
+        async with db.acquire() as conn:
+            result = await conn.execute("DELETE FROM ai_summary_logs")
+            # 获取删除的行数
+            deleted_count = int(result.split()[-1]) if result else 0
+        
+        # 同时清除 Redis 中的缓存
+        await redis.delete("ai:summary:content")
+        await redis.delete("ai:summary:timestamp")
+        await redis.delete("ai:summary:range")
+        
+        return {"message": f"已清空 {deleted_count} 条 AI 总结记录", "deleted_count": deleted_count}
+    except Exception as e:
+        if "does not exist" in str(e):
+            return {"message": "AI 总结记录表不存在", "deleted_count": 0}
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Email Config
 @router.get("/alarm/email", response_model=EmailConfig)

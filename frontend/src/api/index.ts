@@ -105,6 +105,8 @@ export const configApi = {
     getAI: () => api.get('/config/ai'),
     updateAI: (data: any) => api.put('/config/ai', data),
     testAI: (data: any) => api.post('/config/ai/test', data),
+    getAIHistory: (page = 1, size = 20) => api.get('/config/ai/history', { params: { page, size } }),
+    clearAIHistory: () => api.delete('/config/ai/history'),
     // 报警通用配置（消抖时间+报警时段）
     getAlarmGeneral: () => api.get('/config/alarm/general'),
     updateAlarmGeneral: (data: any) => api.put('/config/alarm/general', data),

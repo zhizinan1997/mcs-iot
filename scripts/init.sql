@@ -177,9 +177,21 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
     applied_at TIMESTAMP DEFAULT NOW()
 );
 
+-- 9. AI Summary Logs (AI 总结历史记录)
+CREATE TABLE IF NOT EXISTS ai_summary_logs (
+    id SERIAL PRIMARY KEY,
+    time_range VARCHAR(32),          -- 如 "08:00 - 12:00"
+    content TEXT NOT NULL,           -- AI 生成的总结内容
+    alarm_count INT DEFAULT 0,       -- 该时段报警次数
+    instrument_count INT DEFAULT 0,  -- 涉及仪表数量
+    created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_ai_summary_time ON ai_summary_logs (created_at DESC);
+
 -- 标记初始迁移已应用 (新安装时)
 INSERT INTO schema_migrations (version, description) VALUES 
-(1, '添加 users.permissions 字段用于子账号权限管理')
+(1, '添加 users.permissions 字段用于子账号权限管理'),
+(2, '添加 ai_summary_logs 表存储 AI 总结历史')
 ON CONFLICT DO NOTHING;
 
 -- Create default admin user (Change password on first login)
