@@ -132,6 +132,7 @@ services:
     volumes:
       - ./backend/src:/app/src
       - ./mosquitto/config:/app/mosquitto # MQTT 配置管理
+      - ./scripts:/app/scripts:ro  # 部署信息文件
       - /var/run/docker.sock:/var/run/docker.sock # Docker API 用于重载 Mosquitto
       - uploads_data:/app/uploads # 持久化上传文件
       - /etc/machine-id:/app/host_machine_id:ro # 宿主机唯一标识，用于授权

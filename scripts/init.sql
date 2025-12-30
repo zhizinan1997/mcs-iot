@@ -194,8 +194,10 @@ INSERT INTO schema_migrations (version, description) VALUES
 (2, '添加 ai_summary_logs 表存储 AI 总结历史')
 ON CONFLICT DO NOTHING;
 
--- Create default admin user (Change password on first login)
--- Recommended: Set a strong password in production via environment variables or UI.
+-- Create default admin user (placeholder with dummy hash)
+-- IMPORTANT: The backend will automatically sync the password from 
+-- environment variable ADMIN_INITIAL_PASSWORD on first startup.
+-- This hardcoded hash is just a placeholder and will be replaced.
 INSERT INTO users (username, password_hash, role, permissions) VALUES 
 ('admin', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.SHJGrMeVwBVzGO', 'admin', '{}')
 ON CONFLICT DO NOTHING;

@@ -84,6 +84,65 @@ async def _migrate_archive_config_on_startup(redis):
         await redis.set("config:archive", json.dumps(config))
         logger.info("Archive config migrated from old r2_* format to new unified format")
 
+async def _initialize_admin_password(db_pool):
+    """
+    初始化 admin 用户密码
+    
+    解决问题: init.sql 中使用硬编码的密码哈希，与环境变量 ADMIN_INITIAL_PASSWORD 不匹配
+    
+    逻辑:
+    1. 检查 Redis 中是否已有 "admin_password_initialized" 标记
+    2. 如果没有标记，则从环境变量读取密码并更新数据库中的 admin 用户
+    3. 设置标记，避免后续每次启动都更新密码
+    
+    这确保了首次部署时使用 .env 中配置的密码，而不是 init.sql 中的硬编码值
+    """
+    from passlib.context import CryptContext
+    
+    # 从环境变量获取初始密码
+    initial_password = os.getenv("ADMIN_INITIAL_PASSWORD", "admin123")
+    
+    # 使用与 auth.py 相同的加密上下文
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    
+    async with db_pool.acquire() as conn:
+        # 检查 admin 用户是否存在
+        admin_row = await conn.fetchrow(
+            "SELECT id, password_hash FROM users WHERE username = 'admin'"
+        )
+        
+        if not admin_row:
+            # admin 用户不存在，创建它
+            password_hash = pwd_context.hash(initial_password)
+            await conn.execute(
+                """
+                INSERT INTO users (username, password_hash, role, permissions)
+                VALUES ('admin', $1, 'admin', '{}')
+                """,
+                password_hash
+            )
+            logger.info("Admin user created with password from ADMIN_INITIAL_PASSWORD")
+        else:
+            # admin 用户存在，检查当前密码是否与环境变量匹配
+            current_hash = admin_row["password_hash"]
+            
+            # 如果当前密码与环境变量密码不匹配，更新密码
+            # 但只在找到 init.sql 的默认硬编码哈希时才自动更新
+            # 这个是 init.sql 中的默认哈希值
+            DEFAULT_HASH_PREFIX = "$2b$12$LQv3c1yqBWVHxkd0LHAkCO"
+            
+            if current_hash.startswith(DEFAULT_HASH_PREFIX):
+                # 这是 init.sql 的默认密码，需要更新为环境变量中的密码
+                new_hash = pwd_context.hash(initial_password)
+                await conn.execute(
+                    "UPDATE users SET password_hash = $1 WHERE username = 'admin'",
+                    new_hash
+                )
+                logger.info("Admin password updated from ADMIN_INITIAL_PASSWORD environment variable")
+            else:
+                # 密码已被用户手动修改过，不覆盖
+                logger.debug("Admin password already customized, skipping initialization")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
@@ -105,6 +164,12 @@ async def lifespan(app: FastAPI):
         await run_migrations(deps.db_pool)
     except Exception as e:
         logger.error(f"Database migration failed: {e}")
+    
+    # 初始化/同步 admin 用户密码 (从环境变量 ADMIN_INITIAL_PASSWORD)
+    try:
+        await _initialize_admin_password(deps.db_pool)
+    except Exception as e:
+        logger.warning(f"Admin password initialization failed: {e}")
     
     # Initialize License Manager
     try:

@@ -164,6 +164,9 @@ export const usersApi = {
     delete: (id: number) => api.delete(`/users/${id}`),
     changePassword: (id: number, new_password: string) =>
         api.put(`/users/${id}/password`, { new_password }),
-    getPermissions: () => api.get('/users/permissions')
+    getPermissions: () => api.get('/users/permissions'),
+    // 管理员密码修改
+    changeAdminPassword: (current_password: string, new_password: string) =>
+        api.put('/users/admin/password', { current_password, new_password })
 }
 

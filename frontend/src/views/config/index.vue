@@ -232,30 +232,34 @@
         </div>
       </div>
 
-      <!-- MQTT Section -->
-      <div id="section-mqtt" class="config-section">
+      <!-- Admin Account Section -->
+      <div id="section-admin" class="config-section">
         <div class="section-card glass-panel">
           <div class="card-header">
             <div class="header-title">
-              <el-icon><Link /></el-icon> MQTT 服务
+              <el-icon><User /></el-icon> 管理员账号
             </div>
-            <div class="header-actions">
-              <button class="mac-action-btn" @click="reloadMqtt">重载服务</button>
-              <el-button type="primary" size="small" @click="saveMqttConfig" :loading="saving">保存配置</el-button>
-            </div>
+            <el-button type="primary" size="small" @click="saveAdminPassword" :loading="savingAdminPwd">修改密码</el-button>
           </div>
           <div class="card-body">
-             <el-form :model="mqttConfig" label-width="120px" label-position="left">
+             <el-form :model="adminPasswordForm" label-width="120px" label-position="left">
                <div class="mqtt-group">
-                 <h5>管理员账号</h5>
+                 <h5>修改登录密码</h5>
+                 <el-form-item label="当前密码">
+                   <el-input v-model="adminPasswordForm.current_password" type="password" show-password placeholder="请输入当前登录密码" />
+                 </el-form-item>
                  <div class="form-row">
-                   <el-form-item label="用户名" class="half-width"><el-input v-model="mqttConfig.admin_user" /></el-form-item>
-                   <el-form-item label="密码" class="half-width"><el-input v-model="mqttConfig.admin_pass" type="password" show-password /></el-form-item>
+                   <el-form-item label="新密码" class="half-width">
+                     <el-input v-model="adminPasswordForm.new_password" type="password" show-password placeholder="至少6位" />
+                   </el-form-item>
+                   <el-form-item label="确认密码" class="half-width">
+                     <el-input v-model="adminPasswordForm.confirm_password" type="password" show-password placeholder="再次输入新密码" />
+                   </el-form-item>
                  </div>
                </div>
                
                <el-alert 
-                 title="此账号用于 MQTT 调试连接，设备接入账号请查阅部署文档" 
+                 title="修改密码后，部署信息中的密码记录将自动同步更新" 
                  type="info" 
                  show-icon 
                  :closable="false" 
@@ -437,8 +441,8 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from "vue";
 import { ElMessage } from "element-plus";
-import { Setting, Monitor, Message, Connection, Bell, Link, Upload, InfoFilled, View, Hide, Download } from '@element-plus/icons-vue'
-import { configApi, uploadApi } from "../../api";
+import { Setting, Monitor, Message, Connection, Bell, User, Upload, InfoFilled, View, Hide, Download } from '@element-plus/icons-vue'
+import { configApi, uploadApi, usersApi } from "../../api";
 
 const saving = ref(false);
 const uploadingLogo = ref(false);
@@ -451,7 +455,7 @@ const navItems = [
   { id: 'section-email', label: '邮件通知', icon: 'Message' },
   { id: 'section-webhook', label: 'Webhook', icon: 'Connection' },
   { id: 'section-alarm', label: '报警规则', icon: 'Bell' },
-  { id: 'section-mqtt', label: 'MQTT服务', icon: 'Link' },
+  { id: 'section-admin', label: '管理员账号', icon: 'User' },
   { id: 'section-deploy', label: '部署信息', icon: 'InfoFilled' },
   { id: 'section-backup', label: '配置备份', icon: 'Download' },
 ];
@@ -461,7 +465,10 @@ const siteConfig = reactive({ site_name: "", logo_url: "", browser_title: "" });
 const emailConfig = reactive({ enabled: false, smtp_host: "smtp.qq.com", smtp_port: 465, sender: "", password: "", receivers: [] as string[] });
 const webhookConfig = reactive({ enabled: false, url: "", platform: "custom", secret: "", keyword: "" });
 const alarmGeneralConfig = reactive({ debounce_minutes: 10, time_restriction_enabled: false, time_restriction_days: [1, 2, 3, 4, 5], time_restriction_start: "08:00", time_restriction_end: "18:00" });
-const mqttConfig = reactive({ admin_user: "admin", admin_pass: "", worker_user: "worker", worker_pass: "", device_user: "zhizinan", device_pass: "" });
+
+/* --- Admin Password --- */
+const savingAdminPwd = ref(false);
+const adminPasswordForm = reactive({ current_password: "", new_password: "", confirm_password: "" });
 
 /* --- Deploy Info --- */
 const loadingDeployInfo = ref(false);
@@ -592,19 +599,17 @@ function handleScroll(e: Event) {
 /* --- Loaders --- */
 async function loadAll() {
   try {
-    const [site, email, webhook, alarm, mqtt] = await Promise.all([
+    const [site, email, webhook, alarm] = await Promise.all([
       configApi.getSite(),
       configApi.getEmail(),
       configApi.getWebhook(),
-      configApi.getAlarmGeneral(),
-      configApi.getMqtt()
+      configApi.getAlarmGeneral()
     ]);
     
     Object.assign(siteConfig, site.data);
     Object.assign(emailConfig, email.data);
     Object.assign(webhookConfig, webhook.data);
     Object.assign(alarmGeneralConfig, alarm.data);
-    Object.assign(mqttConfig, mqtt.data);
     
     // Parse time range
     if (alarmGeneralConfig.time_restriction_start && alarmGeneralConfig.time_restriction_end) {
@@ -637,8 +642,34 @@ async function saveAlarmGeneralConfig() {
   await saveWrapper(() => configApi.updateAlarmGeneral(alarmGeneralConfig), "报警规则已保存");
 }
 
-async function saveMqttConfig() {
-  await saveWrapper(() => configApi.updateMqtt(mqttConfig), "MQTT配置已保存");
+async function saveAdminPassword() {
+  // 验证表单
+  if (!adminPasswordForm.current_password) {
+    ElMessage.error("请输入当前密码");
+    return;
+  }
+  if (!adminPasswordForm.new_password || adminPasswordForm.new_password.length < 6) {
+    ElMessage.error("新密码至少6位");
+    return;
+  }
+  if (adminPasswordForm.new_password !== adminPasswordForm.confirm_password) {
+    ElMessage.error("两次输入的新密码不一致");
+    return;
+  }
+  
+  savingAdminPwd.value = true;
+  try {
+    await usersApi.changeAdminPassword(adminPasswordForm.current_password, adminPasswordForm.new_password);
+    ElMessage.success("密码修改成功");
+    // 清空表单
+    adminPasswordForm.current_password = "";
+    adminPasswordForm.new_password = "";
+    adminPasswordForm.confirm_password = "";
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.detail || "密码修改失败");
+  } finally {
+    savingAdminPwd.value = false;
+  }
 }
 
 /* --- Helpers --- */
@@ -679,12 +710,7 @@ async function testNotification(type: string) {
   }
 }
 
-async function reloadMqtt() {
-  try {
-    await configApi.reloadMqtt();
-    ElMessage.success("服务已重载");
-  } catch (e) { ElMessage.error("重载失败"); }
-}
+
 
 function handleTimeRangeChange(val: [Date, Date] | null) {
   if (val) {

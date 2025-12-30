@@ -1,0 +1,144 @@
+# MCS-IoT 登录密码问题技术报告
+
+**报告日期**: 2025-12-30  
+**问题状态**: ✅ 已临时修复，待永久修复  
+**严重程度**: 🔴 **高** (影响系统登录)
+
+---
+
+## 问题概述
+
+Docker 部署完成后，使用 [.env](file:///opt/mcs-iot/.env) 配置文件中设置的管理员密码 `admin123` 无法成功登录系统，前端持续返回 401 Unauthorized 错误。
+
+---
+
+## 技术分析
+
+### 1. 故障现象
+
+| 项目 | 详情 |
+|------|------|
+| 登录接口 | `POST /api/auth/login` |
+| HTTP 状态码 | `401 Unauthorized` |
+| 用户名 | `admin` |
+| 配置密码 | `admin123` (来自 [.env](file:///opt/mcs-iot/.env) 文件 `ADMIN_INITIAL_PASSWORD`) |
+
+### 2. 根本原因
+
+经过对后端日志和代码分析，定位到问题出在 **数据库初始化脚本**：
+
+#### 问题代码位置
+**文件**: [scripts/init.sql](file:///opt/mcs-iot/scripts/init.sql) 第 199-201 行
+
+```sql
+-- Create default admin user (Change password on first login)
+INSERT INTO users (username, password_hash, role, permissions) VALUES 
+('admin', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.SHJGrMeVwBVzGO', 'admin', '{}')
+ON CONFLICT DO NOTHING;
+```
+
+#### 问题说明
+
+| 问题点 | 详情 |
+|--------|------|
+| **硬编码哈希值** | [init.sql](file:///opt/mcs-iot/scripts/init.sql) 使用了一个固定的 bcrypt 哈希值 |
+| **哈希值不匹配** | 该哈希值对应的密码 **不是** `admin123` |
+| **环境变量未使用** | [.env](file:///opt/mcs-iot/.env) 中的 `ADMIN_INITIAL_PASSWORD=admin123` 配置项未被初始化脚本读取使用 |
+
+### 3. 验证过程
+
+```python
+# 验证密码匹配
+from passlib.context import CryptContext
+pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
+
+hashed = '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.SHJGrMeVwBVzGO'
+result = pwd_context.verify('admin123', hashed)
+# 结果: False (密码不匹配)
+```
+
+---
+
+## 临时修复方案
+
+已通过以下 SQL 命令手动重置 admin 用户密码为 `admin123`:
+
+```sql
+UPDATE users 
+SET password_hash = '$2b$12$GoOvhR/OHHWyLpLoFBkmg.7pPZJvQetgGiViInPTVBi33UsqUssfi' 
+WHERE username = 'admin';
+```
+
+---
+
+## 永久修复建议
+
+> [!IMPORTANT]
+> 以下修复建议需要供应商在代码层面实施
+
+### 方案 A：动态读取环境变量 (推荐)
+
+修改数据库初始化逻辑，使初始管理员密码从环境变量 `ADMIN_INITIAL_PASSWORD` 动态读取并在运行时进行哈希处理。
+
+**建议修改位置**: 后端应用启动时的数据库初始化逻辑 (如 `src/main.py` 或 `src/migrations.py`)
+
+```python
+import os
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
+admin_password = os.getenv('ADMIN_INITIAL_PASSWORD', 'admin123')
+password_hash = pwd_context.hash(admin_password)
+
+# 然后使用 password_hash 插入或更新数据库
+```
+
+### 方案 B：更新 init.sql 注释
+
+如果继续使用硬编码密码，应在 [init.sql](file:///opt/mcs-iot/scripts/init.sql) 和文档中明确记录默认密码是什么（而非让用户误以为是 [.env](file:///opt/mcs-iot/.env) 中配置的密码）。
+
+---
+
+## 相关日志证据
+
+### 后端启动日志
+```
+INFO:src.license:Generated device ID: MCS-7B88-D687-DD71
+ERROR:src.license:CODE TAMPERING DETECTED! Expected: 4f7c37958ad8b983, Actual: 31e2ed275febfa3b
+INFO:httpx:HTTP Request: POST https://lic.zhizinan.cc/verify "HTTP/1.1 200 OK"
+INFO:src.license:License status: active
+```
+
+> [!NOTE]
+> 日志中的 `CODE TAMPERING DETECTED` 警告虽然显示为 ERROR 级别，但并未影响系统正常运行，许可证验证仍然成功 (`License status: active`)。此警告可能是代码校验机制的误报，建议供应商一并排查。
+
+### 登录失败日志
+```
+INFO:     172.18.0.7:48726 - "POST /api/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     172.18.0.7:48740 - "POST /api/auth/login HTTP/1.1" 401 Unauthorized
+```
+
+---
+
+## 涉及文件清单
+
+| 文件路径 | 说明 |
+|----------|------|
+| [/opt/mcs-iot/scripts/init.sql](file:///opt/mcs-iot/scripts/init.sql) | 数据库初始化脚本，包含硬编码的密码哈希 |
+| [/opt/mcs-iot/.env](file:///opt/mcs-iot/.env) | 环境配置文件，包含 `ADMIN_INITIAL_PASSWORD` |
+| [/opt/mcs-iot/backend/src/auth.py](file:///opt/mcs-iot/backend/src/auth.py) | 认证模块，负责密码验证逻辑 |
+
+---
+
+## 当前登录凭据
+
+修复后可使用以下凭据登录：
+
+| 用户名 | 密码 |
+|--------|------|
+| `admin` | `admin123` |
+
+---
+
+*报告生成者: AI Assistant*  
+*报告时间: 2025-12-30 22:40*

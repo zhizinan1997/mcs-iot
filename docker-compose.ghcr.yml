@@ -47,7 +47,7 @@ services:
     networks:
       - mcs-net
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -64,7 +64,7 @@ services:
     networks:
       - mcs-net
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -90,7 +90,7 @@ services:
       - DEV_MODE=false
     volumes:
       - ./mosquitto/config:/app/mosquitto
-      - /etc/machine-id:/app/host_machine_id:ro  # 宿主机唯一标识，用于授权
+      - /etc/machine-id:/app/host_machine_id:ro # 宿主机唯一标识，用于授权
       - ./license.key:/app/license.key:ro
     depends_on:
       timescaledb:
@@ -132,8 +132,9 @@ services:
       - WEATHER_API_KEY=${WEATHER_API_KEY:-}
     volumes:
       - ./mosquitto/config:/app/mosquitto
+      - ./scripts:/app/scripts:ro # 部署信息文件
       - /var/run/docker.sock:/var/run/docker.sock
-      - /etc/machine-id:/app/host_machine_id:ro  # 宿主机唯一标识，用于授权
+      - /etc/machine-id:/app/host_machine_id:ro # 宿主机唯一标识，用于授权
       - uploads_data:/app/uploads
     depends_on:
       timescaledb:
@@ -141,7 +142,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8000/api/health" ]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -175,7 +176,6 @@ volumes:
   mosquitto_data:
   mosquitto_log:
   uploads_data:
-
 
 networks:
   mcs-net:
