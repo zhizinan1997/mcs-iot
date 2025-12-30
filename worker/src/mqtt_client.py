@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 # 默认配置 (首次启动或配置文件不存在时使用)
 DEFAULT_MQTT_USER = "worker"
-DEFAULT_MQTT_PASS = "worker123"
+DEFAULT_MQTT_PASS = "admin123"
 
 # 配置文件路径 (与 backend 共享的挂载目录)
 CONFIG_FILE = "/app/mosquitto/mqtt_config.json"

@@ -50,7 +50,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(SCRIPT_DIR, "mqtt_config.json")
 
 # 默认 MQTT 账号密码（部署时会创建 mqtt_config.json 覆盖此配置）
-DEFAULT_MQTT_USER = "device"
+DEFAULT_MQTT_USER = "zhizinan"
 DEFAULT_MQTT_PASS = "admin123"
 
 # ============================================================================

@@ -215,7 +215,7 @@ perform_update() {
     cd "$INSTALL_DIR"
     
     # 步骤1: 备份数据库
-    log_info "[1/8] 备份数据库..."
+    log_info "[1/9] 备份数据库..."
     BACKUP_FILE="backup_$(date +%Y%m%d_%H%M%S).sql"
     
     # 检查数据库容器是否运行且健康
@@ -236,8 +236,8 @@ perform_update() {
         log_warn "数据库容器未运行，跳过备份"
     fi
     
-    # 步骤2: 拉取最新代码
-    log_info "[2/8] 拉取最新代码..."
+    # 步骤2: 拉取最新代码 (注意: git pull 会覆盖 mqtt_config.json，步骤6会修复)
+    log_info "[2/9] 拉取最新代码..."
     if [[ -d ".git" ]]; then
         git fetch origin 2>/dev/null || true
         git pull origin main 2>/dev/null || git reset --hard origin/main 2>/dev/null || true
@@ -247,7 +247,7 @@ perform_update() {
     fi
     
     # 步骤3: 拉取最新镜像
-    log_info "[3/8] 拉取最新镜像..."
+    log_info "[3/9] 拉取最新镜像..."
     if [[ -f "docker-compose.ghcr.yml" ]]; then
         if docker compose -f docker-compose.ghcr.yml pull 2>&1; then
             log_info "✓ 镜像已更新"
@@ -262,7 +262,7 @@ perform_update() {
     fi
     
     # 步骤4: 数据库 Schema 迁移
-    log_info "[4/8] 检查数据库 Schema..."
+    log_info "[4/9] 检查数据库 Schema..."
     if docker ps --filter "name=mcs_db" -q 2>/dev/null | grep -q .; then
         # 迁移1: 检查 users 表是否存在 permissions 列
         HAS_PERMISSIONS=$(docker exec mcs_db psql -U postgres -d mcs_iot -t -c \
@@ -309,23 +309,60 @@ perform_update() {
     fi
     
     # 步骤5: 清除授权缓存（确保使用新的设备ID验证）
-    log_info "[5/8] 清除授权缓存..."
+    log_info "[5/9] 清除授权缓存..."
     if docker ps --filter "name=mcs_redis" -q 2>/dev/null | grep -q .; then
         docker exec mcs_redis redis-cli DEL license:status license:grace_start license:error license:tampered 2>/dev/null || true
         log_info "✓ 授权缓存已清除"
     fi
     
-    # 步骤6: 重启服务
-    log_info "[6/8] 重启服务..."
+    # 步骤6: 同步 MQTT 配置（关键：确保 Worker 和传感器能连接）
+    log_info "[6/9] 同步 MQTT 配置..."
+    
+    # 从 .env 读取 MQTT 密码
+    if [[ -f "$INSTALL_DIR/.env" ]]; then
+        MQTT_PASSWORD=$(grep -E "^MQTT_PASS=" "$INSTALL_DIR/.env" | cut -d'=' -f2-)
+    fi
+    
+    if [[ -n "$MQTT_PASSWORD" ]]; then
+        # 同步 Mosquitto 用户密码
+        if docker ps --filter "name=mcs_mosquitto" -q 2>/dev/null | grep -q .; then
+            docker exec mcs_mosquitto mosquitto_passwd -b /mosquitto/config/passwd admin "$MQTT_PASSWORD" 2>/dev/null || true
+            docker exec mcs_mosquitto mosquitto_passwd -b /mosquitto/config/passwd worker "$MQTT_PASSWORD" 2>/dev/null || true
+            docker exec mcs_mosquitto mosquitto_passwd -b /mosquitto/config/passwd zhizinan "$MQTT_PASSWORD" 2>/dev/null || true
+        fi
+        
+        # 生成配置文件到两个位置
+        MQTT_CONFIG_CONTENT=$(cat << EOFMQTT
+{
+    "//": "MCS-IOT MQTT 连接凭据配置集",
+    "device_user": "zhizinan",
+    "device_pass": "$MQTT_PASSWORD",
+    "worker_user": "worker",
+    "worker_pass": "$MQTT_PASSWORD",
+    "admin_user": "admin",
+    "admin_pass": "$MQTT_PASSWORD"
+}
+EOFMQTT
+)
+        echo "$MQTT_CONFIG_CONTENT" > "$INSTALL_DIR/mosquitto/config/mqtt_config.json"
+        echo "$MQTT_CONFIG_CONTENT" > "$INSTALL_DIR/scripts/mqtt_config.json"
+        chmod 600 "$INSTALL_DIR/mosquitto/config/mqtt_config.json" "$INSTALL_DIR/scripts/mqtt_config.json"
+        log_info "✓ MQTT 配置已同步"
+    else
+        log_warn "未找到 MQTT 密码配置，跳过同步"
+    fi
+    
+    # 步骤7: 重启服务
+    log_info "[7/9] 重启服务..."
     docker compose -f "$COMPOSE_FILE" up -d 2>/dev/null || docker-compose -f "$COMPOSE_FILE" up -d 2>/dev/null
     
-    # 步骤7: 更新管理脚本
-    log_info "[7/8] 更新管理脚本..."
+    # 步骤8: 更新管理脚本
+    log_info "[8/9] 更新管理脚本..."
     update_simulator_scripts
     log_info "✓ 脚本已更新"
     
-    # 步骤8: 等待服务就绪
-    log_info "[8/8] 等待服务就绪..."
+    # 步骤9: 等待服务就绪
+    log_info "[9/9] 等待服务就绪..."
     sleep 15
     
     # 显示状态
@@ -344,6 +381,7 @@ perform_update() {
     
     exit 0
 }
+
 
 # =============================================================================
 # 环境检测
@@ -1221,14 +1259,38 @@ sync_mqtt_password() {
         ((waited++))
     done
     
-    # 使用 mosquitto_passwd 设置密码
-    # admin 用户用于所有后端服务连接
+    # 使用 mosquitto_passwd 设置密码 (3个用户都需要同步)
+    log_info "同步 3 个 MQTT 用户密码: admin, worker, zhizinan..."
+    
+    local sync_success=true
+    
+    # admin 用户 - 用于后端服务
     if docker exec mcs_mosquitto mosquitto_passwd -b /mosquitto/config/passwd admin "$MQTT_PASSWORD" 2>/dev/null; then
-        log_info "✓ MQTT admin 用户密码已同步"
+        log_info "✓ admin 用户密码已同步"
     else
-        log_warn "MQTT 密码同步失败，可能需要手动设置"
-        log_info "手动设置方法: docker exec -it mcs_mosquitto mosquitto_passwd -b /mosquitto/config/passwd admin <密码>"
-        return 1
+        log_warn "admin 用户密码同步失败"
+        sync_success=false
+    fi
+    
+    # worker 用户 - 用于 Worker 服务
+    if docker exec mcs_mosquitto mosquitto_passwd -b /mosquitto/config/passwd worker "$MQTT_PASSWORD" 2>/dev/null; then
+        log_info "✓ worker 用户密码已同步"
+    else
+        log_warn "worker 用户密码同步失败"
+        sync_success=false
+    fi
+    
+    # zhizinan 用户 - 用于传感器/模拟器
+    if docker exec mcs_mosquitto mosquitto_passwd -b /mosquitto/config/passwd zhizinan "$MQTT_PASSWORD" 2>/dev/null; then
+        log_info "✓ zhizinan 用户密码已同步"
+    else
+        log_warn "zhizinan 用户密码同步失败"
+        sync_success=false
+    fi
+    
+    if [[ "$sync_success" == "false" ]]; then
+        log_warn "部分用户密码同步失败，可能需要手动设置"
+        log_info "手动设置方法: docker exec -it mcs_mosquitto mosquitto_passwd -b /mosquitto/config/passwd <用户名> <密码>"
     fi
     
     # 重启 Mosquitto 使密码生效
@@ -1243,23 +1305,36 @@ sync_mqtt_password() {
         log_warn "Mosquitto 重启后未运行，请检查日志"
     fi
     
-    # 生成 mqtt_config.json 供模拟器使用
-    log_info "生成模拟器配置文件..."
-    cat > "$INSTALL_DIR/scripts/mqtt_config.json" << EOFCONFIG
+    # 生成 mqtt_config.json 供 Worker 和模拟器使用
+    log_info "生成 MQTT 配置文件..."
+    
+    # 配置内容 (使用 zhizinan 作为设备用户，与 passwd 和 ACL 保持一致)
+    MQTT_CONFIG_CONTENT=$(cat << EOFCONFIG
 {
-    "admin_user": "admin",
-    "admin_pass": "$MQTT_PASSWORD",
+    "//": "MCS-IOT MQTT 连接凭据配置集 (MQTT Connectivity Credentials)",
+    "//_device": "传感器/模拟器使用的账号",
+    "device_user": "zhizinan",
+    "device_pass": "$MQTT_PASSWORD",
+    "//_worker": "后台数据处理单元使用的账号",
     "worker_user": "worker",
     "worker_pass": "$MQTT_PASSWORD",
-    "device_user": "device",
-    "device_pass": "$MQTT_PASSWORD"
+    "//_admin": "系统管理员使用的账号",
+    "admin_user": "admin",
+    "admin_pass": "$MQTT_PASSWORD"
 }
 EOFCONFIG
+)
+    
+    # 写入到两个位置：Worker 读取 mosquitto/config/，模拟器读取 scripts/
+    echo "$MQTT_CONFIG_CONTENT" > "$INSTALL_DIR/mosquitto/config/mqtt_config.json"
+    echo "$MQTT_CONFIG_CONTENT" > "$INSTALL_DIR/scripts/mqtt_config.json"
+    chmod 600 "$INSTALL_DIR/mosquitto/config/mqtt_config.json"
     chmod 600 "$INSTALL_DIR/scripts/mqtt_config.json"
-    log_info "✓ mqtt_config.json 已创建"
+    log_info "✓ mqtt_config.json 已同步到 mosquitto/config/ 和 scripts/"
     
     log_info "✓ MQTT 密码同步完成"
 }
+
 
 # =============================================================================
 # 演示数据 (已禁用 - 不再自动导入模拟数据)

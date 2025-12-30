@@ -1,12 +1,12 @@
 {
     "//": "MCS-IOT MQTT 连接凭据配置集 (MQTT Connectivity Credentials)",
     "//_device": "传感器/模拟器使用的账号。权限建议：仅发布 (Publish only)",
-    "device_user": "YOUR_DEVICE_USER",
-    "device_pass": "YOUR_DEVICE_PASS",
+    "device_user": "zhizinan",
+    "device_pass": "admin123",
     "//_worker": "后台数据处理单元使用的账号。权限建议：仅订阅 (Subscribe only)",
-    "worker_user": "YOUR_WORKER_USER",
-    "worker_pass": "YOUR_WORKER_PASS",
+    "worker_user": "worker",
+    "worker_pass": "admin123",
     "//_admin": "系统管理员/监控台使用的账号。权限建议：发布与订阅 (Pub/Sub)",
-    "admin_user": "YOUR_ADMIN_USER",
-    "admin_pass": "YOUR_ADMIN_PASS"
+    "admin_user": "admin",
+    "admin_pass": "admin123"
 }

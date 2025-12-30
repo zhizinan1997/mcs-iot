@@ -10,6 +10,12 @@ topic read mcs/+/up
 topic write mcs/+/cmd
 topic read mcs/+/status
 
+# Device/Simulator User (zhizinan)
+user zhizinan
+topic write mcs/+/up
+topic write mcs/+/status
+topic read mcs/+/cmd
+
 # Device ACL Pattern
 # %c matches the client id
 pattern write mcs/%c/up
