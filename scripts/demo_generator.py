@@ -9,6 +9,22 @@
   3. MQTT 全链路打通：直接连接本地或远程 MQTT Broker，推送 JSON 格式的传感器上报报文。
   4. 报警测试：可定时、随机触发高浓度报警，用于验证系统的预警与通知链路。
 
+  ============================================================================
+  手动配置说明（如部署环境与默认值不同，请修改以下配置）:
+  ============================================================================
+  
+  1. BROKER        - MQTT 服务器地址，默认 127.0.0.1（本机 Docker）
+  2. MQTT_PORT     - MQTT 端口，默认 1883
+  3. API_BASE      - 后端 API 地址，默认 http://localhost:8000/api
+  4. DEFAULT_MQTT_PASS - MQTT 密码，默认 admin123（与部署时设置的密码保持一致）
+  
+  或者创建 mqtt_config.json 文件（与此脚本同目录），内容格式：
+  {
+      "device_user": "device",
+      "device_pass": "你的MQTT密码"
+  }
+  ============================================================================
+
   技术栈：Python 3, Paho-MQTT, Requests (RESTful API), Threading.
 """
 import paho.mqtt.client as mqtt
@@ -24,7 +40,7 @@ import requests
 # 配置
 # ============================================================================
 
-BROKER = "localhost"
+BROKER = "127.0.0.1"
 MQTT_PORT = 1883
 API_BASE = "http://localhost:8000/api"
 TOPIC_PREFIX = "mcs"
@@ -33,9 +49,9 @@ TOPIC_PREFIX = "mcs"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(SCRIPT_DIR, "mqtt_config.json")
 
-# 默认 MQTT 账号密码
+# 默认 MQTT 账号密码（部署时会创建 mqtt_config.json 覆盖此配置）
 DEFAULT_MQTT_USER = "device"
-DEFAULT_MQTT_PASS = "device123"
+DEFAULT_MQTT_PASS = "admin123"
 
 # ============================================================================
 # 仪表和传感器配置

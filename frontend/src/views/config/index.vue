@@ -246,29 +246,52 @@
           </div>
           <div class="card-body">
              <el-form :model="mqttConfig" label-width="120px" label-position="left">
-               <div class="mqtt-grid">
-                 <div class="mqtt-group">
-                   <h5>管理员账号 (调试)</h5>
-                   <el-form-item label="用户名"><el-input v-model="mqttConfig.admin_user" /></el-form-item>
-                   <el-form-item label="密码"><el-input v-model="mqttConfig.admin_pass" type="password" show-password /></el-form-item>
+               <div class="mqtt-group">
+                 <h5>管理员账号 (调试)</h5>
+                 <div class="form-row">
+                   <el-form-item label="用户名" class="half-width"><el-input v-model="mqttConfig.admin_user" /></el-form-item>
+                   <el-form-item label="密码" class="half-width"><el-input v-model="mqttConfig.admin_pass" type="password" show-password /></el-form-item>
                  </div>
-                 
-                 <div class="mqtt-group">
-                   <h5>Worker 服务账号</h5>
-                   <el-form-item label="用户名"><el-input v-model="mqttConfig.worker_user" /></el-form-item>
-                   <el-form-item label="密码"><el-input v-model="mqttConfig.worker_pass" type="password" show-password /></el-form-item>
-                 </div>
-                 
-                 <div class="mqtt-group full-width">
-                   <h5>设备接入账号 (统一)</h5>
-                   <div class="form-row">
-                     <el-form-item label="用户名" class="half-width"><el-input v-model="mqttConfig.device_user" /></el-form-item>
-                     <el-form-item label="密码" class="half-width"><el-input v-model="mqttConfig.device_pass" type="password" show-password /></el-form-item>
+               </div>
+               
+               <!-- Worker 和 Device 账号只读显示 -->
+               <div class="mqtt-readonly-section">
+                 <h5>部署时配置的账号 (只读)</h5>
+                 <div class="mqtt-credentials">
+                   <div class="credential-item">
+                     <span class="credential-label">Worker 服务账号:</span>
+                     <code class="credential-value">{{ mqttConfig.worker_user || 'worker' }}</code>
+                     <span class="credential-sep">/</span>
+                     <code class="credential-value password">{{ mqttConfig.worker_pass || '••••••••' }}</code>
+                     <el-button 
+                       v-if="mqttConfig.worker_pass" 
+                       size="small" 
+                       link 
+                       @click="copyToClipboard(mqttConfig.worker_pass)"
+                     >复制密码</el-button>
+                   </div>
+                   <div class="credential-item">
+                     <span class="credential-label">设备接入账号:</span>
+                     <code class="credential-value">{{ mqttConfig.device_user || 'device' }}</code>
+                     <span class="credential-sep">/</span>
+                     <code class="credential-value password">{{ mqttConfig.device_pass || '••••••••' }}</code>
+                     <el-button 
+                       v-if="mqttConfig.device_pass" 
+                       size="small" 
+                       link 
+                       @click="copyToClipboard(mqttConfig.device_pass)"
+                     >复制密码</el-button>
                    </div>
                  </div>
                </div>
                
-               <el-alert title="注意：修改 Worker 账号密码后需要手动重启后端容器" type="warning" show-icon :closable="false" class="mac-alert" />
+               <el-alert 
+                 title="以上账号在一键部署时自动配置，设备接入请使用 device 账号" 
+                 type="info" 
+                 show-icon 
+                 :closable="false" 
+                 class="mac-alert" 
+               />
              </el-form>
           </div>
         </div>
@@ -438,6 +461,16 @@ function handleTimeRangeChange(val: [Date, Date] | null) {
   if (val) {
     alarmGeneralConfig.time_restriction_start = val[0].toTimeString().slice(0, 5);
     alarmGeneralConfig.time_restriction_end = val[1].toTimeString().slice(0, 5);
+  }
+}
+
+/* --- Clipboard --- */
+async function copyToClipboard(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    ElMessage.success("已复制到剪贴板");
+  } catch {
+    ElMessage.error("复制失败");
   }
 }
 
@@ -669,6 +702,59 @@ onMounted(() => {
   font-size: 12px;
   color: #86868b;
   margin-top: 4px;
+}
+
+/* MQTT Readonly Credentials */
+.mqtt-readonly-section {
+  background: rgba(0, 0, 0, 0.02);
+  padding: 16px;
+  border-radius: 12px;
+  margin-top: 16px;
+}
+
+.mqtt-readonly-section h5 {
+  margin: 0 0 12px;
+  color: #86868b;
+  font-size: 13px;
+}
+
+.mqtt-credentials {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.credential-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.credential-label {
+  font-size: 13px;
+  color: #606266;
+  min-width: 100px;
+}
+
+.credential-value {
+  background: rgba(0, 0, 0, 0.04);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 13px;
+  color: #1d1d1f;
+}
+
+.credential-value.password {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 500;
+}
+
+.credential-sep {
+  color: #c0c4cc;
+  font-size: 12px;
 }
 
 .spacer {

@@ -1243,6 +1243,21 @@ sync_mqtt_password() {
         log_warn "Mosquitto 重启后未运行，请检查日志"
     fi
     
+    # 生成 mqtt_config.json 供模拟器使用
+    log_info "生成模拟器配置文件..."
+    cat > "$INSTALL_DIR/scripts/mqtt_config.json" << EOFCONFIG
+{
+    "admin_user": "admin",
+    "admin_pass": "$MQTT_PASSWORD",
+    "worker_user": "worker",
+    "worker_pass": "$MQTT_PASSWORD",
+    "device_user": "device",
+    "device_pass": "$MQTT_PASSWORD"
+}
+EOFCONFIG
+    chmod 600 "$INSTALL_DIR/scripts/mqtt_config.json"
+    log_info "✓ mqtt_config.json 已创建"
+    
     log_info "✓ MQTT 密码同步完成"
 }
 

@@ -328,6 +328,16 @@ function handleLogout() {
   font-weight: 500;
 }
 
+.tamper-warning-tag {
+  border-radius: 12px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  padding: 0 10px;
+}
+
 .page-title { font-size: 18px; font-weight: 600; margin: 0; color: #1d1d1f; }
 
 .main-content {
