@@ -1113,3 +1113,221 @@ async def verify_license():
         return await mgr.verify_license()
     except Exception as e:
         return {"valid": False, "error": str(e)}
+
+# =============================================================================
+# Deploy Info API (读取部署信息汇总文件)
+# =============================================================================
+
+@router.get("/deploy-info")
+async def get_deploy_info():
+    """读取部署信息汇总文件 (DEPLOY_INFO.md)"""
+    import re
+    
+    # 可能的文件路径（Docker 容器内和本地开发）
+    possible_paths = [
+        "/app/scripts/DEPLOY_INFO.md",
+        "/opt/mcs-iot/scripts/DEPLOY_INFO.md",
+        "./scripts/DEPLOY_INFO.md"
+    ]
+    
+    deploy_info = {
+        "exists": False,
+        "content": "",
+        "parsed": {
+            "deploy_time": "",
+            "domains": {},
+            "database": {},
+            "admin": {},
+            "mqtt": {}
+        }
+    }
+    
+    for path in possible_paths:
+        if os.path.exists(path):
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    deploy_info["exists"] = True
+                    deploy_info["content"] = content
+                    
+                    # 解析关键信息
+                    # 部署时间
+                    time_match = re.search(r'\| 部署时间 \| (.+?) \|', content)
+                    if time_match:
+                        deploy_info["parsed"]["deploy_time"] = time_match.group(1).strip()
+                    
+                    # 域名
+                    domain_matches = re.findall(r'\| (管理后台|API 接口|可视化大屏|MQTT 服务) \| (.+?) \|', content)
+                    for name, domain in domain_matches:
+                        deploy_info["parsed"]["domains"][name] = domain.strip()
+                    
+                    # 数据库密码
+                    db_pass_match = re.search(r'\| 密码 \| `(.+?)` \|', content)
+                    if db_pass_match:
+                        deploy_info["parsed"]["database"]["password"] = db_pass_match.group(1)
+                    
+                    # 管理员密码
+                    admin_section = re.search(r'### 后台管理员.*?\| 密码 \| `(.+?)` \|', content, re.DOTALL)
+                    if admin_section:
+                        deploy_info["parsed"]["admin"]["password"] = admin_section.group(1)
+                    
+                    # MQTT 密码 (取第一个)
+                    mqtt_match = re.search(r'\| admin \| `(.+?)` \|', content)
+                    if mqtt_match:
+                        deploy_info["parsed"]["mqtt"]["password"] = mqtt_match.group(1)
+                    
+                    break
+            except Exception as e:
+                deploy_info["error"] = str(e)
+    
+    if not deploy_info["exists"]:
+        deploy_info["message"] = "部署信息文件不存在。该文件仅在首次部署时由 deploy.sh 脚本自动生成。"
+    
+    return deploy_info
+
+# =============================================================================
+# Config Export/Import API (配置导出导入)
+# =============================================================================
+
+class ConfigImportRequest(BaseModel):
+    """导入配置请求"""
+    config_data: dict
+
+@router.get("/export")
+async def export_all_config(redis = Depends(get_redis)):
+    """
+    导出所有配置为 JSON
+    用于备份或迁移到新部署
+    """
+    from datetime import datetime
+    
+    export_data = {
+        "_meta": {
+            "export_time": datetime.now().isoformat(),
+            "version": "1.0",
+            "description": "MCS-IoT Configuration Export"
+        },
+        "configs": {}
+    }
+    
+    # 定义所有配置键及其模型
+    config_keys = {
+        "email": ("config:email", EmailConfig),
+        "webhook": ("config:webhook", WebhookConfig),
+        "sms": ("config:sms", SMSConfig),
+        "alarm_general": ("config:alarm_general", AlarmGeneralConfig),
+        "dashboard": ("config:dashboard", DashboardConfig),
+        "archive": ("config:archive", ArchiveConfig),
+        "site": ("config:site", SiteConfig),
+        "screen_bg": ("config:screen_bg", ScreenBgConfig),
+        "weather": ("config:weather", WeatherConfig),
+        "ai": ("config:ai", AIConfig),
+        "screen_layout": ("config:screen_layout", ScreenLayoutConfig),
+    }
+    
+    for key, (redis_key, model_class) in config_keys.items():
+        try:
+            data = await redis.get(redis_key)
+            if data:
+                export_data["configs"][key] = json.loads(data)
+            else:
+                # 使用默认值
+                export_data["configs"][key] = model_class().dict()
+        except Exception as e:
+            export_data["configs"][key] = {"_error": str(e)}
+    
+    return export_data
+
+@router.post("/import")
+async def import_config(request: ConfigImportRequest, redis = Depends(get_redis)):
+    """
+    导入配置 JSON
+    - 支持向后兼容：新版本中的新增字段保留默认值
+    - 只导入 JSON 中存在的配置，不影响 JSON 中没有的配置项
+    """
+    import_data = request.config_data
+    
+    # 验证格式
+    if "configs" not in import_data:
+        raise HTTPException(status_code=400, detail="无效的配置格式，缺少 'configs' 字段")
+    
+    configs = import_data.get("configs", {})
+    
+    # 配置键与 Redis 键和模型类的映射
+    config_mapping = {
+        "email": ("config:email", EmailConfig),
+        "webhook": ("config:webhook", WebhookConfig),
+        "sms": ("config:sms", SMSConfig),
+        "alarm_general": ("config:alarm_general", AlarmGeneralConfig),
+        "dashboard": ("config:dashboard", DashboardConfig),
+        "archive": ("config:archive", ArchiveConfig),
+        "site": ("config:site", SiteConfig),
+        "screen_bg": ("config:screen_bg", ScreenBgConfig),
+        "weather": ("config:weather", WeatherConfig),
+        "ai": ("config:ai", AIConfig),
+        "screen_layout": ("config:screen_layout", ScreenLayoutConfig),
+    }
+    
+    imported_count = 0
+    skipped_count = 0
+    errors = []
+    
+    for key, config_value in configs.items():
+        if key.startswith("_"):  # 跳过元数据
+            continue
+            
+        if key not in config_mapping:
+            skipped_count += 1
+            continue
+        
+        redis_key, model_class = config_mapping[key]
+        
+        try:
+            # 跳过包含错误的配置
+            if isinstance(config_value, dict) and "_error" in config_value:
+                skipped_count += 1
+                continue
+            
+            # 获取当前配置 (如果存在)
+            current_data = await redis.get(redis_key)
+            if current_data:
+                current_config = json.loads(current_data)
+            else:
+                # 使用模型默认值
+                current_config = model_class().dict()
+            
+            # 合并策略: 导入的值覆盖现有值，但保留导入文件中不存在的新字段
+            # 这样可以保证新版本增加的字段不会丢失
+            merged_config = current_config.copy()
+            for field, value in config_value.items():
+                if not field.startswith("_"):  # 跳过以 _ 开头的私有/注释字段
+                    merged_config[field] = value
+            
+            # 验证配置格式 (使用 Pydantic 模型)
+            try:
+                validated = model_class(**merged_config)
+                await redis.set(redis_key, validated.json())
+                imported_count += 1
+            except Exception as ve:
+                errors.append(f"{key}: 验证失败 - {str(ve)}")
+                skipped_count += 1
+                
+        except Exception as e:
+            errors.append(f"{key}: {str(e)}")
+            skipped_count += 1
+    
+    result = {
+        "success": True,
+        "message": f"配置导入完成",
+        "imported_count": imported_count,
+        "skipped_count": skipped_count,
+    }
+    
+    if errors:
+        result["errors"] = errors
+    
+    if import_data.get("_meta", {}).get("export_time"):
+        result["source_export_time"] = import_data["_meta"]["export_time"]
+    
+    return result
+

@@ -33,7 +33,7 @@ class MQTTAccountConfig(BaseModel):
     admin_pass: str = ""
     worker_user: str = "worker"
     worker_pass: str = ""
-    device_user: str = "device"
+    device_user: str = "zhizinan"
     device_pass: str = ""
 
 
@@ -107,7 +107,7 @@ async def get_mqtt_config(redis = Depends(get_redis)):
         admin_pass="",
         worker_user="worker",
         worker_pass="",
-        device_user="device",
+        device_user="zhizinan",
         device_pass=""
     )
 

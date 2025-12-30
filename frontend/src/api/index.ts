@@ -115,7 +115,12 @@ export const configApi = {
     verifyLicense: () => api.post('/config/license/verify'),
     // 大屏面板布局配置
     getScreenLayout: () => api.get('/config/screen-layout'),
-    updateScreenLayout: (data: any) => api.put('/config/screen-layout', data)
+    updateScreenLayout: (data: any) => api.put('/config/screen-layout', data),
+    // 部署信息
+    getDeployInfo: () => api.get('/config/deploy-info'),
+    // 配置导出导入
+    exportConfig: () => api.get('/config/export'),
+    importConfig: (data: any) => api.post('/config/import', { config_data: data })
 }
 
 // Upload API

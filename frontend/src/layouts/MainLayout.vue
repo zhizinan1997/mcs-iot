@@ -335,15 +335,19 @@ function handleLogout() {
   border-radius: 12px;
   font-weight: 500;
   white-space: nowrap;
-  padding: 0 12px !important;
-  height: 24px !important;
-  line-height: 22px !important;
+  padding: 0 10px !important;
+  height: 28px !important;
+  line-height: 26px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  box-sizing: border-box !important;
 }
 
 .tamper-content {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  line-height: 1;
 }
 
 .tamper-icon {

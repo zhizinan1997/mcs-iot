@@ -247,52 +247,183 @@
           <div class="card-body">
              <el-form :model="mqttConfig" label-width="120px" label-position="left">
                <div class="mqtt-group">
-                 <h5>管理员账号 (调试)</h5>
+                 <h5>管理员账号</h5>
                  <div class="form-row">
                    <el-form-item label="用户名" class="half-width"><el-input v-model="mqttConfig.admin_user" /></el-form-item>
                    <el-form-item label="密码" class="half-width"><el-input v-model="mqttConfig.admin_pass" type="password" show-password /></el-form-item>
                  </div>
                </div>
                
-               <!-- Worker 和 Device 账号只读显示 -->
-               <div class="mqtt-readonly-section">
-                 <h5>部署时配置的账号 (只读)</h5>
-                 <div class="mqtt-credentials">
-                   <div class="credential-item">
-                     <span class="credential-label">Worker 服务账号:</span>
-                     <code class="credential-value">{{ mqttConfig.worker_user || 'worker' }}</code>
-                     <span class="credential-sep">/</span>
-                     <code class="credential-value password">{{ mqttConfig.worker_pass || '••••••••' }}</code>
-                     <el-button 
-                       v-if="mqttConfig.worker_pass" 
-                       size="small" 
-                       link 
-                       @click="copyToClipboard(mqttConfig.worker_pass)"
-                     >复制密码</el-button>
-                   </div>
-                   <div class="credential-item">
-                     <span class="credential-label">设备接入账号:</span>
-                     <code class="credential-value">{{ mqttConfig.device_user || 'device' }}</code>
-                     <span class="credential-sep">/</span>
-                     <code class="credential-value password">{{ mqttConfig.device_pass || '••••••••' }}</code>
-                     <el-button 
-                       v-if="mqttConfig.device_pass" 
-                       size="small" 
-                       link 
-                       @click="copyToClipboard(mqttConfig.device_pass)"
-                     >复制密码</el-button>
-                   </div>
-                 </div>
-               </div>
-               
                <el-alert 
-                 title="以上账号在一键部署时自动配置，设备接入请使用 device 账号" 
+                 title="此账号用于 MQTT 调试连接，设备接入账号请查阅部署文档" 
                  type="info" 
                  show-icon 
                  :closable="false" 
                  class="mac-alert" 
                />
              </el-form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Deploy Info Section -->
+      <div id="section-deploy" class="config-section">
+        <div class="section-card glass-panel">
+          <div class="card-header">
+            <div class="header-title">
+              <el-icon><InfoFilled /></el-icon> 部署信息
+            </div>
+            <el-button size="small" @click="loadDeployInfo" :loading="loadingDeployInfo">刷新</el-button>
+          </div>
+          <div class="card-body">
+            <div v-if="!deployInfo.exists" class="deploy-info-empty">
+              <el-alert 
+                :title="deployInfo.message || '部署信息文件不存在'" 
+                type="warning" 
+                show-icon 
+                :closable="false" 
+              />
+              <p class="deploy-hint">该文件仅在首次使用 deploy.sh 脚本部署时自动生成，包含所有部署时设置的密码和配置。</p>
+            </div>
+            
+            <div v-else class="deploy-info-content">
+              <!-- 部署时间 -->
+              <div class="info-group">
+                <h5>📅 部署信息</h5>
+                <div class="info-row">
+                  <span class="info-label">部署时间:</span>
+                  <code class="info-value">{{ deployInfo.parsed.deploy_time || '未知' }}</code>
+                </div>
+              </div>
+              
+              <!-- 域名 -->
+              <div class="info-group" v-if="Object.keys(deployInfo.parsed.domains || {}).length > 0">
+                <h5>🌐 域名配置</h5>
+                <div v-for="(domain, name) in deployInfo.parsed.domains" :key="name" class="info-row">
+                  <span class="info-label">{{ name }}:</span>
+                  <a :href="domain" target="_blank" class="info-value link">{{ domain }}</a>
+                </div>
+              </div>
+              
+              <!-- 账号密码 -->
+              <div class="info-group">
+                <h5>🔑 账号密码</h5>
+                <div class="credentials-grid">
+                  <div class="credential-card" v-if="deployInfo.parsed.database?.password">
+                    <div class="credential-title">数据库 (postgres)</div>
+                    <div class="credential-password">
+                      <code>{{ showPasswords ? deployInfo.parsed.database.password : '••••••••' }}</code>
+                    </div>
+                  </div>
+                  <div class="credential-card" v-if="deployInfo.parsed.admin?.password">
+                    <div class="credential-title">后台管理员 (admin)</div>
+                    <div class="credential-password">
+                      <code>{{ showPasswords ? deployInfo.parsed.admin.password : '••••••••' }}</code>
+                    </div>
+                  </div>
+                  <div class="credential-card" v-if="deployInfo.parsed.mqtt?.password">
+                    <div class="credential-title">MQTT (admin/worker/zhizinan)</div>
+                    <div class="credential-password">
+                      <code>{{ showPasswords ? deployInfo.parsed.mqtt.password : '••••••••' }}</code>
+                    </div>
+                  </div>
+                </div>
+                <el-button 
+                  size="small" 
+                  :type="showPasswords ? 'danger' : 'primary'" 
+                  plain
+                  @click="showPasswords = !showPasswords"
+                  style="margin-top: 12px"
+                >
+                  <el-icon><View v-if="!showPasswords" /><Hide v-else /></el-icon>
+                  {{ showPasswords ? '隐藏密码' : '显示密码' }}
+                </el-button>
+              </div>
+              
+              <el-alert 
+                title="安全提示：此信息包含敏感凭据，请勿泄露给他人" 
+                type="warning" 
+                show-icon 
+                :closable="false" 
+                class="mac-alert" 
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Backup/Restore Section -->
+      <div id="section-backup" class="config-section">
+        <div class="section-card glass-panel">
+          <div class="card-header">
+            <div class="header-title">
+              <el-icon><Download /></el-icon> 配置备份与恢复
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="backup-restore-content">
+              <!-- Export -->
+              <div class="backup-group">
+                <h5>📤 导出配置</h5>
+                <p class="backup-desc">将当前所有系统配置导出为 JSON 文件，用于备份或迁移到新部署。</p>
+                <el-button type="primary" @click="exportConfig" :loading="exporting">
+                  <el-icon><Download /></el-icon>
+                  导出配置 JSON
+                </el-button>
+              </div>
+              
+              <el-divider />
+              
+              <!-- Import -->
+              <div class="backup-group">
+                <h5>📥 导入配置</h5>
+                <p class="backup-desc">从 JSON 文件恢复配置。支持向后兼容：新版本中新增的配置项会保留默认值。</p>
+                
+                <div class="import-area">
+                  <el-upload
+                    class="config-uploader"
+                    :auto-upload="false"
+                    :show-file-list="false"
+                    accept=".json"
+                    @change="handleConfigFileSelect"
+                  >
+                    <el-button type="success" plain>
+                      <el-icon><Upload /></el-icon>
+                      选择 JSON 文件
+                    </el-button>
+                  </el-upload>
+                  
+                  <div v-if="selectedConfigFile" class="selected-file">
+                    <span class="file-name">{{ selectedConfigFile.name }}</span>
+                    <el-button size="small" type="primary" @click="importConfig" :loading="importing">
+                      确认导入
+                    </el-button>
+                    <el-button size="small" @click="selectedConfigFile = null">取消</el-button>
+                  </div>
+                </div>
+                
+                <div v-if="importResult" class="import-result" :class="importResult.success ? 'success' : 'error'">
+                  <div class="result-title">{{ importResult.message }}</div>
+                  <div class="result-stats">
+                    成功导入: {{ importResult.imported_count }} 项，跳过: {{ importResult.skipped_count }} 项
+                  </div>
+                  <div v-if="importResult.source_export_time" class="result-meta">
+                    原导出时间: {{ importResult.source_export_time }}
+                  </div>
+                  <div v-if="importResult.errors && importResult.errors.length > 0" class="result-errors">
+                    <div v-for="err in importResult.errors" :key="err" class="error-item">{{ err }}</div>
+                  </div>
+                </div>
+              </div>
+              
+              <el-alert 
+                title="提示：导入配置后请刷新页面以查看更新后的设置" 
+                type="info" 
+                show-icon 
+                :closable="false" 
+                class="mac-alert" 
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -306,7 +437,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from "vue";
 import { ElMessage } from "element-plus";
-import { Setting, Monitor, Message, Connection, Bell, Link, Upload } from '@element-plus/icons-vue'
+import { Setting, Monitor, Message, Connection, Bell, Link, Upload, InfoFilled, View, Hide, Download } from '@element-plus/icons-vue'
 import { configApi, uploadApi } from "../../api";
 
 const saving = ref(false);
@@ -321,6 +452,8 @@ const navItems = [
   { id: 'section-webhook', label: 'Webhook', icon: 'Connection' },
   { id: 'section-alarm', label: '报警规则', icon: 'Bell' },
   { id: 'section-mqtt', label: 'MQTT服务', icon: 'Link' },
+  { id: 'section-deploy', label: '部署信息', icon: 'InfoFilled' },
+  { id: 'section-backup', label: '配置备份', icon: 'Download' },
 ];
 
 /* --- Config Objects --- */
@@ -328,7 +461,103 @@ const siteConfig = reactive({ site_name: "", logo_url: "", browser_title: "" });
 const emailConfig = reactive({ enabled: false, smtp_host: "smtp.qq.com", smtp_port: 465, sender: "", password: "", receivers: [] as string[] });
 const webhookConfig = reactive({ enabled: false, url: "", platform: "custom", secret: "", keyword: "" });
 const alarmGeneralConfig = reactive({ debounce_minutes: 10, time_restriction_enabled: false, time_restriction_days: [1, 2, 3, 4, 5], time_restriction_start: "08:00", time_restriction_end: "18:00" });
-const mqttConfig = reactive({ admin_user: "admin", admin_pass: "", worker_user: "worker", worker_pass: "", device_user: "device", device_pass: "" });
+const mqttConfig = reactive({ admin_user: "admin", admin_pass: "", worker_user: "worker", worker_pass: "", device_user: "zhizinan", device_pass: "" });
+
+/* --- Deploy Info --- */
+const loadingDeployInfo = ref(false);
+const showPasswords = ref(false);
+const deployInfo = reactive({
+  exists: false,
+  message: "",
+  parsed: {
+    deploy_time: "",
+    domains: {} as Record<string, string>,
+    database: { password: "" },
+    admin: { password: "" },
+    mqtt: { password: "" }
+  }
+});
+
+async function loadDeployInfo() {
+  loadingDeployInfo.value = true;
+  try {
+    const res = await configApi.getDeployInfo();
+    Object.assign(deployInfo, res.data);
+  } catch (error) {
+    console.error("Failed to load deploy info", error);
+  } finally {
+    loadingDeployInfo.value = false;
+  }
+}
+
+/* --- Config Export/Import --- */
+const exporting = ref(false);
+const importing = ref(false);
+const selectedConfigFile = ref<File | null>(null);
+const importResult = ref<any>(null);
+
+async function exportConfig() {
+  exporting.value = true;
+  try {
+    const res = await configApi.exportConfig();
+    const data = res.data;
+    
+    // 生成文件名
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+    const filename = `mcs-iot-config-${timestamp}.json`;
+    
+    // 下载 JSON 文件
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    ElMessage.success(`配置已导出: ${filename}`);
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.detail || "导出失败");
+  } finally {
+    exporting.value = false;
+  }
+}
+
+function handleConfigFileSelect(uploadFile: any) {
+  selectedConfigFile.value = uploadFile.raw;
+  importResult.value = null;
+}
+
+async function importConfig() {
+  if (!selectedConfigFile.value) return;
+  
+  importing.value = true;
+  try {
+    const text = await selectedConfigFile.value.text();
+    const configData = JSON.parse(text);
+    
+    const res = await configApi.importConfig(configData);
+    importResult.value = res.data;
+    
+    if (res.data.success) {
+      ElMessage.success(`配置导入成功: ${res.data.imported_count} 项`);
+      // 重新加载所有配置
+      await loadAll();
+    }
+  } catch (error: any) {
+    if (error instanceof SyntaxError) {
+      importResult.value = { success: false, message: "JSON 格式无效", imported_count: 0, skipped_count: 0 };
+    } else {
+      importResult.value = { success: false, message: error.response?.data?.detail || "导入失败", imported_count: 0, skipped_count: 0 };
+    }
+    ElMessage.error(importResult.value.message);
+  } finally {
+    importing.value = false;
+    selectedConfigFile.value = null;
+  }
+}
 
 /* --- Actions --- */
 function scrollToSection(id: string) {
@@ -464,16 +693,6 @@ function handleTimeRangeChange(val: [Date, Date] | null) {
   }
 }
 
-/* --- Clipboard --- */
-async function copyToClipboard(text: string) {
-  try {
-    await navigator.clipboard.writeText(text);
-    ElMessage.success("已复制到剪贴板");
-  } catch {
-    ElMessage.error("复制失败");
-  }
-}
-
 /* --- Logo Upload --- */
 function triggerLogoInput() {
   logoInputRef.value?.click();
@@ -505,6 +724,7 @@ function clearLogo() {
 
 onMounted(() => {
   loadAll();
+  loadDeployInfo();
 });
 </script>
 
@@ -775,4 +995,188 @@ onMounted(() => {
 .full-scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.2);
 }
+
+/* Deploy Info Section */
+.deploy-info-empty {
+  text-align: center;
+  padding: 20px;
+}
+
+.deploy-hint {
+  color: #86868b;
+  font-size: 13px;
+  margin-top: 12px;
+}
+
+.deploy-info-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.info-group {
+  background: rgba(255, 255, 255, 0.4);
+  padding: 16px;
+  border-radius: 12px;
+}
+
+.info-group h5 {
+  margin: 0 0 12px;
+  color: #1d1d1f;
+  font-size: 14px;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.info-label {
+  color: #86868b;
+  font-size: 13px;
+  min-width: 80px;
+}
+
+.info-value {
+  background: rgba(0, 0, 0, 0.04);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 13px;
+  color: #1d1d1f;
+}
+
+.info-value.link {
+  color: #0071e3;
+  text-decoration: none;
+}
+
+.info-value.link:hover {
+  text-decoration: underline;
+}
+
+.credentials-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.credential-card {
+  background: rgba(0, 0, 0, 0.02);
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.credential-title {
+  font-size: 12px;
+  color: #86868b;
+  margin-bottom: 6px;
+}
+
+.credential-password code {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Backup/Restore Section */
+.backup-restore-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.backup-group {
+  background: rgba(255, 255, 255, 0.4);
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.backup-group h5 {
+  margin: 0 0 8px;
+  color: #1d1d1f;
+  font-size: 15px;
+}
+
+.backup-desc {
+  color: #86868b;
+  font-size: 13px;
+  margin: 0 0 16px;
+}
+
+.import-area {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.selected-file {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(103, 194, 58, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(103, 194, 58, 0.3);
+}
+
+.file-name {
+  flex: 1;
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 13px;
+  color: #1d1d1f;
+}
+
+.import-result {
+  padding: 16px;
+  border-radius: 10px;
+  margin-top: 12px;
+}
+
+.import-result.success {
+  background: rgba(103, 194, 58, 0.1);
+  border: 1px solid rgba(103, 194, 58, 0.3);
+}
+
+.import-result.error {
+  background: rgba(245, 108, 108, 0.1);
+  border: 1px solid rgba(245, 108, 108, 0.3);
+}
+
+.result-title {
+  font-weight: 600;
+  color: #1d1d1f;
+  margin-bottom: 8px;
+}
+
+.result-stats {
+  font-size: 13px;
+  color: #86868b;
+}
+
+.result-meta {
+  font-size: 12px;
+  color: #a0a0a5;
+  margin-top: 4px;
+}
+
+.result-errors {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.error-item {
+  font-size: 12px;
+  color: #f56c6c;
+  padding: 4px 0;
+}
 </style>
+

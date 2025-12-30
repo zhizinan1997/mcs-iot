@@ -1165,6 +1165,121 @@ EOF
     log_info "✓ 配置文件已生成: $INSTALL_DIR/.env"
 }
 
+# =============================================================================
+# 生成部署信息汇总文件（供后期查阅）
+# =============================================================================
+
+generate_deploy_info() {
+    log_info "生成部署信息汇总文件..."
+    
+    local INFO_FILE="$INSTALL_DIR/scripts/DEPLOY_INFO.md"
+    local DEPLOY_TIME=$(date '+%Y-%m-%d %H:%M:%S')
+    
+    cat > "$INFO_FILE" << EOF
+# MCS-IoT 部署信息汇总
+
+> ⚠️ **安全警告**: 此文件包含敏感信息，请妥善保管，切勿泄露！
+
+---
+
+## 📅 部署信息
+
+| 项目 | 值 |
+|------|-----|
+| 部署时间 | $DEPLOY_TIME |
+| 安装目录 | $INSTALL_DIR |
+| 部署方式 | Docker (预构建镜像) |
+
+---
+
+## 🌐 域名配置
+
+| 用途 | 域名 |
+|------|------|
+| 管理后台 | https://${DOMAIN_MAIN} |
+| API 接口 | https://${DOMAIN_API} |
+| 可视化大屏 | https://${DOMAIN_SCREEN} |
+| MQTT 服务 | ${DOMAIN_MQTT}:8883 (TLS) |
+
+---
+
+## 🔑 账号密码
+
+### 数据库 (PostgreSQL/TimescaleDB)
+| 项目 | 值 |
+|------|-----|
+| 主机 | timescaledb (容器内) |
+| 端口 | 5432 |
+| 用户名 | postgres |
+| 密码 | \`${DB_PASSWORD}\` |
+| 数据库名 | mcs_iot |
+
+### 后台管理员
+| 项目 | 值 |
+|------|-----|
+| 登录地址 | https://${DOMAIN_MAIN} |
+| 用户名 | admin |
+| 密码 | \`${ADMIN_PASSWORD}\` |
+
+### MQTT 服务
+| 用户名 | 密码 | 用途 |
+|--------|------|------|
+| admin | \`${MQTT_PASSWORD}\` | 管理员/调试 |
+| worker | \`${MQTT_PASSWORD}\` | Worker 服务 |
+| zhizinan | \`${MQTT_PASSWORD}\` | 设备/模拟器接入 |
+
+---
+
+## 🔐 密钥配置
+
+| 项目 | 值 |
+|------|-----|
+| JWT 密钥 | \`${JWT_SECRET}\` |
+| 天气 API Key | \`${WEATHER_API_KEY:-未配置}\` |
+| AI API Key | \`${AI_API_KEY:-未配置}\` |
+| AI 模型 | ${AI_MODEL:-未配置} |
+
+---
+
+## 📁 重要文件位置
+
+| 文件 | 路径 | 说明 |
+|------|------|------|
+| 环境变量 | \`$INSTALL_DIR/.env\` | 所有配置项 |
+| MQTT 配置 | \`$INSTALL_DIR/mosquitto/config/mqtt_config.json\` | MQTT 凭据 |
+| SSL 证书 | \`$INSTALL_DIR/nginx/ssl/\` | TLS 证书 |
+| 本文件 | \`$INFO_FILE\` | 部署信息汇总 |
+
+---
+
+## 🛠️ 常用命令
+
+\`\`\`bash
+# 服务管理
+mcs-iot start      # 启动
+mcs-iot stop       # 停止
+mcs-iot restart    # 重启
+mcs-iot status     # 状态
+mcs-iot logs       # 日志
+mcs-iot update     # 更新
+
+# 模拟器
+mcs-simulator-start   # 启动模拟数据
+mcs-simulator-stop    # 停止模拟器
+
+# 数据库
+docker exec -it mcs_db psql -U postgres mcs_iot
+\`\`\`
+
+---
+
+*此文件由部署脚本自动生成，仅供运维参考*
+EOF
+
+    chmod 600 "$INFO_FILE"
+    log_info "✓ 部署信息已保存到: $INFO_FILE"
+}
+
 # setup_ssl_certificates() 函数已移除
 # SSL 证书改由用户在宝塔面板中申请和管理
 
@@ -1590,6 +1705,7 @@ main() {
     # ===== 第四阶段: 密码配置和部署 =====
     configure_credentials       # 第十二步: 配置密码和 API 密钥
     generate_env_file           # 第十三步: 生成配置文件
+    generate_deploy_info        # 生成部署信息汇总文件
     deploy_containers           # 第十四步: 拉取镜像并启动容器
     sync_mqtt_password          # 第十五步: 同步 MQTT 密码到 Mosquitto
     

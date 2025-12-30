@@ -50,3 +50,6 @@ check_types.py
 
 # Demo Data (large file, optional)
 scripts/demo_data.sql
+
+# Deployment Info (contains sensitive credentials)
+scripts/DEPLOY_INFO.md
