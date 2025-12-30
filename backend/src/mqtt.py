@@ -114,15 +114,24 @@ async def get_mqtt_config(redis = Depends(get_redis)):
 
 @router.put("/mqtt")
 async def update_mqtt_config(config: MQTTAccountConfig, redis = Depends(get_redis)):
-    """更新 MQTT 账号配置"""
-    # 验证必填字段
-    if not config.device_user or not config.device_pass:
-        raise HTTPException(status_code=400, detail="设备账号和密码不能为空")
-    
-    if not config.worker_user or not config.worker_pass:
-        raise HTTPException(status_code=400, detail="Worker 账号和密码不能为空")
+    """更新 MQTT 账号配置（仅管理员账号可修改，device/worker 账号保持部署时的配置）"""
+    # 验证管理员账号必填
+    if not config.admin_user or not config.admin_pass:
+        raise HTTPException(status_code=400, detail="管理员账号和密码不能为空")
     
     try:
+        # 读取现有配置，保留 device/worker 账号
+        existing_data = await redis.get("config:mqtt")
+        if existing_data:
+            existing_config = MQTTAccountConfig(**json.loads(existing_data))
+            # 如果前端没有传递 device/worker 密码，则保留原有值
+            if not config.device_pass:
+                config.device_user = existing_config.device_user
+                config.device_pass = existing_config.device_pass
+            if not config.worker_pass:
+                config.worker_user = existing_config.worker_user
+                config.worker_pass = existing_config.worker_pass
+        
         # 1. 保存配置到 Redis (用于 Worker 服务读取)
         await redis.set("config:mqtt", config.json())
         
@@ -137,7 +146,7 @@ async def update_mqtt_config(config: MQTTAccountConfig, redis = Depends(get_redi
         except Exception as e:
             logger.warning(f"Failed to write config file: {e}")
         
-        return {"message": "MQTT 配置已保存，所有服务将自动同步"}
+        return {"message": "MQTT 管理员配置已保存"}
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"保存配置失败: {str(e)}")

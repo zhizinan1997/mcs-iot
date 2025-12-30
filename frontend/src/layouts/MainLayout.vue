@@ -148,7 +148,10 @@
             class="tamper-warning-tag"
             v-if="licenseStatus.tampered"
           >
-            <el-icon><WarningFilled /></el-icon> 代码篡改
+            <span class="tamper-content">
+              <el-icon class="tamper-icon"><WarningFilled /></el-icon>
+              <span>代码篡改</span>
+            </span>
           </el-tag>
 
           <!-- User Info -->
@@ -331,11 +334,21 @@ function handleLogout() {
 .tamper-warning-tag {
   border-radius: 12px;
   font-weight: 500;
+  white-space: nowrap;
+  padding: 0 12px !important;
+  height: 24px !important;
+  line-height: 22px !important;
+}
+
+.tamper-content {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  white-space: nowrap;
-  padding: 0 10px;
+}
+
+.tamper-icon {
+  font-size: 14px;
+  vertical-align: middle;
 }
 
 .page-title { font-size: 18px; font-weight: 600; margin: 0; color: #1d1d1f; }
