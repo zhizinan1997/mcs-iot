@@ -789,10 +789,44 @@ const trendOption = computed(() => {
     return baseOption
   }
 
+  // Sensor type translation map (English -> Chinese)
+  const SENSOR_TYPE_CN: Record<string, string> = {
+    'Temperature': '温度',
+    'TEMP': '温度',
+    'Humidity': '湿度',
+    'HUM': '湿度',
+    'H2': '氢气',
+    'CH4': '甲烷',
+    'CO': '一氧化碳',
+    'CO2': '二氧化碳',
+    'O2': '氧气',
+    'H2S': '硫化氢',
+    'VOC': 'VOC',
+    'VOCs': 'VOCs',
+    'PM2.5': 'PM2.5',
+    'PM10': 'PM10',
+    'EX': '可燃气体'
+  }
+  
+  // Translate sensor type to Chinese
+  const translateSensorType = (type: string | null | undefined, fallback: string): string => {
+    if (!type) return fallback
+    // Try direct match first
+    if (SENSOR_TYPE_CN[type]) return SENSOR_TYPE_CN[type]
+    // Try case-insensitive match
+    const upperType = type.toUpperCase()
+    for (const [key, value] of Object.entries(SENSOR_TYPE_CN)) {
+      if (key.toUpperCase() === upperType) return value
+    }
+    // Return original if no translation found
+    return type
+  }
+
   const series = instrumentHistory.value.series.map((s: any, idx: number) => {
     const color = CHART_COLORS[idx % CHART_COLORS.length]
+    const displayName = translateSensorType(s.sensor_type, s.name || s.sn)
     return {
-      name: s.sensor_type || s.name || s.sn,
+      name: displayName,
       type: 'line',
       smooth: true,
       symbol: 'none',
