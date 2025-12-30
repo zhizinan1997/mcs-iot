@@ -168,10 +168,18 @@ async def _update_deploy_info_password(new_password: str):
     更新 DEPLOY_INFO.md 文件中的管理员密码记录
     
     文件中的格式:
+    ### 后台管理员
+    | 项目 | 值 |
+    |------|-----|
+    | 登录地址 | https://... |
+    | 用户名 | admin |
     | 密码 | `admin123` |
     """
     import os
     import re
+    import logging
+    
+    logger = logging.getLogger(__name__)
     
     possible_paths = [
         "/app/scripts/DEPLOY_INFO.md",
@@ -185,18 +193,22 @@ async def _update_deploy_info_password(new_password: str):
                 with open(path, 'r', encoding='utf-8') as f:
                     content = f.read()
                 
-                pattern = r'(### 后台管理员.*?密码 \| )`[^`]+`( \|)'
+                # 匹配 ### 后台管理员 区块中的密码行
+                # 格式: | 密码 | `xxx` |
+                pattern = r'(### 后台管理员.*?\| 密码 \| )`[^`]+`( \|)'
                 replacement = rf'\1`{new_password}`\2'
                 updated_content = re.sub(pattern, replacement, content, flags=re.DOTALL)
                 
                 if updated_content != content:
                     with open(path, 'w', encoding='utf-8') as f:
                         f.write(updated_content)
+                    logger.info(f"Updated admin password in {path}")
+                else:
+                    logger.warning(f"Password pattern not matched in {path}")
                 
                 break
             except Exception as e:
-                import logging
-                logging.getLogger(__name__).warning(f"Failed to update DEPLOY_INFO.md: {e}")
+                logger.warning(f"Failed to update DEPLOY_INFO.md: {e}")
 
 
 @router.put("/admin/password")
