@@ -152,6 +152,93 @@ async def get_permission_options(current_user: User = Depends(require_admin)):
     }
 
 
+# =============================================================================
+# 管理员账号密码修改 (Admin Password Management)
+# 注意: 此路由必须在 /{user_id} 路由之前定义，否则会被错误匹配
+# =============================================================================
+
+class AdminPasswordChange(BaseModel):
+    """管理员密码修改请求"""
+    current_password: str = Field(..., min_length=1, description="当前密码")
+    new_password: str = Field(..., min_length=6, max_length=64, description="新密码")
+
+
+async def _update_deploy_info_password(new_password: str):
+    """
+    更新 DEPLOY_INFO.md 文件中的管理员密码记录
+    
+    文件中的格式:
+    | 密码 | `admin123` |
+    """
+    import os
+    import re
+    
+    possible_paths = [
+        "/app/scripts/DEPLOY_INFO.md",
+        "/opt/mcs-iot/scripts/DEPLOY_INFO.md",
+        "./scripts/DEPLOY_INFO.md"
+    ]
+    
+    for path in possible_paths:
+        if os.path.exists(path):
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                pattern = r'(### 后台管理员.*?密码 \| )`[^`]+`( \|)'
+                replacement = rf'\1`{new_password}`\2'
+                updated_content = re.sub(pattern, replacement, content, flags=re.DOTALL)
+                
+                if updated_content != content:
+                    with open(path, 'w', encoding='utf-8') as f:
+                        f.write(updated_content)
+                
+                break
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Failed to update DEPLOY_INFO.md: {e}")
+
+
+@router.put("/admin/password")
+async def change_admin_password(
+    data: AdminPasswordChange,
+    db=Depends(get_db),
+    current_user: User = Depends(require_admin)
+):
+    """
+    修改管理员密码
+    
+    - 需要验证当前密码
+    - 成功后同步更新 DEPLOY_INFO.md 文件中的密码记录
+    """
+    async with db.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT id, password_hash FROM users WHERE username = 'admin'"
+        )
+        
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="管理员账号不存在"
+            )
+        
+        if not pwd_context.verify(data.current_password, row["password_hash"]):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="当前密码错误"
+            )
+        
+        new_hash = pwd_context.hash(data.new_password)
+        await conn.execute(
+            "UPDATE users SET password_hash = $1 WHERE username = 'admin'",
+            new_hash
+        )
+        
+        await _update_deploy_info_password(data.new_password)
+        
+        return {"message": "管理员密码修改成功"}
+
+
 @router.post("")
 async def create_user(
     data: UserCreate,
@@ -358,102 +445,3 @@ async def delete_user(
         await conn.execute("DELETE FROM users WHERE id = $1", user_id)
         
         return {"message": f"用户 {row['username']} 已删除"}
-
-
-# =============================================================================
-# 管理员账号密码修改 (Admin Password Management)
-# =============================================================================
-
-class AdminPasswordChange(BaseModel):
-    """管理员密码修改请求"""
-    current_password: str = Field(..., min_length=1, description="当前密码")
-    new_password: str = Field(..., min_length=6, max_length=64, description="新密码")
-
-
-@router.put("/admin/password")
-async def change_admin_password(
-    data: AdminPasswordChange,
-    db=Depends(get_db),
-    current_user: User = Depends(require_admin)
-):
-    """
-    修改管理员密码
-    
-    - 需要验证当前密码
-    - 成功后同步更新 DEPLOY_INFO.md 文件中的密码记录
-    """
-    import os
-    import re
-    
-    async with db.acquire() as conn:
-        # 获取 admin 用户当前密码哈希
-        row = await conn.fetchrow(
-            "SELECT id, password_hash FROM users WHERE username = 'admin'"
-        )
-        
-        if not row:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="管理员账号不存在"
-            )
-        
-        # 验证当前密码
-        if not pwd_context.verify(data.current_password, row["password_hash"]):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="当前密码错误"
-            )
-        
-        # 更新密码
-        new_hash = pwd_context.hash(data.new_password)
-        await conn.execute(
-            "UPDATE users SET password_hash = $1 WHERE username = 'admin'",
-            new_hash
-        )
-        
-        # 同步更新 DEPLOY_INFO.md 文件中的密码
-        await _update_deploy_info_password(data.new_password)
-        
-        return {"message": "管理员密码修改成功"}
-
-
-async def _update_deploy_info_password(new_password: str):
-    """
-    更新 DEPLOY_INFO.md 文件中的管理员密码记录
-    
-    文件中的格式:
-    | 密码 | `admin123` |
-    """
-    import os
-    import re
-    
-    possible_paths = [
-        "/app/scripts/DEPLOY_INFO.md",
-        "/opt/mcs-iot/scripts/DEPLOY_INFO.md",
-        "./scripts/DEPLOY_INFO.md"
-    ]
-    
-    for path in possible_paths:
-        if os.path.exists(path):
-            try:
-                # 读取文件内容
-                with open(path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                
-                # 替换后台管理员密码
-                # 匹配 ### 后台管理员 后面的 | 密码 | `xxx` | 格式
-                pattern = r'(### 后台管理员.*?密码 \| )`[^`]+`( \|)'
-                replacement = rf'\1`{new_password}`\2'
-                updated_content = re.sub(pattern, replacement, content, flags=re.DOTALL)
-                
-                # 写回文件
-                if updated_content != content:
-                    with open(path, 'w', encoding='utf-8') as f:
-                        f.write(updated_content)
-                
-                break
-            except Exception as e:
-                # 文件更新失败不影响密码修改操作
-                import logging
-                logging.getLogger(__name__).warning(f"Failed to update DEPLOY_INFO.md: {e}")
-

@@ -1199,7 +1199,8 @@ generate_deploy_info() {
 | 管理后台 | https://${DOMAIN_MAIN} |
 | API 接口 | https://${DOMAIN_API} |
 | 可视化大屏 | https://${DOMAIN_SCREEN} |
-| MQTT 服务 | ${DOMAIN_MQTT}:8883 (TLS) |
+| MQTT 服务 (TLS) | ${DOMAIN_MQTT}:8883 |
+| MQTT 服务 (非加密) | ${DOMAIN_MQTT}:1883 |
 
 ---
 

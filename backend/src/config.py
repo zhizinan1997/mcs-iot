@@ -1157,7 +1157,7 @@ async def get_deploy_info():
                         deploy_info["parsed"]["deploy_time"] = time_match.group(1).strip()
                     
                     # 域名
-                    domain_matches = re.findall(r'\| (管理后台|API 接口|可视化大屏|MQTT 服务) \| (.+?) \|', content)
+                    domain_matches = re.findall(r'\| (管理后台|API 接口|可视化大屏|MQTT 服务 \(TLS\)|MQTT 服务 \(非加密\)) \| (.+?) \|', content)
                     for name, domain in domain_matches:
                         deploy_info["parsed"]["domains"][name] = domain.strip()
                     

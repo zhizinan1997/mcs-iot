@@ -305,7 +305,12 @@
                 <h5>🌐 域名配置</h5>
                 <div v-for="(domain, name) in deployInfo.parsed.domains" :key="name" class="info-row">
                   <span class="info-label">{{ name }}:</span>
-                  <a :href="domain" target="_blank" class="info-value link">{{ domain }}</a>
+                  <template v-if="name.includes('MQTT')">
+                    <code class="info-value">{{ domain }}</code>
+                  </template>
+                  <template v-else>
+                    <a :href="domain" target="_blank" class="info-value link">{{ domain }}</a>
+                  </template>
                 </div>
               </div>
               
